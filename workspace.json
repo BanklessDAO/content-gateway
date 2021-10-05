@@ -1,0 +1,112 @@
+{
+    "version": 2,
+    "projects": {
+        "banklessdao-content-gateway-client": {
+            "root": "libs/banklessdao/content-gateway-client",
+            "sourceRoot": "libs/banklessdao/content-gateway-client/src",
+            "projectType": "library",
+            "targets": {
+                "build": {
+                    "executor": "@nrwl/workspace:tsc",
+                    "outputs": ["{options.outputPath}"],
+                    "options": {
+                        "outputPath": "dist/libs/banklessdao/content-gateway-client",
+                        "main": "libs/banklessdao/content-gateway-client/src/index.ts",
+                        "tsConfig": "libs/banklessdao/content-gateway-client/tsconfig.lib.json",
+                        "assets": [
+                            "libs/banklessdao/content-gateway-client/*.md"
+                        ]
+                    }
+                },
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": [
+                            "libs/banklessdao/content-gateway-client/**/*.ts"
+                        ]
+                    }
+                },
+                "test": {
+                    "executor": "@nrwl/jest:jest",
+                    "outputs": [
+                        "coverage/libs/banklessdao/content-gateway-client"
+                    ],
+                    "options": {
+                        "jestConfig": "libs/banklessdao/content-gateway-client/jest.config.js",
+                        "passWithNoTests": true
+                    }
+                }
+            }
+        },
+        "domain-feature-gateway": {
+            "root": "libs/domain/feature-gateway",
+            "sourceRoot": "libs/domain/feature-gateway/src",
+            "projectType": "library",
+            "targets": {
+                "build": {
+                    "executor": "@nrwl/workspace:tsc",
+                    "outputs": ["{options.outputPath}"],
+                    "options": {
+                        "outputPath": "dist/libs/domain/feature-gateway",
+                        "main": "libs/domain/feature-gateway/src/index.ts",
+                        "tsConfig": "libs/domain/feature-gateway/tsconfig.lib.json",
+                        "assets": ["libs/domain/feature-gateway/*.md"]
+                    }
+                },
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": [
+                            "libs/domain/feature-gateway/**/*.ts"
+                        ]
+                    }
+                },
+                "test": {
+                    "executor": "@nrwl/jest:jest",
+                    "outputs": ["coverage/libs/domain/feature-gateway"],
+                    "options": {
+                        "jestConfig": "libs/domain/feature-gateway/jest.config.js",
+                        "passWithNoTests": true
+                    }
+                }
+            }
+        },
+        "shared-util-schema": {
+            "root": "libs/shared/util-schema",
+            "sourceRoot": "libs/shared/util-schema/src",
+            "projectType": "library",
+            "targets": {
+                "build": {
+                    "executor": "@nrwl/workspace:tsc",
+                    "outputs": ["{options.outputPath}"],
+                    "options": {
+                        "outputPath": "dist/libs/shared/util-schema",
+                        "main": "libs/shared/util-schema/src/index.ts",
+                        "tsConfig": "libs/shared/util-schema/tsconfig.lib.json",
+                        "assets": ["libs/shared/util-schema/*.md"]
+                    }
+                },
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": ["libs/shared/util-schema/**/*.ts"]
+                    }
+                },
+                "test": {
+                    "executor": "@nrwl/jest:jest",
+                    "outputs": ["coverage/libs/shared/util-schema"],
+                    "options": {
+                        "jestConfig": "libs/shared/util-schema/jest.config.js",
+                        "passWithNoTests": true
+                    }
+                }
+            }
+        }
+    },
+    "cli": {
+        "defaultCollection": "@nrwl/workspace"
+    }
+}

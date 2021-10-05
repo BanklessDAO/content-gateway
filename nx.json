@@ -1,0 +1,41 @@
+{
+    "npmScope": "content-gateway",
+    "affected": {
+        "defaultBase": "master"
+    },
+    "implicitDependencies": {
+        "package.json": {
+            "dependencies": "*",
+            "devDependencies": "*"
+        },
+        ".eslintrc.json": "*"
+    },
+    "tasksRunnerOptions": {
+        "default": {
+            "runner": "@nrwl/nx-cloud",
+            "options": {
+                "cacheableOperations": ["build", "lint", "test", "e2e"],
+                "accessToken": "YzI2NDRlZTMtZGI5OC00OWMwLWIyMGUtNWJiN2Q0NTg0ZjJifHJlYWQtd3JpdGU="
+            }
+        }
+    },
+    "targetDependencies": {
+        "build": [
+            {
+                "target": "build",
+                "projects": "dependencies"
+            }
+        ]
+    },
+    "projects": {
+        "banklessdao-content-gateway-client": {
+            "tags": ["sdk"]
+        },
+        "domain-feature-gateway": {
+            "tags": ["lib:feature"]
+        },
+        "shared-util-schema": {
+            "tags": []
+        }
+    }
+}
