@@ -1,6 +1,7 @@
+import { Schema } from "@shared/util-schema";
 import * as E from "fp-ts/Either";
 import { DataStorage, SchemaStorage } from "../adapter";
-import { Payload, SchemaSnapshot } from "../types";
+import { Payload } from "../types";
 
 /**
  * Public API (facade) for the Content Gateway backend service that's responsible
@@ -10,7 +11,7 @@ export type ContentGateway = {
     /**
      * Registers a new schema shapshot with the Content Gateway.
      */
-    register: <T>(schema: SchemaSnapshot<T>) => E.Either<Error, void>;
+    register: (schema: Schema) => E.Either<Error, void>;
     /**
      * Ingests a new payload into the Content Gateway. The payload is validated
      * and it must correspond to a registered schema. If either the schema doesn't
@@ -34,7 +35,7 @@ export const createContentGateway: ContentGatewayFactory = (
     dataStorage: DataStorage
 ) => {
     return {
-        register: <T>(schema: SchemaSnapshot<T>) => {
+        register: (schema: Schema) => {
             return schemaStorage.register(schema);
         },
         receive: <T>(payload: Payload<T>) => {

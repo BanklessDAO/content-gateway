@@ -9,6 +9,6 @@
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true
     },
-    "include": ["**/*.ts", "src/graphql.js"],
+    "include": ["**/*.ts"],
     "exclude": ["**/*.spec.ts"]
 }

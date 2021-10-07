@@ -39,6 +39,57 @@
                 }
             }
         },
+        "content-gateway-api": {
+            "root": "apps/content-gateway-api",
+            "sourceRoot": "apps/content-gateway-api/src",
+            "projectType": "application",
+            "targets": {
+                "build": {
+                    "executor": "@nrwl/node:build",
+                    "outputs": ["{options.outputPath}"],
+                    "options": {
+                        "outputPath": "dist/apps/content-gateway-api",
+                        "main": "apps/content-gateway-api/src/main.ts",
+                        "tsConfig": "apps/content-gateway-api/tsconfig.app.json",
+                        "assets": ["apps/content-gateway-api/src/assets"]
+                    },
+                    "configurations": {
+                        "production": {
+                            "optimization": true,
+                            "extractLicenses": true,
+                            "inspect": false,
+                            "fileReplacements": [
+                                {
+                                    "replace": "apps/content-gateway-api/src/environments/environment.ts",
+                                    "with": "apps/content-gateway-api/src/environments/environment.prod.ts"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "serve": {
+                    "executor": "@nrwl/node:execute",
+                    "options": {
+                        "buildTarget": "content-gateway-api:build"
+                    }
+                },
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": ["apps/content-gateway-api/**/*.ts"]
+                    }
+                },
+                "test": {
+                    "executor": "@nrwl/jest:jest",
+                    "outputs": ["coverage/apps/content-gateway-api"],
+                    "options": {
+                        "jestConfig": "apps/content-gateway-api/jest.config.js",
+                        "passWithNoTests": true
+                    }
+                }
+            }
+        },
         "domain-feature-gateway": {
             "root": "libs/domain/feature-gateway",
             "sourceRoot": "libs/domain/feature-gateway/src",
@@ -68,6 +119,70 @@
                     "outputs": ["coverage/libs/domain/feature-gateway"],
                     "options": {
                         "jestConfig": "libs/domain/feature-gateway/jest.config.js",
+                        "passWithNoTests": true
+                    }
+                }
+            }
+        },
+        "shared-util-dto": {
+            "root": "libs/shared/util-dto",
+            "sourceRoot": "libs/shared/util-dto/src",
+            "projectType": "library",
+            "targets": {
+                "build": {
+                    "executor": "@nrwl/workspace:tsc",
+                    "outputs": ["{options.outputPath}"],
+                    "options": {
+                        "outputPath": "dist/libs/shared/util-dto",
+                        "main": "libs/shared/util-dto/src/index.ts",
+                        "tsConfig": "libs/shared/util-dto/tsconfig.lib.json",
+                        "assets": ["libs/shared/util-dto/*.md"]
+                    }
+                },
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": ["libs/shared/util-dto/**/*.ts"]
+                    }
+                },
+                "test": {
+                    "executor": "@nrwl/jest:jest",
+                    "outputs": ["coverage/libs/shared/util-dto"],
+                    "options": {
+                        "jestConfig": "libs/shared/util-dto/jest.config.js",
+                        "passWithNoTests": true
+                    }
+                }
+            }
+        },
+        "shared-util-graphql": {
+            "root": "libs/shared/util-graphql",
+            "sourceRoot": "libs/shared/util-graphql/src",
+            "projectType": "library",
+            "targets": {
+                "build": {
+                    "executor": "@nrwl/workspace:tsc",
+                    "outputs": ["{options.outputPath}"],
+                    "options": {
+                        "outputPath": "dist/libs/shared/util-graphql",
+                        "main": "libs/shared/util-graphql/src/index.ts",
+                        "tsConfig": "libs/shared/util-graphql/tsconfig.lib.json",
+                        "assets": ["libs/shared/util-graphql/*.md"]
+                    }
+                },
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": ["libs/shared/util-graphql/**/*.ts"]
+                    }
+                },
+                "test": {
+                    "executor": "@nrwl/jest:jest",
+                    "outputs": ["coverage/libs/shared/util-graphql"],
+                    "options": {
+                        "jestConfig": "libs/shared/util-graphql/jest.config.js",
                         "passWithNoTests": true
                     }
                 }
@@ -107,6 +222,7 @@
         }
     },
     "cli": {
-        "defaultCollection": "@nrwl/workspace"
-    }
+        "defaultCollection": "@nrwl/express"
+    },
+    "defaultProject": "content-gateway-api"
 }

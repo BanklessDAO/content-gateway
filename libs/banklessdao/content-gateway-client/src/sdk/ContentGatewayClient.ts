@@ -1,14 +1,9 @@
-import {
-    KeyDTO,
-    keyToString,
-    PayloadDTO,
-    RegistrationDTO,
-    TypeKey,
-} from "@shared/util-schema";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { PayloadDTO, SchemaDTO, SchemaInfoDTO } from "@shared/util-dto";
+import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import { Type } from "@tsed/core";
 import { serialize } from "@tsed/json-mapper";
 import { getJsonSchema } from "@tsed/schema";
-import Ajv from "ajv";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/function";
 
@@ -38,12 +33,12 @@ export type ContentGatewayClient = {
      * }
      * ```
      */
-    register: <T>(key: TypeKey<T>, type: Type<T>) => E.Either<Error, void>;
+    register: <T>(key: SchemaInfo, type: Type<T>) => E.Either<Error, void>;
     /**
      * Sends [[data]] to the Content Gateway using the [[key]] as the unique identifier.
      * This will return an error if the type of [[data]] is not [[register]]ed.
      */
-    send: <T>(key: TypeKey<T>, data: T) => E.Either<Error, void>;
+    send: <T>(key: SchemaInfo, data: T) => E.Either<Error, void>;
 };
 
 /**
@@ -63,34 +58,32 @@ export type SDKFactory = (adapter: OutboundSDKAdapter) => ContentGatewayClient;
  * This object is instantiated in the client.
  */
 export const createSDK: SDKFactory = (adapter: OutboundSDKAdapter) => {
-    const ajv = new Ajv();
-    const schema = getJsonSchema(PayloadDTO);
     const types = new Map<string, Type<any>>();
     return {
         register: <T>(
-            key: TypeKey<T>,
+            key: SchemaInfo,
             type: Type<T>
         ): E.Either<Error, void> => {
             return E.tryCatch(
                 () => {
                     // 💡 this is necessary because we use
                     const schemaStr = typeToString(type);
-                    types.set(keyToString(key), type);
-                    const registration = new RegistrationDTO(key, schemaStr);
+                    types.set(schemaInfoToString(key), type);
+                    const registration = new SchemaDTO(key, schemaStr);
                     adapter.register(
                         serialize(registration, {
-                            type: RegistrationDTO,
+                            type: SchemaDTO,
                         })
                     );
                 },
                 (reason) => new Error(String(reason))
             );
         },
-        send: <T>(key: TypeKey<T>, data: T): E.Either<Error, void> => {
+        send: <T>(key: SchemaInfo, data: T): E.Either<Error, void> => {
             // 💡 a pipe is similar to what the pipeline operator (|>) will be in the future
             // (more info here: https://github.com/tc39/proposal-pipeline-operator)
             // in short, pipe(f, g, h) is equivalent to f(g(h(...)))
-            const keyStr = keyToString(key);
+            const keyStr = schemaInfoToString(key);
             const t = types.get(keyStr);
             let maybeType: E.Either<Error, Type<T>>;
             if (t) {
@@ -109,7 +102,7 @@ export const createSDK: SDKFactory = (adapter: OutboundSDKAdapter) => {
                     // 💡 We'll validate locally and on the server-side too.
 
                     const payload = new PayloadDTO(
-                        new KeyDTO(key.namespace, key.name, key.version),
+                        new SchemaInfoDTO(key.namespace, key.name, key.version),
                         data
                     );
                     const serializedPayload = serialize(payload, {

@@ -1,6 +1,6 @@
-import { TypeKey } from "@shared/util-schema";
+import { SchemaInfo } from "@shared/util-schema";
 
 export type Payload<T> = {
-    key: TypeKey<T>;
+    key: SchemaInfo;
     data: T;
 };

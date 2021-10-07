@@ -31,8 +31,17 @@
         "banklessdao-content-gateway-client": {
             "tags": ["sdk"]
         },
+        "content-gateway-api": {
+            "tags": []
+        },
         "domain-feature-gateway": {
             "tags": ["lib:feature"]
+        },
+        "shared-util-dto": {
+            "tags": []
+        },
+        "shared-util-graphql": {
+            "tags": []
         },
         "shared-util-schema": {
             "tags": []

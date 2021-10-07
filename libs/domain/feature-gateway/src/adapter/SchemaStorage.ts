@@ -1,14 +1,13 @@
+import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import * as E from "fp-ts/Either";
-import { TypeKey, keyToString } from "@shared/util-schema";
-import {SchemaSnapshot} from "../types/SchemaSnapshot";
 
 /**
  * The [[SchemaStorage]] is a server-side component of the content gateway.
  * It is responsible for storing the schemas sent from the SDK.
  */
 export type SchemaStorage = {
-    register: <T>(schema: SchemaSnapshot<T>) => E.Either<Error, void>;
-    find: <T>(key: TypeKey<T>) => E.Either<Error, SchemaSnapshot<T>>;
+    register: (schema: Schema) => E.Either<Error, void>;
+    find: (key: SchemaInfo) => E.Either<Error, Schema>;
 };
 
 /**
@@ -16,13 +15,11 @@ export type SchemaStorage = {
  * use the supplied [[map]] as the storage. This is useful for testing.
  */
 export const createInMemorySchemaStorage = (
-    map: Map<string, SchemaSnapshot<any>> = new Map()
+    map: Map<string, Schema> = new Map()
 ): SchemaStorage => {
     return {
-        register: function <T>(
-            schema: SchemaSnapshot<T>
-        ): E.Either<Error, void> {
-            const keyStr = keyToString(schema.key);
+        register: (schema: Schema): E.Either<Error, void> => {
+            const keyStr = schemaInfoToString(schema.info);
             if (map.has(keyStr)) {
                 return E.left(
                     new Error(`Schema with key ${keyStr} already registered`)
@@ -31,10 +28,10 @@ export const createInMemorySchemaStorage = (
             map.set(keyStr, schema);
             return E.right(undefined);
         },
-        find: function <T>(key: TypeKey<T>): E.Either<Error, SchemaSnapshot<T>> {
-            const keyStr = keyToString(key);
+        find: (key: SchemaInfo): E.Either<Error, Schema> => {
+            const keyStr = schemaInfoToString(key);
             if (map.has(keyStr)) {
-                return E.right(map.get(keyStr) as SchemaSnapshot<T>);
+                return E.right(map.get(keyStr) as Schema);
             } else {
                 return E.left(new Error(`Schema with key ${keyStr} not found`));
             }
