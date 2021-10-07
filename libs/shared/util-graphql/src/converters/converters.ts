@@ -3,9 +3,11 @@
 import * as s from "@shared/util-schema";
 import * as g from "graphql";
 
-export const toGraphQLTypes = (
-    schema: s.Schema
-): Array<g.GraphQLObjectType> => {
+/**
+ * Converts the root type in the [[schema]] to a GraphQL object type.
+ * This function will also recursively extract any addition object types.
+ */
+export const toGraphQLType = (schema: s.Schema): g.GraphQLObjectType => {
     const types = new Map<string, s.JSONSchemaType>();
     const result = new Map<string, g.GraphQLObjectType>();
     const jsonSchema = schema.schemaObject;
@@ -20,7 +22,7 @@ export const toGraphQLTypes = (
     types.forEach((type, name) => {
         extractType(name, jsonSchema, types, result);
     });
-    return [...result.values()];
+    return result.get(schema.info.name)!;
 };
 
 const extractType = (

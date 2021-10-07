@@ -8,5 +8,5 @@ export type SchemaInfo = {
     version: string;
 };
 
-export const schemaInfoToString = (info: SchemaInfo): string =>
-    `${info.namespace}.${info.name}.${info.version}`;
+export const schemaInfoToKey = ({ namespace, name, version }: SchemaInfo) =>
+    `${namespace}.${name}.${version}`;

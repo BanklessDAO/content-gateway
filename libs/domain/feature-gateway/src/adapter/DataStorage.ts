@@ -1,4 +1,4 @@
-import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
+import { SchemaInfo, schemaInfoToKey } from "@shared/util-schema";
 import * as E from "fp-ts/Either";
 import { Payload } from "../types/Payload";
 
@@ -21,7 +21,7 @@ export const createInMemoryDataStorage = (
 ): DataStorage => {
     return {
         store: function <T>(payload: Payload<T>): E.Either<Error, void> {
-            const keyStr = schemaInfoToString(payload.key);
+            const keyStr = schemaInfoToKey(payload.info);
             if (!map.has(keyStr)) {
                 map.set(keyStr, []);
             }
@@ -29,7 +29,7 @@ export const createInMemoryDataStorage = (
             return E.right(undefined);
         },
         find: function <T>(key: SchemaInfo): T[] {
-            const keyStr = schemaInfoToString(key);
+            const keyStr = schemaInfoToKey(key);
             if (map.has(keyStr)) {
                 return [...(map?.get(keyStr) ?? [])];
             } else {

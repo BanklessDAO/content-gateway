@@ -191,7 +191,7 @@ const schemaStr = `{
     }
 }`;
 
-const jsonSerializer = createDefaultJSONSerializer();
+const serializer = createDefaultJSONSerializer();
 
 describe("Given a type guard", () => {
     describe("for a number property", () => {
@@ -421,11 +421,7 @@ describe("Given a type guard", () => {
 describe("Given a Schema", () => {
     describe("created from a type", () => {
         const schema = (
-            createSchemaFromType(
-                userInfo,
-                User,
-                jsonSerializer
-            ) as E.Right<Schema>
+            createSchemaFromType(serializer)(userInfo, User) as E.Right<Schema>
         ).right;
 
         it("When accessing its schema object then it should be correct", () => {
@@ -492,10 +488,9 @@ describe("Given a Schema", () => {
 
     describe("created from a string", () => {
         const schema = (
-            createSchemaFromString(
+            createSchemaFromString(serializer)(
                 userInfo,
-                schemaStr,
-                jsonSerializer
+                schemaStr
             ) as E.Right<Schema>
         ).right;
 
@@ -506,10 +501,9 @@ describe("Given a Schema", () => {
 
     describe("created from an object", () => {
         const schema = (
-            createSchemaFromObject(
+            createSchemaFromObject(serializer)(
                 userInfo,
-                expectedSchemaObject,
-                jsonSerializer
+                expectedSchemaObject
             ) as E.Right<Schema>
         ).right;
 

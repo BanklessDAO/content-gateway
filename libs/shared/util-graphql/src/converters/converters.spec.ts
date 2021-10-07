@@ -1,4 +1,8 @@
-import { createDefaultJSONSerializer, createSchemaFromType, Schema } from "@shared/util-schema";
+import {
+    createDefaultJSONSerializer,
+    createSchemaFromType,
+    Schema,
+} from "@shared/util-schema";
 import { CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import * as g from "graphql";
@@ -66,7 +70,10 @@ type User {
 
 describe("Given a JSON schema type", () => {
     const schema = (
-        createSchemaFromType(userKey, User, createDefaultJSONSerializer()) as E.Right<Schema>
+        createSchemaFromType(createDefaultJSONSerializer())(
+            userKey,
+            User
+        ) as E.Right<Schema>
     ).right;
 
     describe("when converting it to a GraphQL schema", () => {

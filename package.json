@@ -13,6 +13,7 @@
         "@tsed/exceptions": "^6.73.8",
         "@tsed/json-mapper": "^6.73.1",
         "@tsed/schema": "^6.73.0",
+        "@types/express-graphql": "^0.9.0",
         "ajv": "^8.6.3",
         "class-validator": "^0.13.1",
         "express": "4.17.1",
@@ -23,6 +24,7 @@
         "io-ts": "^2.2.16",
         "reflect-metadata": "^0.1.13",
         "tslib": "^2.0.0",
+        "typescript-pluralize": "^1.0.1",
         "voca": "^1.4.0"
     },
     "devDependencies": {

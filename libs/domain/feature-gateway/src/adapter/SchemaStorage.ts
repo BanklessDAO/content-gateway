@@ -1,4 +1,4 @@
-import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
+import { Schema, SchemaInfo, schemaInfoToKey } from "@shared/util-schema";
 import * as E from "fp-ts/Either";
 
 /**
@@ -8,6 +8,7 @@ import * as E from "fp-ts/Either";
 export type SchemaStorage = {
     register: (schema: Schema) => E.Either<Error, void>;
     find: (key: SchemaInfo) => E.Either<Error, Schema>;
+    findAll(): Array<Schema>;
 };
 
 /**
@@ -19,7 +20,7 @@ export const createInMemorySchemaStorage = (
 ): SchemaStorage => {
     return {
         register: (schema: Schema): E.Either<Error, void> => {
-            const keyStr = schemaInfoToString(schema.info);
+            const keyStr = schemaInfoToKey(schema.info);
             if (map.has(keyStr)) {
                 return E.left(
                     new Error(`Schema with key ${keyStr} already registered`)
@@ -29,12 +30,15 @@ export const createInMemorySchemaStorage = (
             return E.right(undefined);
         },
         find: (key: SchemaInfo): E.Either<Error, Schema> => {
-            const keyStr = schemaInfoToString(key);
+            const keyStr = schemaInfoToKey(key);
             if (map.has(keyStr)) {
                 return E.right(map.get(keyStr) as Schema);
             } else {
                 return E.left(new Error(`Schema with key ${keyStr} not found`));
             }
         },
+        findAll: (): Schema[] => {
+            return Array.from(map.values());
+        }
     };
 };
