@@ -28,8 +28,11 @@ import * as v from "voca";
 
 const CLIENT_BUILD_PATH = join(__dirname, "../content-gateway-frontend");
 const ENVIRONMENT = process.env.NODE_ENV;
+const port = process.env.PORT || 3333;
+
 const isDev = ENVIRONMENT === "development";
 const isProd = ENVIRONMENT === "production";
+const isHeroku = ENVIRONMENT === "heroku";
 
 const app = express();
 
@@ -191,7 +194,7 @@ pipe(
             "/api/graphql",
             graphqlHTTP({
                 schema: schema,
-                graphiql: true,
+                graphiql: isDev || isHeroku,
             })
         );
 
@@ -201,7 +204,6 @@ pipe(
             });
         }
 
-        const port = process.env.port || 3333;
         const server = app.listen(port, () => {
             console.log(`Listening at http://localhost:${port}`);
         });

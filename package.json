@@ -3,6 +3,7 @@
     "version": "0.0.1",
     "license": "MIT",
     "scripts": {
+        "heroku": "NODE_ENV=heroku node dist/apps/content-gateway-api/main.js",
         "start": "NODE_ENV=production node dist/apps/content-gateway-api/main.js",
         "build": "nx run-many --target build --all --parallel",
         "test": "nx test"
