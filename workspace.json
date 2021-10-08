@@ -90,6 +90,113 @@
                 }
             }
         },
+        "content-gateway-frontend": {
+            "root": "apps/content-gateway-frontend",
+            "sourceRoot": "apps/content-gateway-frontend/src",
+            "projectType": "application",
+            "targets": {
+                "build": {
+                    "executor": "@nrwl/web:build",
+                    "outputs": ["{options.outputPath}"],
+                    "options": {
+                        "outputPath": "dist/apps/content-gateway-frontend",
+                        "index": "apps/content-gateway-frontend/src/index.html",
+                        "main": "apps/content-gateway-frontend/src/main.tsx",
+                        "polyfills": "apps/content-gateway-frontend/src/polyfills.ts",
+                        "tsConfig": "apps/content-gateway-frontend/tsconfig.app.json",
+                        "assets": [
+                            "apps/content-gateway-frontend/src/favicon.ico",
+                            "apps/content-gateway-frontend/src/assets"
+                        ],
+                        "styles": [],
+                        "scripts": [],
+                        "webpackConfig": "@nrwl/react/plugins/webpack"
+                    },
+                    "configurations": {
+                        "production": {
+                            "fileReplacements": [
+                                {
+                                    "replace": "apps/content-gateway-frontend/src/environments/environment.ts",
+                                    "with": "apps/content-gateway-frontend/src/environments/environment.prod.ts"
+                                }
+                            ],
+                            "optimization": true,
+                            "outputHashing": "all",
+                            "sourceMap": false,
+                            "extractCss": true,
+                            "namedChunks": false,
+                            "extractLicenses": true,
+                            "vendorChunk": false,
+                            "budgets": [
+                                {
+                                    "type": "initial",
+                                    "maximumWarning": "500kb",
+                                    "maximumError": "1mb"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "serve": {
+                    "executor": "@nrwl/web:dev-server",
+                    "options": {
+                        "buildTarget": "content-gateway-frontend:build",
+                        "hmr": true
+                    },
+                    "configurations": {
+                        "production": {
+                            "buildTarget": "content-gateway-frontend:build:production",
+                            "hmr": false
+                        }
+                    }
+                },
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": [
+                            "apps/content-gateway-frontend/**/*.{ts,tsx,js,jsx}"
+                        ]
+                    }
+                },
+                "test": {
+                    "executor": "@nrwl/jest:jest",
+                    "outputs": ["coverage/apps/content-gateway-frontend"],
+                    "options": {
+                        "jestConfig": "apps/content-gateway-frontend/jest.config.js",
+                        "passWithNoTests": true
+                    }
+                }
+            }
+        },
+        "content-gateway-frontend-e2e": {
+            "root": "apps/content-gateway-frontend-e2e",
+            "sourceRoot": "apps/content-gateway-frontend-e2e/src",
+            "projectType": "application",
+            "targets": {
+                "e2e": {
+                    "executor": "@nrwl/cypress:cypress",
+                    "options": {
+                        "cypressConfig": "apps/content-gateway-frontend-e2e/cypress.json",
+                        "devServerTarget": "content-gateway-frontend:serve"
+                    },
+                    "configurations": {
+                        "production": {
+                            "devServerTarget": "content-gateway-frontend:serve:production"
+                        }
+                    }
+                },
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": [
+                            "apps/content-gateway-frontend-e2e/**/*.{js,ts}"
+                        ]
+                    }
+                }
+            }
+        },
         "domain-feature-gateway": {
             "root": "libs/domain/feature-gateway",
             "sourceRoot": "libs/domain/feature-gateway/src",
@@ -224,5 +331,21 @@
     "cli": {
         "defaultCollection": "@nrwl/express"
     },
-    "defaultProject": "content-gateway-api"
+    "defaultProject": "content-gateway-api",
+    "generators": {
+        "@nrwl/react": {
+            "application": {
+                "style": "css",
+                "linter": "eslint",
+                "babel": true
+            },
+            "component": {
+                "style": "css"
+            },
+            "library": {
+                "style": "css",
+                "linter": "eslint"
+            }
+        }
+    }
 }

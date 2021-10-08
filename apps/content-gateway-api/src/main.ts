@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "@banklessdao/content-gateway-client";
 import {
     createContentGateway,
@@ -15,15 +16,20 @@ import {
     createSchemaFromString,
     Schema,
 } from "@shared/util-schema";
-import { CollectionOf, Required } from "@tsed/schema";
+import { Required } from "@tsed/schema";
 import * as express from "express";
 import { graphqlHTTP } from "express-graphql";
-import { string } from "fp-ts";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as g from "graphql";
+import { join } from "path";
 import Pluralize from "typescript-pluralize";
 import * as v from "voca";
+
+const CLIENT_BUILD_PATH = join(__dirname, "../content-gateway-frontend");
+const ENVIRONMENT = process.env.NODE_ENV;
+const isDev = ENVIRONMENT === "development";
+const isProd = ENVIRONMENT === "production";
 
 const app = express();
 
@@ -145,7 +151,6 @@ pipe(
         return result;
     }),
     E.map((mapping) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result: g.Thunk<g.GraphQLFieldConfigMap<any, any>> = {};
         mapping.forEach(([schema, type], name) => {
             Object.assign(result, {
@@ -180,6 +185,8 @@ pipe(
         return new g.GraphQLSchema({ query: queryType });
     }),
     E.map((schema) => {
+        app.use(express.static(CLIENT_BUILD_PATH));
+
         app.use(
             "/api/graphql",
             graphqlHTTP({
@@ -187,15 +194,21 @@ pipe(
                 graphiql: true,
             })
         );
+
+        if (isProd) {
+            app.get("*", (request, response) => {
+                response.sendFile(join(CLIENT_BUILD_PATH, "index.html"));
+            });
+        }
+
+        const port = process.env.port || 3333;
+        const server = app.listen(port, () => {
+            console.log(`Listening at http://localhost:${port}`);
+        });
+        server.on("error", console.error);
+    }),
+    E.mapLeft((err) => {
+        console.error(err);
+        process.exit(1);
     })
 );
-
-app.get("/api", (req, res) => {
-    res.send({ message: "Welcome to content-gateway-api!" });
-});
-
-const port = process.env.port || 3333;
-const server = app.listen(port, () => {
-    console.log(`Listening at http://localhost:${port}/api`);
-});
-server.on("error", console.error);
