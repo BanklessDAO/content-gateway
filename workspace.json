@@ -335,15 +335,15 @@
     "generators": {
         "@nrwl/react": {
             "application": {
-                "style": "css",
+                "style": "emotion",
                 "linter": "eslint",
                 "babel": true
             },
             "component": {
-                "style": "css"
+                "style": "emotion"
             },
             "library": {
-                "style": "css",
+                "style": "emotion",
                 "linter": "eslint"
             }
         }

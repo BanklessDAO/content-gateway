@@ -1,0 +1,2 @@
+cd apps/content-gateway-api
+npx prisma generate
