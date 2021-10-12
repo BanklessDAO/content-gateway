@@ -6,9 +6,8 @@ import {
     createSchemaFromObject,
     createSchemaFromString,
     createSchemaFromType,
-    Schema,
+    Schema
 } from ".";
-import * as t from "./codecs";
 
 class Comment {
     @Required(true)
@@ -29,7 +28,7 @@ class Address {
 
 class User {
     @Required(true)
-    id?: string;
+    id: string;
     @Required(true)
     name?: string;
     @Required(false)
@@ -193,231 +192,6 @@ const schemaStr = `{
 
 const serializer = createDefaultJSONSerializer();
 
-describe("Given a type guard", () => {
-    describe("for a number property", () => {
-        it("it tests properly when valid", () => {
-            expect(
-                E.isRight(
-                    t.numberPropertyCodec.decode({
-                        type: "number",
-                    })
-                )
-            ).toBeTruthy();
-        });
-        it("it tests properly when invalid", () => {
-            expect(
-                E.isRight(
-                    t.numberPropertyCodec.decode({
-                        type: "string",
-                    })
-                )
-            ).toBeFalsy();
-        });
-    });
-    describe("for a string property", () => {
-        it("it tests properly when it is required", () => {
-            expect(
-                E.isRight(
-                    t.stringPropertyCodec.decode({
-                        type: "string",
-                        minLength: 1,
-                    })
-                )
-            ).toBeTruthy();
-        });
-        it("it tests properly when it is not required", () => {
-            expect(
-                E.isRight(
-                    t.stringPropertyCodec.decode({
-                        type: "string",
-                    })
-                )
-            ).toBeTruthy();
-        });
-        it("it tests properly when it is invalid", () => {
-            expect(
-                E.isRight(
-                    t.stringPropertyCodec.decode({
-                        type: "xul",
-                    })
-                )
-            ).toBeFalsy();
-        });
-    });
-    describe("for an array property", () => {
-        it("it tests properly when valid", () => {
-            expect(
-                E.isRight(
-                    t.arrayPropertyCodec.decode({
-                        type: "array",
-                        items: {
-                            type: "string",
-                        },
-                    })
-                )
-            ).toBeTruthy();
-        });
-        it("it tests properly when invalid", () => {
-            expect(
-                E.isRight(
-                    t.arrayPropertyCodec.decode({
-                        type: "xul",
-                        items: {
-                            type: "string",
-                        },
-                    })
-                )
-            ).toBeFalsy();
-        });
-    });
-    describe("for a ref property", () => {
-        it("it tests properly when valid", () => {
-            expect(
-                E.isRight(
-                    t.refPropertyCodec.decode({
-                        $ref: "string",
-                    })
-                )
-            ).toBeTruthy();
-        });
-        it("it tests properly when invalid", () => {
-            expect(
-                E.isRight(
-                    t.refPropertyCodec.decode({
-                        $xul: "string",
-                    })
-                )
-            ).toBeFalsy();
-        });
-    });
-    describe("for an array ref property", () => {
-        it("it tests properly when valid", () => {
-            expect(
-                E.isRight(
-                    t.arrayRefPropertyCodec.decode({
-                        type: "array",
-                        items: {
-                            $ref: "string",
-                        },
-                    })
-                )
-            ).toBeTruthy();
-        });
-        it("it tests properly when invalid", () => {
-            expect(
-                E.isRight(
-                    t.arrayPropertyCodec.decode({
-                        type: "array",
-                        items: {
-                            $xul: "string",
-                        },
-                    })
-                )
-            ).toBeFalsy();
-        });
-    });
-    describe("for a supported property", () => {
-        it("it tests properly when valid", () => {
-            expect(
-                E.isRight(
-                    t.supportedPropertyCodec.decode({
-                        type: "array",
-                        items: {
-                            $ref: "string",
-                        },
-                    })
-                )
-            ).toBeTruthy();
-        });
-        it("it tests properly when invalid", () => {
-            expect(
-                E.isRight(
-                    t.supportedPropertyCodec.decode({
-                        type: "array",
-                        items: {
-                            $xul: "string",
-                        },
-                    })
-                )
-            ).toBeFalsy();
-        });
-    });
-    describe("for a properties record", () => {
-        it("it tests properly when valid", () => {
-            expect(
-                E.isRight(
-                    t.supportedPropertyRecordCodec.decode(expectedProperties)
-                )
-            ).toBeTruthy();
-        });
-        it("it tests properly when invalid", () => {
-            expect(
-                E.isRight(
-                    t.supportedPropertyRecordCodec.decode({
-                        type: "array",
-                        items: {
-                            $xul: "string",
-                        },
-                    })
-                )
-            ).toBeFalsy();
-        });
-    });
-    describe("for a JSON schema props", () => {
-        it("it tests properly when valid", () => {
-            expect(
-                E.isRight(
-                    t.jsonSchemaTypeCodec.decode({
-                        type: "object",
-                        properties: expectedProperties,
-                        required: ["name", "comments", "skills", "address"],
-                    })
-                )
-            ).toBeTruthy();
-        });
-        it("it tests properly when valid and has no required properties", () => {
-            expect(
-                E.isRight(
-                    t.jsonSchemaTypeCodec.decode({
-                        type: "object",
-                        properties: expectedProperties,
-                    })
-                )
-            ).toBeTruthy();
-        });
-        it("it tests properly when invalid", () => {
-            expect(
-                E.isRight(
-                    t.jsonSchemaTypeCodec.decode({
-                        type: "array",
-                        items: {
-                            $xul: "string",
-                        },
-                    })
-                )
-            ).toBeFalsy();
-        });
-    });
-    describe("for a supported JSON schema", () => {
-        it("it tests properly when valid", () => {
-            expect(
-                E.isRight(t.jsonSchemaTypeCodec.decode(expectedSchemaObject))
-            ).toBeTruthy();
-        });
-        it("it tests properly when invalid", () => {
-            expect(
-                E.isRight(
-                    t.jsonSchemaTypeCodec.decode({
-                        type: "array",
-                        items: {
-                            $xul: "string",
-                        },
-                    })
-                )
-            ).toBeFalsy();
-        });
-    });
-});
 describe("Given a Schema", () => {
     describe("created from a type", () => {
         const schema = (
@@ -462,7 +236,18 @@ describe("Given a Schema", () => {
                         city: { name: "London" },
                     },
                 })
-            ).toEqual(E.right(undefined));
+            ).toEqual(
+                E.right({
+                    id: "1",
+                    name: "Jane",
+                    comments: [{ text: "Hey" }],
+                    skills: ["programming", "drinking"],
+                    address: {
+                        address: "Some Street 1",
+                        city: { name: "London" },
+                    },
+                })
+            );
         });
 
         it("When serializing and deserializing Then the same object is produced", () => {

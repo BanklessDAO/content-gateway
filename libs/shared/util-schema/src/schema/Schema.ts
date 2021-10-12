@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Type } from "@tsed/core";
 import { getJsonSchema } from "@tsed/schema";
-import Ajv, { ValidateFunction } from "ajv/dist/ajv";
+import Ajv from "ajv/dist/ajv";
 import * as E from "fp-ts/Either";
 import { Errors } from "io-ts";
 import { JSONSerializer } from ".";
@@ -64,6 +64,8 @@ export const createSchemaFromString: (
 /**
  * Creates a [[Schema]] object from the given [[type]]
  * and the given schema [[info]].
+ * Note that this is a curried function and requireds a [[serializer]]
+ * in order to work.
  */
 export const createSchemaFromType: (
     serializer: JSONSerializer
@@ -86,58 +88,41 @@ export const createSchemaFromObject: (
     if (E.isLeft(schemaValidationResult)) {
         return schemaValidationResult;
     }
-    return E.right(
-        new DefaultSchema(info, schema as SupportedJSONSchema, serializer)
-    );
-};
+    const validator = ajv.compile(schema);
+    return E.right({
+        info: info,
+        // 👇 safe cast, we validated above
+        schemaObject: schema as SupportedJSONSchema,
+        toJSONString: () => {
+            return serializer.serialize(schema);
+        },
 
-class DefaultSchema implements Schema {
-    info: SchemaInfo;
-    schemaObject: SupportedJSONSchema;
+        validate: (data: Record<string, unknown>) => {
+            const validationResult = validator(data);
+            if (validationResult) {
+                return E.right(data);
+            } else {
+                return E.left(
+                    // ❗ Take a look at what is actually produced by ajv here
+                    validator.errors?.map((e) => ({
+                        field: e.instancePath ?? "unknown field",
+                        message: e.message ?? "The value is invalid",
+                    })) ?? []
+                );
+            }
+        },
 
-    private serializer: JSONSerializer;
-    private validator: ValidateFunction<unknown>;
-
-    constructor(
-        info: SchemaInfo,
-        schema: SupportedJSONSchema,
-        serializer: JSONSerializer
-    ) {
-        this.info = info;
-        this.schemaObject = schema;
-        this.serializer = serializer;
-        this.validator = ajv.compile(schema);
-    }
-
-    toJSONString() {
-        return this.serializer.serialize(this.schemaObject);
-    }
-
-    validate(data: Record<string, unknown>) {
-        const validationResult = this.validator(data);
-        if (validationResult) {
-            return E.right(data);
-        } else {
-            return E.left(
-                // ❗ Take a look at what is actually produced by ajv here
-                this.validator.errors?.map((e) => ({
-                    field: e.instancePath ?? "unknown field",
-                    message: e.message ?? "The value is invalid",
-                })) ?? []
+        serialize: (data: Record<string, unknown>) => {
+            return E.tryCatch(
+                () => serializer.serialize(data),
+                (e) => new Error(String(e))
             );
-        }
-    }
-
-    serialize(data: Record<string, unknown>) {
-        return E.tryCatch(
-            () => this.serializer.serialize(data),
-            (e) => new Error(String(e))
-        );
-    }
-    deserialize(data: string) {
-        return E.tryCatch(
-            () => this.serializer.deserialize(data),
-            (e) => new Error(String(e))
-        );
-    }
-}
+        },
+        deserialize: (data: string) => {
+            return E.tryCatch(
+                () => serializer.deserialize(data),
+                (e) => new Error(String(e))
+            );
+        },
+    });
+};
