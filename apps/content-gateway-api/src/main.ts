@@ -3,24 +3,27 @@ import { createClient } from "@banklessdao/content-gateway-client";
 import {
     createContentGateway,
     createInMemoryDataStorage,
-    createInMemorySchemaStorage,
+    createInMemorySchemaStorage
 } from "@domain/feature-gateway";
+import { PrismaClient } from "@prisma/client";
 import {
     PayloadDTO,
     stringToPayloadDTO,
-    stringToSchemaDTO,
+    stringToSchemaDTO
 } from "@shared/util-dto";
 import { toGraphQLType } from "@shared/util-graphql";
 import {
     createDefaultJSONSerializer,
     createSchemaFromString,
-    Schema,
+    Schema
 } from "@shared/util-schema";
 import { Required } from "@tsed/schema";
 import * as express from "express";
 import { graphqlHTTP } from "express-graphql";
+import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
+import { map } from "fp-ts/lib/Identity";
 import * as g from "graphql";
 import { join } from "path";
 import Pluralize from "typescript-pluralize";
@@ -28,7 +31,7 @@ import * as v from "voca";
 
 const CLIENT_BUILD_PATH = join(__dirname, "../content-gateway-frontend");
 const ENVIRONMENT = process.env.NODE_ENV;
-const port = process.env.PORT || 3333;
+const PORT = process.env.PORT || 3333;
 
 const isDev = ENVIRONMENT === "development";
 const isProd = ENVIRONMENT === "production";
@@ -145,49 +148,44 @@ client.send(userKey, {
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
 
 pipe(
-    E.of(schemaStorage.findAll()),
-    E.map((schemas) => {
-        const result = new Map<string, SchemaGQLTypePair>();
-        schemas.forEach((schema) => {
-            result.set(schema.info.name, [schema, toGraphQLType(schema)]);
-        });
-        return result;
-    }),
-    E.map((mapping) => {
-        const result: g.Thunk<g.GraphQLFieldConfigMap<any, any>> = {};
-        mapping.forEach(([schema, type], name) => {
-            Object.assign(result, {
-                [v.lowerCase(name)]: {
-                    type: type,
-                    args: {
-                        id: { type: g.GraphQLString },
-                    },
-                    resolve: (_, { id }) => {
-                        return dataStorage
-                            .find<Record<string, unknown>>(schema.info)
-                            .filter((entity) => entity.id === id);
-                    },
+    schemaStorage.findAll(),
+    A.map((schema) => [schema, toGraphQLType(schema)] as SchemaGQLTypePair),
+    A.map(([schema, type]) => {
+        const name = schema.info.name;
+        return {
+            [v.lowerCase(name)]: {
+                type: type,
+                args: {
+                    id: { type: g.GraphQLString },
                 },
-                [v.lowerCase(Pluralize.plural(name))]: {
-                    type: g.GraphQLList(type),
-                    resolve: () => {
-                        return dataStorage.find<Record<string, unknown>>(
-                            schema.info
-                        );
-                    },
+                resolve: (_, { id }) => {
+                    return dataStorage
+                        .findBySchema<Record<string, unknown>>(schema.info)
+                        .filter((entity) => entity.id === id);
                 },
-            });
-        });
-        return result;
+            },
+            [v.lowerCase(Pluralize.plural(name))]: {
+                type: g.GraphQLList(type),
+                resolve: () => {
+                    return dataStorage.findBySchema<Record<string, unknown>>(
+                        schema.info
+                    );
+                },
+            },
+        };
     }),
-    E.map((fields) => {
+    A.reduce({} as g.Thunk<g.GraphQLFieldConfigMap<any, any>>, (acc, curr) => ({
+        ...acc,
+        ...curr,
+    })),
+    map((fields) => {
         const queryType = new g.GraphQLObjectType({
             name: "Query",
             fields: fields,
         });
         return new g.GraphQLSchema({ query: queryType });
     }),
-    E.map((schema) => {
+    map((schema) => {
         app.use(express.static(CLIENT_BUILD_PATH));
 
         app.use(
@@ -204,13 +202,33 @@ pipe(
             });
         }
 
-        const server = app.listen(port, () => {
-            console.log(`Listening at http://localhost:${port}`);
+        const server = app.listen(PORT, () => {
+            console.log(`Listening at http://localhost:${PORT}`);
         });
         server.on("error", console.error);
-    }),
-    E.mapLeft((err) => {
-        console.error(err);
-        process.exit(1);
     })
 );
+
+const prisma = new PrismaClient();
+
+async function main() {
+    const result = await prisma.schema.create({
+        data: {
+            namespace: "test",
+            name: "test",
+            version: "V1",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            schemaObject: {}
+        }
+    });
+    console.dir(result, { depth: null });
+}
+
+main()
+    .catch((e) => {
+        throw e;
+    })
+    .finally(async () => {
+        await prisma.$disconnect();
+    });

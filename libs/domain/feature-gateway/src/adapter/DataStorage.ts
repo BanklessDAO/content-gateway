@@ -1,14 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SchemaInfo, schemaInfoToKey } from "@shared/util-schema";
-import * as E from "fp-ts/Either";
-import { Payload } from "../types/Payload";
+import * as T from "fp-ts/Task";
+import * as TE from "fp-ts/TaskEither";
+import * as TO from "fp-ts/TaskOption";
+import { v4 as uuid } from "uuid";
+import { Data } from "./Data";
 
 /**
  * The [[DataStorage]] is a server-side component of the content gateway.
  * It is responsible for storing the data received from the SDK.
  */
 export type DataStorage = {
-    store: <T>(payload: Payload<T>) => E.Either<Error, void>;
-    find: <T>(key: SchemaInfo) => T[];
+    store: (payload: Data) => TE.TaskEither<Error, string>;
+    findBySchema: (key: SchemaInfo) => TE.TaskEither<Error, Array<Data>>;
+    findById: (id: string) => TO.TaskOption<Data>;
 };
 
 /**
@@ -16,25 +21,32 @@ export type DataStorage = {
  * use the supplied [[map]] as the storage. This is useful for testing.
  */
 export const createInMemoryDataStorage = (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    map: Map<string, any[]> = new Map()
+    map: Map<string, Data[]> = new Map()
 ): DataStorage => {
+    const lookup = new Map<string, Data>();
     return {
-        store: function <T>(payload: Payload<T>): E.Either<Error, void> {
-            const keyStr = schemaInfoToKey(payload.info);
+        store: function (data: Data): TE.TaskEither<Error, string> {
+            const keyStr = schemaInfoToKey(data.info);
             if (!map.has(keyStr)) {
                 map.set(keyStr, []);
             }
-            map.get(keyStr)?.push(payload.data);
-            return E.right(undefined);
+            map.get(keyStr)?.push(data);
+            const id = uuid();
+            lookup.set(id, data);
+            return TE.right(id);
         },
-        find: function <T>(key: SchemaInfo): T[] {
+        findBySchema: function (
+            key: SchemaInfo
+        ): TE.TaskEither<Error, Array<Data>> {
             const keyStr = schemaInfoToKey(key);
             if (map.has(keyStr)) {
-                return [...(map?.get(keyStr) ?? [])];
+                return TE.of(map.get(keyStr) ?? []);
             } else {
-                return [];
+                return TE.of([]);
             }
+        },
+        findById: function (id: string): TO.TaskOption<Data> {
+            return TO.fromNullable(lookup.get(id));
         },
     };
 };

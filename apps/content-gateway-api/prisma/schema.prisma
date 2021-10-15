@@ -1,0 +1,35 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("HEROKU_PG_CG_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["filterJson"]
+}
+
+model Schema {
+  namespace    String    @db.Char(50)
+  name         String    @db.Char(50)
+  version      String    @db.Char(50)
+  schemaObject Json      @db.JsonB
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime  @default(now()) @db.Timestamp(6)
+  deletedAt    DateTime? @db.Timestamp(6)
+
+  data Data[]
+  @@id([namespace, name, version])
+}
+
+model Data {
+  id        String    @id
+  data      Json      @db.JsonB
+  createdAt DateTime  @db.Timestamp(6)
+  updatedAt DateTime  @db.Timestamp(6)
+  deletedAt DateTime? @db.Timestamp(6)
+
+  schemaNamespace String @db.Char(50)
+  schemaName      String @db.Char(50)
+  schemaVersion   String @db.Char(50)
+  Schema          Schema @relation(fields: [schemaNamespace, schemaName, schemaVersion], references: [namespace, name, version])
+}
