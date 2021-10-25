@@ -69,7 +69,7 @@ export const supportedPropertyCodec = withMessage(
         refPropertyCodec,
         arrayRefPropertyCodec,
     ]),
-    (input) => `${JSON.stringify(input)} property is not supported`
+    (input) => `${JSON.stringify(input)} property is not supported. Did you forget to add an annotation somewhere?`
 );
 
 export type SupportedProperty = t.TypeOf<typeof supportedPropertyCodec>;
@@ -94,7 +94,7 @@ export const jsonSchemaTypeCodec = t.intersection([
 export type JSONSchemaType = t.TypeOf<typeof jsonSchemaTypeCodec>;
 
 export const idPropertyCodec = withMessage(
-    t.strict({
+    t.type({
         type: t.literal("string"),
         minLength: t.literal(1),
     }),
@@ -103,7 +103,10 @@ export const idPropertyCodec = withMessage(
 
 export type IdProperty = t.TypeOf<typeof idPropertyCodec>;
 
-const hasRequiredIdCodec = t.union([t.array(t.string), t.tuple([t.literal("id")])]);
+const hasRequiredIdCodec = t.union([
+    t.array(t.string),
+    t.tuple([t.literal("id")]),
+]);
 type HasRequiredId = t.TypeOf<typeof hasRequiredIdCodec>;
 
 // TODO: ⚠️ empty array shouldn't be allowed
@@ -114,23 +117,20 @@ const arr2: HasRequiredId = ["id", "name"];
 // 👇 note that we're not using exact/strict because this only tests whether the
 // id field exists
 export const hasIdCodec = withMessage(
-    t.strict({
+    t.type({
         type: t.literal("object"),
-        properties: t.intersection([
-            t.strict({
-                id: idPropertyCodec,
-            }),
-            supportedPropertyRecordCodec,
-        ]),
+        properties: t.type({
+            id: idPropertyCodec,
+        }),
         required: hasRequiredIdCodec,
     }),
-    (input) => `The object ${JSON.stringify(input)} has no id property`
+    () => "The supplied object has no id property"
 );
 
 export type HasId = t.TypeOf<typeof hasIdCodec>;
 
 export const supportedJSONSchemaCodec = t.intersection([
-    hasIdCodec,
+    jsonSchemaTypeCodec,
     t.exact(
         t.partial({
             definitions: t.record(t.string, jsonSchemaTypeCodec),

@@ -1,9 +1,11 @@
 import * as E from "fp-ts/Either";
+import { Errors } from "io-ts";
 import {
     HasId,
     JSONSchemaType,
     SupportedJSONSchema,
-    SupportedPropertyRecord
+    supportedJSONSchemaCodec,
+    SupportedPropertyRecord,
 } from "..";
 import * as t from "./codecs";
 
@@ -50,20 +52,6 @@ const validSchemaWithIdObject: HasId = {
         id: {
             type: "string",
             minLength: 1,
-        },
-    },
-    required: ["id"],
-};
-
-const validSchemaWithIdAndOtherFieldsObject: HasId = {
-    type: "object",
-    properties: {
-        id: {
-            type: "string",
-            minLength: 1,
-        },
-        name: {
-            type: "string",
         },
     },
     required: ["id"],
@@ -413,13 +401,13 @@ describe("Given a type guard", () => {
     describe("for a supported JSON schema", () => {
         it("it tests properly when valid", () => {
             expect(
-                E.isRight(t.jsonSchemaTypeCodec.decode(validSchemaObject))
+                E.isRight(t.supportedJSONSchemaCodec.decode(validSchemaObject))
             ).toBeTruthy();
         });
         it("it tests properly when invalid", () => {
             expect(
                 E.isRight(
-                    t.jsonSchemaTypeCodec.decode({
+                    t.supportedJSONSchemaCodec.decode({
                         type: "array",
                         items: {
                             $xul: "string",
@@ -427,6 +415,43 @@ describe("Given a type guard", () => {
                     })
                 )
             ).toBeFalsy();
+        });
+    });
+
+    /**
+     * This object used to return an error about a missing id
+     * while the comments specification was wrong instead.
+     */
+    const schemaObjectWithIdRegression = {
+        type: "object",
+        properties: {
+            id: { type: "string", minLength: 1 },
+            content: { type: "string", minLength: 1 },
+            comments: { type: "array" },
+        },
+        required: ["id", "content", "comments"],
+    };
+
+    describe("for an object that should have id", () => {
+        it("it tests properly when valid", () => {
+            const result = t.hasIdCodec.decode(validSchemaObject);
+            expect(E.isRight(result)).toBeTruthy();
+        });
+        it("it tests properly when invalid", () => {
+            const result = t.hasIdCodec.decode(invalidSchemaWithIdObject);
+            expect(E.isLeft(result)).toBeTruthy();
+        });
+    });
+
+    describe("the regression for a schema that should contain an embed error", () => {
+        it("to contain an error about the missing embed annotation", () => {
+            const result = supportedJSONSchemaCodec.decode(
+                schemaObjectWithIdRegression
+            ) as E.Left<Errors>;
+            const firstError = result.left[0];
+            expect(firstError.message).toEqual(
+                `{"type":"array"} property is not supported. Did you forget to add an annotation somewhere?`
+            );
         });
     });
 });

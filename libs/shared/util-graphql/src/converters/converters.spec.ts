@@ -1,12 +1,12 @@
 import {
     createDefaultJSONSerializer,
     createSchemaFromType,
-    Schema,
+    Schema
 } from "@shared/util-schema";
 import { CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import * as g from "graphql";
-import { toGraphQLTypes } from "./converters";
+import { toGraphQLType } from "./converters";
 
 class Comment {
     @Required(true)
@@ -77,10 +77,10 @@ describe("Given a JSON schema type", () => {
     ).right;
 
     describe("when converting it to a GraphQL schema", () => {
-        const types = toGraphQLTypes(schema);
+        const types = toGraphQLType(schema);
 
         it("then it is successfully converted", () => {
-            const sdl = g.printSchema(new g.GraphQLSchema({ types: types }));
+            const sdl = g.printSchema(new g.GraphQLSchema({ types: [types] }));
             expect(sdl).toEqual(expectedSDL);
         });
     });

@@ -1,5 +1,5 @@
 import { Schema } from "@shared/util-schema";
-import * as E from "fp-ts/Either";
+import * as TE from "fp-ts/TaskEither";
 import { DataStorage, SchemaStorage } from "../adapter";
 import { Payload } from "../types";
 
@@ -11,14 +11,14 @@ export type ContentGateway = {
     /**
      * Registers a new schema shapshot with the Content Gateway.
      */
-    register: (schema: Schema) => E.Either<Error, void>;
+    register: (schema: Schema) => TE.TaskEither<Error, void>;
     /**
      * Ingests a new payload into the Content Gateway. The payload is validated
      * and it must correspond to a registered schema. If either the schema doesn't
      * exist or the payload is invalid according to the schema an error will be
      * returned.
      */
-    receive: <T>(payload: Payload<T>) => E.Either<Error, void>;
+    receive: <T>(payload: Payload<T>) => TE.TaskEither<Error, string>;
 };
 
 export type ContentGatewayFactory = (
@@ -39,7 +39,10 @@ export const createContentGateway: ContentGatewayFactory = (
             return schemaStorage.register(schema);
         },
         receive: <T>(payload: Payload<T>) => {
-            return dataStorage.store(payload);
+            return dataStorage.store({
+                info: payload.info,
+                data: payload.data as Record<string, unknown>
+            });
         },
     };
 };

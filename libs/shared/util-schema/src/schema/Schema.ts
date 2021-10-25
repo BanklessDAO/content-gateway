@@ -54,12 +54,15 @@ export type Schema = {
  * Creates a [[Schema]] object from the given JSON Schema (string)
  * and the given schema info.
  */
-export const createSchemaFromString: (
-    serializer: JSONSerializer
-) => (key: SchemaInfo, schema: string) => E.Either<Errors, Schema> =
-    (serializer) => (key, schema) => {
-        return createSchemaFromObject(serializer)(key, JSON.parse(schema));
-    };
+export const createSchemaFromString: (serializer: JSONSerializer) => (
+    key: SchemaInfo,
+    schema: string
+) => E.Either<Errors, Schema> = (serializer) => (key, schema) => {
+    return createSchemaFromObject(serializer)(
+        key,
+        serializer.deserialize(schema)
+    );
+};
 
 /**
  * Creates a [[Schema]] object from the given [[type]]
@@ -67,62 +70,61 @@ export const createSchemaFromString: (
  * Note that this is a curried function and requireds a [[serializer]]
  * in order to work.
  */
-export const createSchemaFromType: (
-    serializer: JSONSerializer
-) => <T>(info: SchemaInfo, type: Type<T>) => E.Either<Errors, Schema> =
-    (serializer) => (info, type) => {
-        return createSchemaFromObject(serializer)(info, getJsonSchema(type));
-    };
+export const createSchemaFromType: <T>(serializer: JSONSerializer) => (
+    info: SchemaInfo,
+    type: Type<T>
+) => E.Either<Errors, Schema> = (serializer) => (info, type) => {
+    return createSchemaFromObject(serializer)(info, getJsonSchema(type));
+};
 
 /**
  * Creates a [[Schema]] object from the given JSON schema object
  * and the given schema [[info]].
  */
-export const createSchemaFromObject: (
-    serializer: JSONSerializer
-) => (
+export const createSchemaFromObject: (serializer: JSONSerializer) => (
     info: SchemaInfo,
     schema: Record<string, unknown>
-) => E.Either<Errors, Schema> = (serializer) => (info, schema) => {
-    const schemaValidationResult = supportedJSONSchemaCodec.decode(schema);
-    if (E.isLeft(schemaValidationResult)) {
-        return schemaValidationResult;
-    }
-    const validator = ajv.compile(schema);
-    return E.right({
-        info: info,
-        // 👇 safe cast, we validated above
-        schemaObject: schema as SupportedJSONSchema,
-        toJSONString: () => {
-            return serializer.serialize(schema);
-        },
+) => E.Either<Errors, Schema> =
+    (serializer) => (info, schema) => {
+        const schemaValidationResult = supportedJSONSchemaCodec.decode(schema);
+        if (E.isLeft(schemaValidationResult)) {
+            return schemaValidationResult;
+        }
+        const validator = ajv.compile(schema);
+        return E.right({
+            info: info,
+            // 👇 safe cast, we validated above
+            schemaObject: schema as SupportedJSONSchema,
+            toJSONString: () => {
+                return serializer.serialize(schema);
+            },
 
-        validate: (data: Record<string, unknown>) => {
-            const validationResult = validator(data);
-            if (validationResult) {
-                return E.right(data);
-            } else {
-                return E.left(
-                    // ❗ Take a look at what is actually produced by ajv here
-                    validator.errors?.map((e) => ({
-                        field: e.instancePath ?? "unknown field",
-                        message: e.message ?? "The value is invalid",
-                    })) ?? []
+            validate: (data: Record<string, unknown>) => {
+                const validationResult = validator(data);
+                if (validationResult) {
+                    return E.right(data);
+                } else {
+                    return E.left(
+                        // ❗ Take a look at what is actually produced by ajv here
+                        validator.errors?.map((e) => ({
+                            field: e.instancePath ?? "unknown field",
+                            message: e.message ?? "The value is invalid",
+                        })) ?? []
+                    );
+                }
+            },
+
+            serialize: (data: Record<string, unknown>) => {
+                return E.tryCatch(
+                    () => serializer.serialize(data),
+                    (e) => new Error(String(e))
                 );
-            }
-        },
-
-        serialize: (data: Record<string, unknown>) => {
-            return E.tryCatch(
-                () => serializer.serialize(data),
-                (e) => new Error(String(e))
-            );
-        },
-        deserialize: (data: string) => {
-            return E.tryCatch(
-                () => serializer.deserialize(data),
-                (e) => new Error(String(e))
-            );
-        },
-    });
-};
+            },
+            deserialize: (data: string) => {
+                return E.tryCatch(
+                    () => serializer.deserialize(data),
+                    (e) => new Error(String(e))
+                );
+            },
+        });
+    };

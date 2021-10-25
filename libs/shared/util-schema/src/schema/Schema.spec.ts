@@ -6,7 +6,7 @@ import {
     createSchemaFromObject,
     createSchemaFromString,
     createSchemaFromType,
-    Schema
+    Schema,
 } from ".";
 
 class Comment {

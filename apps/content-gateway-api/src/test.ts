@@ -10,8 +10,8 @@ async function main() {
             version: "V1",
             createdAt: new Date(),
             updatedAt: new Date(),
-            schemaObject: {}
-        }
+            schemaObject: {},
+        },
     });
     console.dir(result, { depth: null });
 }

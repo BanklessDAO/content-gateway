@@ -1,64 +1,103 @@
 import { Data, DataStorage } from "@domain/feature-gateway";
 import { Prisma, PrismaClient } from "@prisma/client";
-import { SchemaInfo } from "@shared/util-schema";
+import { Schema, SchemaInfo } from "@shared/util-schema";
+import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
+import { Errors } from "io-ts";
 
-export const createPrismaDataStorage = (): DataStorage => {
-    const prisma = new PrismaClient();
+export const createPrismaDataStorage = (
+    createSchema: (
+        info: SchemaInfo,
+        schema: Record<string, unknown>
+    ) => E.Either<Errors, Schema>,
+    prisma: PrismaClient
+): DataStorage => {
+    const findSchema = (info: SchemaInfo) =>
+        pipe(
+            TE.tryCatch(
+                () =>
+                    prisma.schema.findUnique({
+                        where: { namespace_name_version: info },
+                    }),
+                (e) => new Error(`Failed to find schema: ${e}`)
+            ),
+            TE.chainW((schemaEntity) =>
+                TE.fromEither(
+                    createSchema(
+                        info,
+                        schemaEntity.schemaObject as Record<string, unknown>
+                    )
+                )
+            )
+        );
+
     return {
-        store: (payload: Data): TE.TaskEither<Error, string> => {
-            const { namespace, name, version } = payload.info;
-            return pipe(
-                TE.tryCatch(
-                    () => {
-                        return prisma.data.create({
-                            data: {
-                                id: payload.data.id as string,
-                                schemaNamespace: namespace,
-                                schemaName: name,
-                                schemaVersion: version,
-                                createdAt: new Date(),
-                                updatedAt: new Date(),
-                                data: payload.data as Prisma.JsonObject,
-                            },
-                        });
-                    },
-                    (e: Error) => e
-                ),
+        store: (payload: Data): TE.TaskEither<Error, string> =>
+            pipe(
+                findSchema(payload.info),
+                TE.chainW((schema) => {
+                    return TE.fromEither(schema.validate(payload.data));
+                }),
+                TE.chain((record) => {
+                    return TE.tryCatch(
+                        () =>
+                            prisma.data.create({
+                                data: {
+                                    id: record.id as string,
+                                    createdAt: new Date(),
+                                    updatedAt: new Date(),
+                                    data: record as Prisma.JsonObject,
+                                    ...payload.info,
+                                },
+                            }),
+                        (e: Error) =>
+                            new Error(`Failed to store data: ${e.message}`)
+                    );
+                }),
                 TE.map((data) => data.id)
-            );
-        },
-        findBySchema: (key: SchemaInfo): TE.TaskEither<Error, Array<Data>> => {
+            ),
+        findBySchema: (info: SchemaInfo): TO.TaskOption<Array<Data>> => {
             return pipe(
-                TE.tryCatch(
-                    () => {
-                        return prisma.data.findMany({
-                            where: {
-                                schemaNamespace: key.namespace,
-                                schemaName: key.name,
-                                schemaVersion: key.version,
-                            },
-                        });
-                    },
-                    (e: Error) => e
-                ),
-                TE.map((data) =>
-                    // TODO: this can be more expressive
+                TO.tryCatch(() => {
+                    return prisma.data.findMany({
+                        where: {
+                            ...info,
+                        },
+                    });
+                }),
+                TO.map((data) =>
                     data.map((d) => ({
-                        info: key,
+                        info: info,
                         data: d.data as Record<string, unknown>,
                     }))
                 )
             );
         },
-        findById: <T>(id: string): TO.TaskOption<T> => {
-            prisma.data.findOne({
-                where: {
-                }
-            });
-            return TO.none;
-        },
+        findById: (id: string): TO.TaskOption<Data> =>
+            pipe(
+                TO.tryCatch(() =>
+                    prisma.data.findUnique({
+                        where: {
+                            id: id,
+                        },
+                    })
+                ),
+                TO.chain((record) => {
+                    if (!record) {
+                        return TO.none;
+                    } else {
+                        return TO.of({
+                            info: {
+                                namespace: record.namespace,
+                                name: record.name,
+                                version: record.version,
+                            },
+                            data: record.data as Record<string, unknown>,
+                        });
+                    }
+                })
+            ),
     };
 };

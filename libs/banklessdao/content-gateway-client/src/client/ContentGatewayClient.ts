@@ -12,19 +12,22 @@ import {
     Schema,
     SchemaInfo,
 } from "@shared/util-schema";
-import { Type } from "@tsed/core";
+import { isArray, Type } from "@tsed/core";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/function";
 import * as O from "fp-ts/Option";
+import * as R from "fp-ts/Reader";
+import * as TE from "fp-ts/TaskEither";
+import { failure } from "io-ts/lib/PathReporter";
 
 /**
  * The {@link ContentGatewayClient} is the client-side component of the *Content Gateway*.
  * Use it to {@link ContentGatewayClient#register | register} your schema types and to
- * {@link ContentGatewayClient#send | send } the corresponding data to the gateway.
+ * {@link ContentGatewayClient#save | send } the corresponding data to the gateway.
  */
 export type ContentGatewayClient = {
     /**
-     * Register a new unique Type with the gateway.
+     * Registers a new unique Type with the gateway.
      * Use `@tsed/schema` decorators when creating the Type.
      * Example:
      *
@@ -38,104 +41,114 @@ export type ContentGatewayClient = {
      *     name: string;
      *     @Required(true)
      *     email: string;
-     *
-     *     constructor(id: number, name: string, email: string) {
-     *         this.id = id;
-     *         this.name = name;
-     *         this.email = email;
-     *     }
      * }
      * ```
      */
-    register: <T>(key: SchemaInfo, type: Type<T>) => E.Either<Error, void>;
+    // ⚠️ note that these should return TE.TaskEithers but it is easier this way for non-fp users.
+    register: <T>(
+        info: SchemaInfo,
+        type: Type<T>
+    ) => Promise<E.Either<Error, void>>;
     /**
-     * Sends the [[data]] to the Content Gateway using the [[key]] as the unique identifier.
-     * This will return an error if the type of [[data]] is not
+     * Saves the [[data]] to the Content Gateway using the scema's metadata to
+     * identify it. This will return an error if the type of [[data]] is not
      *  {@link ContentGatewayClient#register | register}ed.
      */
-    send: <T>(key: SchemaInfo, data: T) => E.Either<Error, void>;
+    save: <T>(info: SchemaInfo, data: T) => Promise<E.Either<Error, void>>;
 };
 
 /**
  * This abstraction hides the implementation details of how data is sent over the wire.
  */
 export type OutboundDataAdapter = {
-    register: (schema: string) => E.Either<Error, void>;
-    send: (payload: string) => E.Either<Error, void>;
+    register: (schema: string) => TE.TaskEither<Error, void>;
+    send: (payload: string) => TE.TaskEither<Error, void>;
 };
 
-/**
- * Factory function for creating a {@link ContentGatewayClient} instance.
- */
-export type ClientFactory = (
-    serializer: JSONSerializer,
-    adapter: OutboundDataAdapter
-) => ContentGatewayClient;
+export type ClientDependencies = {
+    serializer: JSONSerializer;
+    adapter: OutboundDataAdapter;
+};
+
+export const createRESTAdapter = (): OutboundDataAdapter => {
+    throw new Error("Not implemented");
+};
 
 /**
  * This object is instantiated in the client.
  */
-export const createClient: ClientFactory = (
-    serializer: JSONSerializer,
-    adapter: OutboundDataAdapter
-) => {
-    const schemas = new Map<string, Schema>();
-    const toSchema = createSchemaFromType(serializer);
-    const schemaInfoSerializer = schemaInfoToString(serializer);
-    const payloadSerializer = payloadToString(serializer);
+export const createClient: R.Reader<ClientDependencies, ContentGatewayClient> =
+    ({ serializer, adapter }) => {
+        const schemas = new Map<string, Schema>();
+        const schemaInfoSerializer = schemaInfoToString(serializer);
+        const payloadSerializer = payloadToString(serializer);
+        const typeToSchema = createSchemaFromType(serializer);
 
-    return {
-        register: <T>(
-            info: SchemaInfo,
-            type: Type<T>
-        ): E.Either<Error, void> => {
-            return pipe(
-                toSchema(info, type),
-                E.mapLeft((err) => new Error(String(err))),
-                E.chain((schema) =>
-                    E.tryCatch(
-                        () => {
-                            schemas.set(schemaInfoSerializer(info), schema);
-                            adapter.register(
-                                serializer.serialize(
-                                    SchemaDTO.toJSON(
-                                        new SchemaDTO(
-                                            info,
-                                            schema.toJSONString()
-                                        )
-                                    )
+        return {
+            register: <T>(
+                info: SchemaInfo,
+                type: Type<T>
+            ): Promise<E.Either<Error, void>> => {
+                return pipe(
+                    typeToSchema(info, type),
+                    TE.fromEither,
+                    TE.mapLeft((err) => new Error(failure(err).join("\n"))),
+                    TE.chainFirstIOK(
+                        (schema) => () =>
+                            schemas.set(schemaInfoSerializer(info), schema)
+                    ),
+                    TE.chain((schema) =>
+                        adapter.register(
+                            serializer.serialize(
+                                SchemaDTO.toJSON(
+                                    new SchemaDTO(info, schema.toJSONString())
                                 )
-                            );
-                        },
-                        (reason) => new Error(String(reason))
-                    )
-                )
-            );
-        },
-        send: <T>(info: SchemaInfo, data: T): E.Either<Error, void> => {
-            const mapKey = schemaInfoSerializer(info);
-            const maybeSchema = O.fromNullable(schemas.get(mapKey));
-            return pipe(
-                maybeSchema,
-                E.fromOption(
-                    () =>
-                        new Error(`The given type ${mapKey} is not registered`)
-                ),
-                E.chainW((schema) =>
-                    schema.validate(data as Record<string, unknown>)
-                ),
-                E.mapLeft((err) => new Error(String(err))),
-                E.chain((dataRecord) =>
-                    adapter.send(
-                        payloadSerializer(
-                            new PayloadDTO(
-                                SchemaInfoDTO.fromSchemaInfo(info),
-                                dataRecord
                             )
                         )
                     )
-                )
-            );
-        },
+                )();
+            },
+            save: <T>(
+                info: SchemaInfo,
+                data: T
+            ): Promise<E.Either<Error, void>> => {
+                const mapKey = schemaInfoSerializer(info);
+                const maybeSchema = O.fromNullable(schemas.get(mapKey));
+                return pipe(
+                    maybeSchema,
+                    TE.fromOption(
+                        () =>
+                            new Error(
+                                `The given type ${mapKey} is not registered`
+                            )
+                    ),
+                    TE.chainW((schema) =>
+                        TE.fromEither(
+                            schema.validate(data as Record<string, unknown>)
+                        )
+                    ),
+                    TE.mapLeft((err) => {
+                        let result: string;
+                        if (isArray(err)) {
+                            result = err
+                                .map((e) => `field ${e.field} ${e.message}`)
+                                .join(",");
+                        } else {
+                            result = err.message;
+                        }
+                        return new Error(result);
+                    }),
+                    TE.chain((dataRecord) =>
+                        adapter.send(
+                            payloadSerializer(
+                                new PayloadDTO(
+                                    SchemaInfoDTO.fromSchemaInfo(info),
+                                    dataRecord
+                                )
+                            )
+                        )
+                    )
+                )();
+            },
+        };
     };
-};

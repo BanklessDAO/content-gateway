@@ -9,27 +9,40 @@ generator client {
 }
 
 model Schema {
-  namespace    String    @db.Char(50)
-  name         String    @db.Char(50)
-  version      String    @db.Char(50)
-  schemaObject Json      @db.JsonB
+  namespace    String    @db.VarChar(50)
+  name         String    @db.VarChar(50)
+  version      String    @db.VarChar(50)
+  schemaObject Json      @map("schemaObject") @db.JsonB
+  // dates
   createdAt    DateTime  @default(now()) @db.Timestamp(6)
   updatedAt    DateTime  @default(now()) @db.Timestamp(6)
   deletedAt    DateTime? @db.Timestamp(6)
+  // relations
+  data         Data[]
 
-  data Data[]
+  // indexes
   @@id([namespace, name, version])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([deletedAt])
 }
 
 model Data {
-  id        String    @id
+  // primary key
+  id        String    @id @db.VarChar(50)
   data      Json      @db.JsonB
-  createdAt DateTime  @db.Timestamp(6)
-  updatedAt DateTime  @db.Timestamp(6)
+  // dates
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @default(now()) @db.Timestamp(6)
   deletedAt DateTime? @db.Timestamp(6)
+  // relations
+  namespace String    @db.VarChar(50)
+  name      String    @db.VarChar(50)
+  version   String    @db.VarChar(50)
+  schema    Schema    @relation(fields: [namespace, name, version], references: [namespace, name, version])
 
-  schemaNamespace String @db.Char(50)
-  schemaName      String @db.Char(50)
-  schemaVersion   String @db.Char(50)
-  Schema          Schema @relation(fields: [schemaNamespace, schemaName, schemaVersion], references: [namespace, name, version])
+  // indexes
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([deletedAt])
 }

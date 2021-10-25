@@ -1,14 +1,43 @@
 import { Schema, SchemaInfo, schemaInfoToKey } from "@shared/util-schema";
-import * as E from "fp-ts/Either";
+import * as TE from "fp-ts/TaskEither";
+import * as TO from "fp-ts/TaskOption";
+
+export class RegisteredSchemaIncompatibleError extends Error {
+    public _tag = "RegisteredSchemaIncompatibleError";
+
+    private constructor(info: SchemaInfo) {
+        super(`There is an incompatible registered schema with key ${info}`);
+    }
+
+    public static create(info: SchemaInfo): RegisteredSchemaIncompatibleError {
+        return new RegisteredSchemaIncompatibleError(info);
+    }
+}
+
+export class SchemaCreationFailedError extends Error {
+    public _tag = "SchemaCreationFailedError";
+
+    private constructor(message: string) {
+        super(message);
+    }
+
+    public static create(message: string): SchemaCreationFailedError {
+        return new SchemaCreationFailedError(message);
+    }
+}
+
+export type SchemaStorageError =
+    | RegisteredSchemaIncompatibleError
+    | SchemaCreationFailedError;
 
 /**
  * The [[SchemaStorage]] is a server-side component of the content gateway.
  * It is responsible for storing the schemas sent from the SDK.
  */
 export type SchemaStorage = {
-    register: (schema: Schema) => E.Either<Error, void>;
-    find: (key: SchemaInfo) => E.Either<Error, Schema>;
-    findAll(): Array<Schema>;
+    register: (schema: Schema) => TE.TaskEither<SchemaStorageError, void>;
+    find: (key: SchemaInfo) => TO.TaskOption<Schema>;
+    findAll(): TO.TaskOption<Array<Schema>>;
 };
 
 /**
@@ -19,26 +48,26 @@ export const createInMemorySchemaStorage = (
     map: Map<string, Schema> = new Map()
 ): SchemaStorage => {
     return {
-        register: (schema: Schema): E.Either<Error, void> => {
+        register: (
+            schema: Schema
+        ): TE.TaskEither<SchemaStorageError, void> => {
             const keyStr = schemaInfoToKey(schema.info);
             if (map.has(keyStr)) {
-                return E.left(
-                    new Error(`Schema with key ${keyStr} already registered`)
+                return TE.left(
+                    RegisteredSchemaIncompatibleError.create(schema.info)
                 );
             }
             map.set(keyStr, schema);
-            return E.right(undefined);
+            return TE.right(undefined);
         },
-        find: (key: SchemaInfo): E.Either<Error, Schema> => {
+        find: (key: SchemaInfo): TO.TaskOption<Schema> => {
             const keyStr = schemaInfoToKey(key);
             if (map.has(keyStr)) {
-                return E.right(map.get(keyStr) as Schema);
+                return TO.some(map.get(keyStr) as Schema);
             } else {
-                return E.left(new Error(`Schema with key ${keyStr} not found`));
+                return TO.none;
             }
         },
-        findAll: (): Schema[] => {
-            return Array.from(map.values());
-        }
+        findAll: () => TO.some(Array.from(map.values())),
     };
 };

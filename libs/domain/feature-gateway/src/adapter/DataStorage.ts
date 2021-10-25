@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SchemaInfo, schemaInfoToKey } from "@shared/util-schema";
-import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import { v4 as uuid } from "uuid";
@@ -12,7 +11,7 @@ import { Data } from "./Data";
  */
 export type DataStorage = {
     store: (payload: Data) => TE.TaskEither<Error, string>;
-    findBySchema: (key: SchemaInfo) => TE.TaskEither<Error, Array<Data>>;
+    findBySchema: (key: SchemaInfo) => TO.TaskOption<Array<Data>>;
     findById: (id: string) => TO.TaskOption<Data>;
 };
 
@@ -35,14 +34,12 @@ export const createInMemoryDataStorage = (
             lookup.set(id, data);
             return TE.right(id);
         },
-        findBySchema: function (
-            key: SchemaInfo
-        ): TE.TaskEither<Error, Array<Data>> {
+        findBySchema: function (key: SchemaInfo): TO.TaskOption<Array<Data>> {
             const keyStr = schemaInfoToKey(key);
             if (map.has(keyStr)) {
-                return TE.of(map.get(keyStr) ?? []);
+                return TO.fromNullable(map.get(keyStr));
             } else {
-                return TE.of([]);
+                return TO.of([]);
             }
         },
         findById: function (id: string): TO.TaskOption<Data> {

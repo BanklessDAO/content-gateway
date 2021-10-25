@@ -47,6 +47,9 @@
         "shared-util-dto": {
             "tags": []
         },
+        "shared-util-fp": {
+            "tags": []
+        },
         "shared-util-graphql": {
             "tags": []
         },
