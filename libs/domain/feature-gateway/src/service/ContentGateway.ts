@@ -4,8 +4,7 @@ import { DataStorage, SchemaStorage } from "../adapter";
 import { Payload } from "../types";
 
 /**
- * Public API (facade) for the Content Gateway backend service that's responsible
- * for ingestion of data.
+ * Represents the public API of the Content Gateway.
  */
 export type ContentGateway = {
     /**

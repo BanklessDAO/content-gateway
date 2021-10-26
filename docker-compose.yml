@@ -16,18 +16,18 @@ services:
         networks:
             - postgres
         restart: unless-stopped
-    postgres_cgi:
-        container_name: postgres_container_cgi
+    postgres_cgl:
+        container_name: postgres_container_cgl
         image: postgres
         environment:
-            POSTGRES_USER: ${PG_CGI_USER}
-            POSTGRES_DB: ${PG_CGI_USER} # same as user
-            POSTGRES_PASSWORD: ${PG_CGI_PASSWORD}
-            PGDATA: /data/postgres_cgi
+            POSTGRES_USER: ${PG_CGL_USER}
+            POSTGRES_DB: ${PG_CGL_USER} # same as user
+            POSTGRES_PASSWORD: ${PG_CGL_PASSWORD}
+            PGDATA: /data/postgres_cgl
         volumes:
-            - postgres_cgi:/data/postgres_cgi
+            - postgres_cgl:/data/postgres_cgl
         ports:
-            - "${PG_CGI_PORT}:5432"
+            - "${PG_CGL_PORT}:5432"
         networks:
             - postgres
         restart: unless-stopped
@@ -36,4 +36,4 @@ networks:
         driver: bridge
 volumes:
     postgres_cga:
-    postgres_cgi:
+    postgres_cgl:

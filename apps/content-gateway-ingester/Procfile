@@ -1,3 +1,0 @@
-web: node dist/apps/content-gateway-ingester/main.js
-
-release: npx prisma migrate deploy --schema apps/content-gateway-ingester/prisma/schema.prisma

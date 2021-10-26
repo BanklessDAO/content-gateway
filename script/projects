@@ -1,2 +1,2 @@
 declare -A projects
-projects=( ["cga"]="apps/content-gateway-api" ["cgi"]="apps/content-gateway-ingester")
+projects=( ["cga"]="apps/content-gateway-api" ["cgl"]="apps/content-gateway-loader")

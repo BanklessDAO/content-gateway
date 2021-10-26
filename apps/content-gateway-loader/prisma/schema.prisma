@@ -1,6 +1,6 @@
 datasource db {
   provider = "postgresql"
-  url      = env("PG_CGI_URL")
+  url      = env("PG_CGL_URL")
 }
 
 generator client {

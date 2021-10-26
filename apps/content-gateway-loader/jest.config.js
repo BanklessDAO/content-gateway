@@ -1,5 +1,5 @@
 module.exports = {
-    displayName: "content-gateway-ingester",
+    displayName: "content-gateway-loader",
     preset: "../../jest.preset.js",
     globals: {
         "ts-jest": {
@@ -11,5 +11,5 @@ module.exports = {
         "^.+\\.[tj]s$": "ts-jest",
     },
     moduleFileExtensions: ["ts", "js", "html"],
-    coverageDirectory: "../../coverage/apps/content-gateway-ingester",
+    coverageDirectory: "../../coverage/apps/content-gateway-loader",
 };

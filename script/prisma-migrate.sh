@@ -7,7 +7,7 @@ source projects
 print_usage () {
     echo $1
     echo "Usage: ./prisma-migrate.sh <project> <migration-file-name>"
-    echo "Supported projects: cga, cgi"
+    echo "Supported projects: cga, cgl"
     exit 1
 }
 

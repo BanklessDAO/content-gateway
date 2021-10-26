@@ -198,19 +198,19 @@
                 }
             }
         },
-        "content-gateway-ingester": {
-            "root": "apps/content-gateway-ingester",
-            "sourceRoot": "apps/content-gateway-ingester/src",
+        "content-gateway-loader": {
+            "root": "apps/content-gateway-loader",
+            "sourceRoot": "apps/content-gateway-loader/src",
             "projectType": "application",
             "targets": {
                 "build": {
                     "executor": "@nrwl/node:build",
                     "outputs": ["{options.outputPath}"],
                     "options": {
-                        "outputPath": "dist/apps/content-gateway-ingester",
-                        "main": "apps/content-gateway-ingester/src/main.ts",
-                        "tsConfig": "apps/content-gateway-ingester/tsconfig.app.json",
-                        "assets": ["apps/content-gateway-ingester/src/assets"]
+                        "outputPath": "dist/apps/content-gateway-loader",
+                        "main": "apps/content-gateway-loader/src/main.ts",
+                        "tsConfig": "apps/content-gateway-loader/tsconfig.app.json",
+                        "assets": ["apps/content-gateway-loader/src/assets"]
                     },
                     "configurations": {
                         "production": {
@@ -219,8 +219,8 @@
                             "inspect": false,
                             "fileReplacements": [
                                 {
-                                    "replace": "apps/content-gateway-ingester/src/environments/environment.ts",
-                                    "with": "apps/content-gateway-ingester/src/environments/environment.prod.ts"
+                                    "replace": "apps/content-gateway-loader/src/environments/environment.ts",
+                                    "with": "apps/content-gateway-loader/src/environments/environment.prod.ts"
                                 }
                             ]
                         }
@@ -229,7 +229,7 @@
                 "serve": {
                     "executor": "@nrwl/node:execute",
                     "options": {
-                        "buildTarget": "content-gateway-ingester:build"
+                        "buildTarget": "content-gateway-loader:build"
                     }
                 },
                 "lint": {
@@ -237,15 +237,15 @@
                     "outputs": ["{options.outputFile}"],
                     "options": {
                         "lintFilePatterns": [
-                            "apps/content-gateway-ingester/**/*.ts"
+                            "apps/content-gateway-loader/**/*.ts"
                         ]
                     }
                 },
                 "test": {
                     "executor": "@nrwl/jest:jest",
-                    "outputs": ["coverage/apps/content-gateway-ingester"],
+                    "outputs": ["coverage/apps/content-gateway-loader"],
                     "options": {
-                        "jestConfig": "apps/content-gateway-ingester/jest.config.js",
+                        "jestConfig": "apps/content-gateway-loader/jest.config.js",
                         "passWithNoTests": true
                     }
                 }
