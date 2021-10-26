@@ -1,6 +1,6 @@
 {
     "version": "0.0.1",
     "scripts": {
-        "heroku": "NODE_ENV=heroku node ../../dist/apps/content-gateway-ingester/main.js"
+        "heroku": "NODE_ENV=heroku node dist/apps/content-gateway-ingester/main.js"
     }
 }

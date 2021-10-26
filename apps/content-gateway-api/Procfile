@@ -1,1 +1,1 @@
-web: npm run heroku
+web: node dist/apps/content-gateway-api/main.js

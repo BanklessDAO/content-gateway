@@ -23,11 +23,33 @@ heroku buildpacks:add --app content-gateway-api heroku-community/multi-procfile
 heroku buildpacks:add --app content-gateway-ingester heroku-community/multi-procfile
 ```
 
+Of course this won't work because Heroku doesn't know about node, so we need to add the node buildpack too:
+
+```bash
+heroku buildpacks:add --app content-gateway-api heroku/nodejs
+heroku buildpacks:add --app content-gateway-ingester heroku/nodejs
+```
+
 Then we'll have to tell Heroku where these `Procfile`s are:
 
 ```bash
 heroku config:set --app content-gateway-api PROCFILE=apps/content-gateway-api/Procfile
 heroku config:set --app content-gateway-ingester PROCFILE=apps/content-gateway-ingester/Procfile
+```
+
+Then we'll need to add a `heroku-postbuild` script to override the default build behavior of Heroku and let it build the project we need. This goes into the `package.json` in the root folder:
+
+```json
+scripts: {
+  "heroku-postbuild": "nx build $PROJECT_NAME --prod"
+}
+```
+
+Heroku needs to know the value of `$PROJECT_NAME` for each deployment so let's set them:
+
+```bash
+heroku config:set --app content-gateway-api PROJECT_NAME=content-gateway-api
+heroku config:set --app content-gateway-ingester PROJECT_NAME=content-gateway-ingester
 ```
 
 Finally, we push it to heroku
@@ -36,5 +58,3 @@ Finally, we push it to heroku
 git push cga master
 git push cgi master
 ```
-
-In
