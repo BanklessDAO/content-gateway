@@ -58,3 +58,44 @@ Finally, we push it to heroku
 git push cga master
 git push cgi master
 ```
+
+With this you'll be able to **start** the apps, but they won't work still 😅, because we haven't configured the databases yet!
+
+Let's take a look at how to do this.
+
+### Database Setup
+
+Adding Postgres to Heroku is [relatively simple](https://devcenter.heroku.com/articles/heroku-postgresql).
+
+Fist you'll need to create a postgres for each app:
+
+```bash
+heroku addons:create heroku-postgresql:hobby-dev --remote cga --name=pg-cga --as=pg_cga
+heroku addons:create heroku-postgresql:hobby-dev --remote cgi --name=pg-cgi --as=pg_cgi
+```
+
+The `--as` parameter will make sure that Heroku creates the proper environemntal variables (by default it will create `DATABASE_URL` which is not very nice).
+
+Now we'll need to set the databases up locally. For this we have a `docker-compose.yml` and a corresponding script in `script/docker-start`. All you need to do is to
+add the env variables to your `.bashrc` (or `.zshrc`) file:
+
+```bash
+export PG_CGI_PORT=8050
+export PG_CGI_PASSWORD="<figure_out_a_good_password>"
+export PG_CGI_USER="cgi_local"   
+export PG_CGI_URL="postgresql://${PG_CGI_USER}:${PG_CGI_PASSWORD}@localhost:${PG_CGI_PORT}/${PG_CGI_USER}"
+
+export PG_CGA_PORT=8051
+export PG_CGA_PASSWORD="<figure_out_a_good_password>"
+export PG_CGA_USER="cga_local"   
+export PG_CGA_URL="postgresql://${PG_CGA_USER}:${PG_CGA_PASSWORD}@localhost:${PG_CGA_PORT}/${PG_CGA_USER}"
+```
+
+All is left to do now is to make sure that there is a release phase configured in all `Procfile`s:
+
+```bash
+release: npx prisma migrate deploy
+```
+
+
+

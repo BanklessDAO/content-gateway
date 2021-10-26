@@ -1,26 +1,39 @@
 version: "3.5"
 
 services:
-    postgres:
-        container_name: postgres_container
+    postgres_cga:
+        container_name: postgres_container_cga
         image: postgres
         environment:
-            POSTGRES_USER: ${HEROKU_PG_CG_USER}
-            POSTGRES_DB: ${HEROKU_PG_CG_USER} # same as user
-            POSTGRES_PASSWORD: ${HEROKU_PG_CG_PASSWORD}
-            PGDATA: /data/postgres
+            POSTGRES_USER: ${PG_CGA_USER}
+            POSTGRES_DB: ${PG_CGA_USER} # same as user
+            POSTGRES_PASSWORD: ${PG_CGA_PASSWORD}
+            PGDATA: /data/postgres_cga
         volumes:
-            - postgres:/data/postgres
+            - postgres_cga:/data/postgres_cga
         ports:
-            - "5432:5432"
+            - "${PG_CGA_PORT}:5432"
         networks:
             - postgres
         restart: unless-stopped
-
+    postgres_cgi:
+        container_name: postgres_container_cgi
+        image: postgres
+        environment:
+            POSTGRES_USER: ${PG_CGI_USER}
+            POSTGRES_DB: ${PG_CGI_USER} # same as user
+            POSTGRES_PASSWORD: ${PG_CGI_PASSWORD}
+            PGDATA: /data/postgres_cgi
+        volumes:
+            - postgres_cgi:/data/postgres_cgi
+        ports:
+            - "${PG_CGI_PORT}:5432"
+        networks:
+            - postgres
+        restart: unless-stopped
 networks:
     postgres:
         driver: bridge
-
 volumes:
-    postgres:
-    pgadmin:
+    postgres_cga:
+    postgres_cgi:

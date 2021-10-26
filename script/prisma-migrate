@@ -1,2 +1,0 @@
-cd apps/content-gateway-api
-npx prisma migrate dev --name $1

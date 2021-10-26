@@ -35,12 +35,12 @@ import { createPrismaDataStorage } from "./app/PrismaDataStorage";
 import { createPrismaSchemaStorage } from "./app/PrismaSchemaStorage";
 
 const CLIENT_BUILD_PATH = join(__dirname, "../content-gateway-frontend");
-const ENVIRONMENT = process.env.NODE_ENV;
+const ENV = process.env.NODE_ENV;
 const PORT = process.env.PORT || 3333;
 
-const isDev = ENVIRONMENT === "development";
-const isProd = ENVIRONMENT === "production";
-const isHeroku = ENVIRONMENT === "heroku";
+const isDev = ENV === "development";
+const isProd = ENV === "production";
+const isHeroku = ENV === "heroku";
 
 const app = express();
 
