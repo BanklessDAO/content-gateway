@@ -1,9 +1,3 @@
 {
-    "version": "0.0.1",
-    "dependencies": {
-        "node-ts": "^5.1.2"
-    },
-    "scripts": {
-        "heroku": "NODE_ENV=heroku node dist/apps/content-gateway-api/main.js"
-    }
+    "version": "0.0.1"
 }

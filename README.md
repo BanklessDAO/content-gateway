@@ -24,14 +24,19 @@ Before you can start working on the codebase you'll need to install:
 In order to be able to use the database(s) properly you'll need to set the following environmental variables.
 
 ```bash
+# will be used locally. On Heroku the PORT variable is used
+export CGI_PORT=3334
+# PostgreSQL variables
 export PG_CGI_PORT=8050
 export PG_CGI_PASSWORD="<figure_out_a_good_password>"
-export PG_CGI_USER="cgi_local"   
+export PG_CGI_USER="cgi_local"
 export PG_CGI_URL="postgresql://${PG_CGI_USER}:${PG_CGI_PASSWORD}@localhost:${PG_CGI_PORT}/${PG_CGI_USER}"
 
+export CGA_PORT=3333
+export CGA_URL=http://localhost:${CGA_PORT}
 export PG_CGA_PORT=8051
 export PG_CGA_PASSWORD="<figure_out_a_good_password>"
-export PG_CGA_USER="cga_local"   
+export PG_CGA_USER="cga_local"
 export PG_CGA_URL="postgresql://${PG_CGA_USER}:${PG_CGA_PASSWORD}@localhost:${PG_CGA_PORT}/${PG_CGA_USER}"
 ```
 

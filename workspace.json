@@ -43,6 +43,7 @@
             "root": "apps/content-gateway-api",
             "sourceRoot": "apps/content-gateway-api/src",
             "projectType": "application",
+            "implicitDependencies": ["content-gateway-frontend"],
             "targets": {
                 "build": {
                     "executor": "@nrwl/node:build",

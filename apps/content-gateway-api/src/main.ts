@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "@banklessdao/content-gateway-client";
-import {
-    createContentGateway
-} from "@domain/feature-gateway";
+import { createContentGateway } from "@domain/feature-gateway";
 import { PrismaClient } from "@prisma/client";
 import {
     PayloadDTO,
@@ -36,11 +34,19 @@ import { createPrismaSchemaStorage } from "./app/PrismaSchemaStorage";
 
 const CLIENT_BUILD_PATH = join(__dirname, "../content-gateway-frontend");
 const ENV = process.env.NODE_ENV;
-const PORT = process.env.PORT || 3333;
-
 const isDev = ENV === "development";
 const isProd = ENV === "production";
-const isHeroku = ENV === "heroku";
+
+const programError = (msg) => {
+    throw new Error(msg);
+};
+
+const PORT =
+    process.env.PORT ||
+    process.env.CGA_PORT ||
+    programError("You must specify either PORT or CGA_PORT");
+
+
 
 console.log(`Running in ${ENV} mode`);
 
@@ -58,10 +64,10 @@ const schemaStorage = createPrismaSchemaStorage(
     deserializeSchemaFromObject,
     prisma
 );
-const dataStorage = createPrismaDataStorage(deserializeSchemaFromObject, prisma);
-
-// const schemaStorage = createInMemorySchemaStorage();
-// const dataStorage = createInMemoryDataStorage();
+const dataStorage = createPrismaDataStorage(
+    deserializeSchemaFromObject,
+    prisma
+);
 
 const gateway = createContentGateway(schemaStorage, dataStorage);
 
@@ -148,7 +154,7 @@ async function prepare() {
     await client.save(postKey, {
         id: "hello-1",
         text: "Hello World",
-    })
+    });
     await client.register(userKey, User);
     await client.save(userKey, {
         id: "1",
@@ -173,7 +179,6 @@ async function prepare() {
 }
 
 async function createGraphQLAPI() {
-    console.log(await schemaStorage.findAll()());
     pipe(
         await schemaStorage.findAll()(),
         O.getOrElse(() => [] as Schema[]),
@@ -190,7 +195,7 @@ async function createGraphQLAPI() {
                         data.filter((entity) => entity.data.id === id)
                     ),
                     TO.map((data) => data.map((entity) => entity.data)),
-                    TO.getOrElse(() => T.of([])),
+                    TO.getOrElse(() => T.of([]))
                 )();
             };
             const findAll = async () => {
@@ -239,7 +244,7 @@ async function createGraphQLAPI() {
                 "/api/graphql",
                 graphqlHTTP({
                     schema: schema,
-                    graphiql: isDev || isHeroku,
+                    graphiql: isDev,
                 })
             );
 
@@ -258,7 +263,7 @@ async function createGraphQLAPI() {
 }
 
 async function main() {
-    if(isDev) {
+    if (isDev) {
         await prepare();
     }
     await createGraphQLAPI();
