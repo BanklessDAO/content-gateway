@@ -1,0 +1,1 @@
+heroku logs --remote $1 --tail
