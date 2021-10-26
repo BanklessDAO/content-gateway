@@ -3,7 +3,8 @@ import {
     SchemaCreationFailedError,
     SchemaStorage
 } from "@domain/feature-gateway";
-import { PrismaClient, Schema as PrismaSchema } from "@prisma/client";
+// eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
+import { PrismaClient, Schema as PrismaSchema} from "@cga/prisma";
 import { Schema, SchemaInfo } from "@shared/util-schema";
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";

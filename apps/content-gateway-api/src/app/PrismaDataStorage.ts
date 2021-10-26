@@ -1,5 +1,6 @@
 import { Data, DataStorage } from "@domain/feature-gateway";
-import { Prisma, PrismaClient } from "@prisma/client";
+// eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
+import { Prisma, PrismaClient } from "@cga/prisma";
 import { Schema, SchemaInfo } from "@shared/util-schema";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";

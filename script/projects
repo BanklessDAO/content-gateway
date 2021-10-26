@@ -1,2 +1,0 @@
-declare -A projects
-projects=( ["cga"]="apps/content-gateway-api" ["cgl"]="apps/content-gateway-loader")

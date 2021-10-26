@@ -6,6 +6,7 @@ datasource db {
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["filterJson"]
+  output   = "../../../node_modules/@cga/prisma"
 }
 
 model Schema {

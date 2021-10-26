@@ -6,4 +6,19 @@ datasource db {
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["filterJson"]
+  output   = "../../../node_modules/@cgl/prisma"
+}
+
+model Job {
+  name        String   @id @db.VarChar(50)
+  scheduledAt DateTime @default(now()) @db.Timestamp(6)
+  state       JobState @default(SCHEDULED)
+  data        Json     @db.JsonB
+}
+
+enum JobState {
+  SCHEDULED
+  RUNNING
+  COMPLETED
+  FAILED
 }

@@ -2,7 +2,7 @@
 
 cd "$(dirname "$0")"
 
-source projects
+source projects.sh
 
 if [ -z "$1" ]; then
     echo "project is missing!"

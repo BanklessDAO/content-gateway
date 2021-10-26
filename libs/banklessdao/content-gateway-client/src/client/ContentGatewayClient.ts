@@ -7,6 +7,7 @@ import {
     schemaInfoToString,
 } from "@shared/util-dto";
 import {
+    createDefaultJSONSerializer,
     createSchemaFromType,
     JSONSerializer,
     Schema,
@@ -72,6 +73,56 @@ export type ClientDependencies = {
 
 export const createRESTAdapter = (): OutboundDataAdapter => {
     throw new Error("Not implemented");
+};
+
+type StubOutboundAdapterObjects = {
+    schemas: Array<string>;
+    payloads: Array<string>;
+    adapter: OutboundDataAdapter;
+};
+
+type StubClientObjects = {
+    adapter: StubOutboundAdapterObjects;
+    client: ContentGatewayClient;
+};
+
+/**
+ * Creates a stub {@link OutboundDataAdapter} with the corresponding storage
+ * objects that can be used for testing.
+ */
+const createStubOutboundAdapter = (): StubOutboundAdapterObjects => {
+    const schemas = [] as Array<string>;
+    const payloads = [] as Array<string>;
+    const adapter: OutboundDataAdapter = {
+        register: (schema) => {
+            schemas.push(schema);
+            return TE.right(undefined);
+        },
+        send: (payload) => {
+            payloads.push(payload);
+            return TE.right(undefined);
+        },
+    };
+    return {
+        schemas,
+        payloads,
+        adapter,
+    };
+};
+
+/**
+ * Creates a new {@link ContentGatewayClient} instance that uses
+ * in-memory storage and default serialization. Can be used for
+ * testing purposes.
+ */
+export const createStubClient: () => StubClientObjects = () => {
+    const serializer = createDefaultJSONSerializer();
+    const adapter = createStubOutboundAdapter();
+    const client = createClient({ serializer, adapter: adapter.adapter });
+    return {
+        adapter,
+        client,
+    };
 };
 
 /**

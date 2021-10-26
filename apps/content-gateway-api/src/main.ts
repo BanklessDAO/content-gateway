@@ -1,7 +1,8 @@
+/* eslint-disable @nrwl/nx/enforce-module-boundaries */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "@banklessdao/content-gateway-client";
 import { createContentGateway } from "@domain/feature-gateway";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@cga/prisma";
 import {
     PayloadDTO,
     stringToPayloadDTO,

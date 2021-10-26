@@ -2,7 +2,7 @@
 
 cd "$(dirname "$0")"
 
-source projects
+source projects.sh
 
 print_usage () {
     echo $1
