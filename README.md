@@ -14,6 +14,27 @@ This is the monorepo for *Content Gateway*. You can follow the links below to le
 
 ## Development
 
+Before you can start working on the codebase you'll need to install:
+
+- Docker (Docker Desktop on Windows)
+
+
+### Environmental Variables
+
+In order to be able to use the database(s) properly you'll need to set the following environmental variables.
+
+```bash
+export PG_CGI_PORT=8050
+export PG_CGI_PASSWORD="<figure_out_a_good_password>"
+export PG_CGI_USER="cgi_local"   
+export PG_CGI_URL="postgresql://${PG_CGI_USER}:${PG_CGI_PASSWORD}@localhost:${PG_CGI_PORT}/${PG_CGI_USER}"
+
+export PG_CGA_PORT=8051
+export PG_CGA_PASSWORD="<figure_out_a_good_password>"
+export PG_CGA_USER="cga_local"   
+export PG_CGA_URL="postgresql://${PG_CGA_USER}:${PG_CGA_PASSWORD}@localhost:${PG_CGA_PORT}/${PG_CGA_USER}"
+```
+
 ## Heroku Setup
 
 In case this needs to be redeployed to Heroku, these are the necessary steps:
@@ -88,20 +109,8 @@ heroku addons:create heroku-postgresql:hobby-dev --remote cgi --name=pg-cgi --as
 
 The `--as` parameter will make sure that Heroku creates the proper environemntal variables (by default it will create `DATABASE_URL` which is not very nice).
 
-Now we'll need to set the databases up locally. For this we have a `docker-compose.yml` and a corresponding script in `script/docker-start`. All you need to do is to
-add the env variables to your `.bashrc` (or `.zshrc`) file:
+Now we'll need to set the databases up locally. Please refer to the [development](#development) part of this readme for more details.
 
-```bash
-export PG_CGI_PORT=8050
-export PG_CGI_PASSWORD="<figure_out_a_good_password>"
-export PG_CGI_USER="cgi_local"   
-export PG_CGI_URL="postgresql://${PG_CGI_USER}:${PG_CGI_PASSWORD}@localhost:${PG_CGI_PORT}/${PG_CGI_USER}"
-
-export PG_CGA_PORT=8051
-export PG_CGA_PASSWORD="<figure_out_a_good_password>"
-export PG_CGA_USER="cga_local"   
-export PG_CGA_URL="postgresql://${PG_CGA_USER}:${PG_CGA_PASSWORD}@localhost:${PG_CGA_PORT}/${PG_CGA_USER}"
-```
 
 All is left to do now is to make sure that there is a release phase configured in all `Procfile`s:
 

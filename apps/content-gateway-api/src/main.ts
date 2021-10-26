@@ -42,6 +42,8 @@ const isDev = ENV === "development";
 const isProd = ENV === "production";
 const isHeroku = ENV === "heroku";
 
+console.log(`Running in ${ENV} mode`);
+
 const app = express();
 
 const serializer = createDefaultJSONSerializer();

@@ -1,9 +1,10 @@
 #!/bin/bash
 
-pushd apps/content-gateway-api
-npx prisma generate
-popd
+if [ -z "$1" ]; then
+    print_usage "Project name is missing!"
+fi
 
-pushd apps/content-gateway-ingester
+
+pushd apps/$1
 npx prisma generate
 popd

@@ -6,7 +6,7 @@
         "heroku": "NODE_ENV=heroku node dist/apps/content-gateway-api/main.js",
         "start": "NODE_ENV=production node dist/apps/content-gateway-api/main.js",
         "build": "nx run-many --target build --all --parallel",
-        "heroku-postbuild": "nx build $PROJECT_NAME --prod",
+        "heroku-postbuild": "script/prisma-generate.sh $PROJECT_NAME && nx build $PROJECT_NAME --prod",
         "test": "nx test"
     },
     "private": true,
