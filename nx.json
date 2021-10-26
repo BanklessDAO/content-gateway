@@ -41,6 +41,9 @@
             "tags": [],
             "implicitDependencies": ["content-gateway-frontend"]
         },
+        "content-gateway-ingester": {
+            "tags": []
+        },
         "domain-feature-gateway": {
             "tags": ["lib:feature"]
         },

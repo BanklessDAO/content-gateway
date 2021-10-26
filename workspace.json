@@ -197,6 +197,59 @@
                 }
             }
         },
+        "content-gateway-ingester": {
+            "root": "apps/content-gateway-ingester",
+            "sourceRoot": "apps/content-gateway-ingester/src",
+            "projectType": "application",
+            "targets": {
+                "build": {
+                    "executor": "@nrwl/node:build",
+                    "outputs": ["{options.outputPath}"],
+                    "options": {
+                        "outputPath": "dist/apps/content-gateway-ingester",
+                        "main": "apps/content-gateway-ingester/src/main.ts",
+                        "tsConfig": "apps/content-gateway-ingester/tsconfig.app.json",
+                        "assets": ["apps/content-gateway-ingester/src/assets"]
+                    },
+                    "configurations": {
+                        "production": {
+                            "optimization": true,
+                            "extractLicenses": true,
+                            "inspect": false,
+                            "fileReplacements": [
+                                {
+                                    "replace": "apps/content-gateway-ingester/src/environments/environment.ts",
+                                    "with": "apps/content-gateway-ingester/src/environments/environment.prod.ts"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "serve": {
+                    "executor": "@nrwl/node:execute",
+                    "options": {
+                        "buildTarget": "content-gateway-ingester:build"
+                    }
+                },
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": [
+                            "apps/content-gateway-ingester/**/*.ts"
+                        ]
+                    }
+                },
+                "test": {
+                    "executor": "@nrwl/jest:jest",
+                    "outputs": ["coverage/apps/content-gateway-ingester"],
+                    "options": {
+                        "jestConfig": "apps/content-gateway-ingester/jest.config.js",
+                        "passWithNoTests": true
+                    }
+                }
+            }
+        },
         "domain-feature-gateway": {
             "root": "libs/domain/feature-gateway",
             "sourceRoot": "libs/domain/feature-gateway/src",
