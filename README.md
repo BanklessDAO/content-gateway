@@ -2,6 +2,18 @@
 
 # Content Gateway
 
+This is the monorepo for *Content Gateway*. You can follow the links below to learn more.
+
+- [Content Gateway API](/apps/content-gateway-api): central storage module for both *schema*s and *data*.
+- [Content Gateway Ingester](/apps/content-gateway-ingester): module responsible for implementing the *pull* ingeration mechanism (eg: when we load data from external systems)
+- [Content Gateway Client](/libs/banklessdao/content-gateway-client): library package responsible  for implementing the *push* integration mechanism (eg: when you send the data to the CG API).
+
+## Getting Started
+
+> If you'd like to learn more on how to start working on the codebase skip to [Development](#development)
+
+## Development
+
 ## Heroku Setup
 
 In case this needs to be redeployed to Heroku, these are the necessary steps:
