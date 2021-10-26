@@ -14,7 +14,7 @@ const CGA_URL = process.env.CGA_URL || programError("You must specify CGA_URL");
 const app = express();
 
 app.get("/", (req, res) => {
-    res.send("Wat.");
+    res.send(`More info <a href="https://github.com/BanklessDAO/content-gateway/tree/master/apps/content-gateway-ingester">here</a>.`);
 });
 
 const server = app.listen(PORT, () => {

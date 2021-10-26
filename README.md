@@ -8,6 +8,12 @@ This is the monorepo for *Content Gateway*. You can follow the links below to le
 - [Content Gateway Ingester](/apps/content-gateway-ingester): module responsible for implementing the *pull* ingeration mechanism (eg: when we load data from external systems)
 - [Content Gateway Client](/libs/banklessdao/content-gateway-client): library package responsible  for implementing the *push* integration mechanism (eg: when you send the data to the CG API).
 
+If you want to write custom *pull* integration logic, head over to the [Content Gateway Ingester](/apps/content-gateway-ingester) README.
+
+If you want to consume content from the Content Gateway API
+
+If you want to start working on the Content Gateway read on.
+
 ## Getting Started
 
 > If you'd like to learn more on how to start working on the codebase skip to [Development](#development)
