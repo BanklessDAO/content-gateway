@@ -3,7 +3,8 @@
 cd "$(dirname "$0")"
 
 if [ -z "$1" ]; then
-    print_usage "Project name is missing!"
+    echo "Project name is missing!"
+    exit 1
 fi
 
 cd ..

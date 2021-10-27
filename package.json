@@ -5,7 +5,7 @@
     "scripts": {
         "start": "node dist/apps/content-gateway-api/main.js",
         "build": "nx run-many --target build --all --parallel",
-        "heroku-postbuild": "script/prisma-generate.sh $PROJECT_NAME && nx build $PROJECT_NAME --prod",
+        "heroku-postbuild": "script/heroku-build.sh $PROJECT_NAME",
         "test": "nx test"
     },
     "private": true,
