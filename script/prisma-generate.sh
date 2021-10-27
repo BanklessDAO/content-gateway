@@ -9,5 +9,8 @@ fi
 cd ..
 
 pushd apps/$1
+
+echo "workdir is: $(pwd)"
+
 npx prisma generate
 popd
