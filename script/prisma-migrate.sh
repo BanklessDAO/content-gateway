@@ -30,3 +30,4 @@ echo "Workdir is: $workdir"
 
 npx prisma migrate dev --name $2
 
+popd

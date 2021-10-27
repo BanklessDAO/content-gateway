@@ -8,5 +8,13 @@ if [ -z "$1" ]; then
     echo "project is missing!"
 fi
 
-cd ${projects[$1]}
+cd ..
+
+pushd ${projects[$1]}
+
+workdir=$(pwd)
+echo "Workdir is: $workdir"
+
 npx prisma studio
+
+popd
