@@ -6,18 +6,38 @@ datasource db {
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["filterJson"]
-  output   = "../../../node_modules/@cgl/prisma"
+  output          = "../../../node_modules/@cgl/prisma"
 }
 
 model Job {
-  name        String   @id @db.VarChar(50)
-  scheduledAt DateTime @default(now()) @db.Timestamp(6)
-  state       JobState @default(SCHEDULED)
-  data        Json     @db.JsonB
+  name          String         @id @db.VarChar(50)
+  scheduledAt   DateTime       @default(now()) @db.Timestamp(6)
+  cursor        DateTime?      @db.Timestamp(6)
+  limit         BigInt?        @db.BigInt
+  state         JobState       @default(SCHEDULED)
+  data          Json?          @db.JsonB
+  jobExecutions JobExecution[]
+
+  @@index([scheduledAt])
+  @@index([cursor])
+  @@index([limit])
+  @@index([state])
+}
+
+model JobExecution {
+  id         String   @id @default(uuid())
+  name       String   @db.VarChar(50)
+  finishedAt DateTime @default(now()) @db.Timestamp(6)
+  note       String   @db.Text
+  finalState JobState
+  job        Job      @relation(fields: [name], references: [name])
+
+  @@index([name])
 }
 
 enum JobState {
   SCHEDULED
+  CANCELED
   RUNNING
   COMPLETED
   FAILED

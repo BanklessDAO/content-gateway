@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import { JobDescriptor } from "./JobDescriptor";
 
 /**
@@ -5,5 +6,5 @@ import { JobDescriptor } from "./JobDescriptor";
  * job that's executing.
  */
 export type Job<T> = {
-    execututionStartedAt: Date;
+    execututionStartedAt: DateTime;
 } & JobDescriptor<T>;

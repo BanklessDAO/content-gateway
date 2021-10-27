@@ -20,6 +20,9 @@ import * as O from "fp-ts/Option";
 import * as R from "fp-ts/Reader";
 import * as TE from "fp-ts/TaskEither";
 import { failure } from "io-ts/lib/PathReporter";
+import { Logger } from "tslog";
+
+const logger = new Logger({ name: "ContentGatewayClient" });
 
 /**
  * The {@link ContentGatewayClient} is the client-side component of the *Content Gateway*.
@@ -95,11 +98,15 @@ const createStubOutboundAdapter = (): StubOutboundAdapterObjects => {
     const payloads = [] as Array<string>;
     const adapter: OutboundDataAdapter = {
         register: (schema) => {
+            logger.info(`Registering schema: ${schema}`);
             schemas.push(schema);
+            logger.debug(`Registered schemas: ${schemas}`);
             return TE.right(undefined);
         },
         send: (payload) => {
+            logger.info(`Sending payload: ${payload}`);
             payloads.push(payload);
+            logger.debug(`Sent payloads: ${payloads}`);
             return TE.right(undefined);
         },
     };

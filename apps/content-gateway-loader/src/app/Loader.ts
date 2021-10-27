@@ -1,52 +1,78 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
+import { Tagged, tagged } from "@shared/util-fp";
 import * as TE from "fp-ts/TaskEither";
+import { JobDescriptor } from ".";
 import { Job } from "./Job";
 import { JobScheduler } from "./JobScheduler";
 
 /**
+ * Contains the necessary information for initializing.
+ */
+export type InitContext = {
+    client: ContentGatewayClient;
+    jobScheduler: JobScheduler;
+};
+
+/**
  * Contains the necessary information for loading.
  */
-export type LoaderContext<T, D> = {
+export type LoadContext<T> = {
     client: ContentGatewayClient;
-    currentJob: Job<D>;
+    currentJob: Job<T>;
     jobScheduler: JobScheduler;
+};
+
+type LoaderBase<T> = {
+    name: string;
     /**
-     * The cursor is an arbitrary value (usually a number or a string) that represents
-     * he point where we "left off" since the last batch was loaded.
-     * More info [here](http://mysql.rjweb.org/doc.php/pagination).
+     * Initializes this loader. This will be called once each time
+     * the application starts.
      */
-    cursor: T;
+    initialize: (deps: InitContext) => TE.TaskEither<Error, void>;
     /**
-     * The nubmer of items to load.
+     * Loads data from the data source asynchronously. This will be
+     * called according to the schedule defined by the job.
+     * @returns an optional job to be scheduled next.
      */
-    limit: number;
+    load: (
+        deps: LoadContext<T>
+    ) => TE.TaskEither<Error, JobDescriptor<T> | undefined>;
 };
 
 /**
  * A loader encapsulates the *pull* logic for a specific data source
  * (eg: it loads data periodically from a remote source).
  */
-export type Loader<T, D> = {
-    /**
-     * Loads data from the data source asynchronously.
-     */
-    load: (deps: LoaderContext<T, D>) => TE.TaskEither<Error, void>;
+export type LoaderWithData<T> = {
     /**
      * Serializes your custom data structure to be stored
      */
-    serialize(data: D): string;
+    serialize(data: T): string;
     /**
      * Deserializes the custom data
      */
-    deserialize(data: string): D;
+    deserialize(data: string): T;
+} & LoaderBase<T> &
+    Tagged<"LoaderWithData">;
+
+export type SimpleLoader = LoaderBase<void> & Tagged<"SimpleLoader">;
+
+export type Loader<T> = LoaderWithData<T> | SimpleLoader;
+
+export const createSimpleLoader = (
+    base: Omit<SimpleLoader, "__tag">
+): SimpleLoader => {
+    return {
+        ...base,
+        ...tagged("SimpleLoader"),
+    };
 };
 
-export const createSimpleLoader = <T>(
-    load: (deps: LoaderContext<T, void>) => TE.TaskEither<Error, void>
-): Loader<T, void> => {
+export const createLoaderWithData = <T>(
+    base: Omit<LoaderWithData<T>, "__tag">
+): LoaderWithData<T> => {
     return {
-        load: load,
-        serialize: () => undefined,
-        deserialize: () => undefined,
+        ...base,
+        ...tagged("LoaderWithData"),
     };
 };
