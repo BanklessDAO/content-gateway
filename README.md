@@ -1,12 +1,12 @@
 # Content Gateway
 
-This is the monorepo for *Content Gateway*. You can follow the links below to learn more.
+This is the monorepo for _Content Gateway_. You can follow the links below to learn more.
 
-- [Content Gateway API](/apps/content-gateway-api): central storage module for both *schema*s and *data*.
-- [Content Gateway Loader](/apps/content-gateway-loader): module responsible for implementing the *pull* ingeration mechanism (eg: when we load data from external systems)
-- [Content Gateway Client](/libs/banklessdao/content-gateway-client): library package responsible  for implementing the *push* integration mechanism (eg: when you send the data to the CG API).
+-   [Content Gateway API](/apps/content-gateway-api): central storage module for both *schema*s and _data_.
+-   [Content Gateway Loader](/apps/content-gateway-loader): module responsible for implementing the _pull_ ingeration mechanism (eg: when we load data from external systems)
+-   [Content Gateway Client](/libs/banklessdao/content-gateway-client): library package responsible for implementing the _push_ integration mechanism (eg: when you send the data to the CG API).
 
-If you want to write custom *pull* integration logic, head over to the [Content Gateway Loader](/apps/content-gateway-loader) README.
+If you want to write custom _pull_ integration logic, head over to the [Content Gateway Loader](/apps/content-gateway-loader) README.
 
 If you want to consume content from the Content Gateway API
 
@@ -20,8 +20,7 @@ If you want to start working on the Content Gateway read on.
 
 Before you can start working on the codebase you'll need to install:
 
-- Docker (Docker Desktop on Windows)
-
+-   Docker (Docker Desktop on Windows)
 
 ### Environmental Variables
 
@@ -44,10 +43,10 @@ export PG_CGL_URL="postgresql://${PG_CGL_USER}:${PG_CGL_PASSWORD}@localhost:${PG
 export PG_CGA_PORT=8051
 export PG_CGA_PASSWORD="A3xB13DASwa2134hl"
 export PG_CGA_USER="cga_local"
-export PG_CGA_URL="postgresql://${PG_CGA_USER}:${PG_CGA_PASSWORD}@localhost:${PG_CGA_PORT}/${PG_CGA_USER}"  
+export PG_CGA_URL="postgresql://${PG_CGA_USER}:${PG_CGA_PASSWORD}@localhost:${PG_CGA_PORT}/${PG_CGA_USER}"
 ```
 
-## Heroku Setup
+### Heroku Setup
 
 In case this needs to be redeployed to Heroku, these are the necessary steps:
 
@@ -61,7 +60,6 @@ heroku create content-gateway-loader --remote cgl
 ```
 
 Now you need to add the [multi-procfile buildpack](https://elements.heroku.com/buildpacks/heroku/heroku-buildpack-multi-procfile) to them. This is because Heroku assumes that you have one app per repo by default, and this enables to have multiple `Procfile`s (deployments) in a repo
-
 
 ```bash
 heroku buildpacks:add --app content-gateway-api heroku-community/multi-procfile
@@ -132,3 +130,20 @@ heroku addons:create heroku-postgresql:hobby-dev --remote cgl --name=pg-cgl --as
 The `--as` parameter will make sure that Heroku creates the proper environemntal variables (by default it will create `DATABASE_URL` which is not very nice).
 
 Now we'll need to set the databases up locally. Please refer to the [development](#development) part of this readme for more details.
+
+### A Note on fp-ts
+
+We're using fp-ts, io-ts in this project. These libraries implement strictly typed Functional Programming in TypeScript. If you're not familiar with the topic you can learn it quickly by following through these guides:
+
+-   [Practical Guide to Fp-ts](https://rlee.dev/series/practical-guide-to-fp-ts)
+-   [Domain modeling in TypeScript](https://dev.to/ruizb/introduction-961)
+-   [Functional design](https://dev.to/gcanti/functional-design-combinators-14pn)
+-   [fp-ts cheat sheet](https://github.com/inato/fp-ts-cheatsheet)
+-   [Getting started with fp-ts](https://dev.to/gcanti/getting-started-with-fp-ts-setoid-39f3)
+-   [Interoperability with non functional code using fp-ts](https://dev.to/gcanti/interoperability-with-non-functional-code-using-fp-ts-432e)
+-   [Getting started with fp-ts: IO](https://dev.to/gcanti/getting-started-with-fp-ts-io-36p6)
+-   [Getting started with fp-ts: Reader](https://dev.to/gcanti/getting-started-with-fp-ts-reader-1ie5)
+-   [Approximating haskell's do syntax in Typescript](https://paulgray.net/do-syntax-in-typescript/)
+-   [fp-ts and Beautiful API Calls](https://dev.to/gnomff_65/fp-ts-and-beautiful-api-calls-1f55)
+
+You can also take a look around the author's [website](https://paulgray.net/)

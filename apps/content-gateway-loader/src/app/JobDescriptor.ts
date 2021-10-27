@@ -10,7 +10,7 @@ export type JobDescriptor = {
     scheduledAt: DateTime;
     /**
      * The cursor is an arbitrary number (usually a timestamp) that represents
-     * he point where we "left off" since the last batch was loaded.
+     * the point where we "left off" since the last batch was loaded.
      * More info [here](http://mysql.rjweb.org/doc.php/pagination).
      */
     cursor?: bigint;
