@@ -118,8 +118,6 @@ export const banklessAcademyLoader = createSimpleLoader({
                     logger.info("Executing Bankless Academy loader.");
                     logger.info(`Current job: ${currentJob}`);
 
-                    // TODO: Pull the actual data from the Bankless Academy API
-
                     await axios
                         .get(`https://bankless-academy-cg-lab.vercel.app/api/courses`)
                         .then((response) => {
