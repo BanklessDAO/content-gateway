@@ -120,10 +120,6 @@ export const bountyBoardLoader = createSimpleLoader({
         return TE.tryCatch(
             async () => {
                 logger.info("Initializing Bounty Board loader...");
-                client.register(typeVersions.member, Member);
-                client.register(typeVersions.reward, Reward);
-                client.register(typeVersions.statusEvent, StatusEvent);
-                client.register(typeVersions.bounty, Bounty);
                 client.register(typeVersions.bountyBoard, BountyBoard);
                 const result = await jobScheduler.schedule({
                     name: name,

@@ -98,9 +98,6 @@ export const banklessAcademyLoader = createSimpleLoader({
         return TE.tryCatch(
             async () => {
                 logger.info("Initializing Bankless Academy loader...");
-                client.register(typeVersions.quiz, Quiz);
-                client.register(typeVersions.section, Section);
-                client.register(typeVersions.course, Course);
                 client.register(typeVersions.courseLibrary, CourseLibrary);
                 const result = await jobScheduler.schedule({
                     name: name,
