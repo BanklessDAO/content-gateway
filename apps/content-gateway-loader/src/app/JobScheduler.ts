@@ -4,9 +4,7 @@ import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
-import { job as createJob, start } from "microjob";
 import * as schedule from "node-schedule";
-import * as os from "os";
 import { Logger } from "tslog";
 import { Job, Loader } from ".";
 import { JobDescriptor } from "./JobDescriptor";
@@ -116,17 +114,15 @@ export type JobScheduler = {
     /**
      * Registers the given loader with the given name.
      */
-    register: <T>(
-        loader: Loader<T>
-    ) => Promise<E.Either<RegistrationError, void>>;
+    register: (loader: Loader) => Promise<E.Either<RegistrationError, void>>;
     remove: (name: string) => E.Either<NoLoaderFoundError, void>;
     /**
      * Schedules a job and returns its name. The given job must have a
      * corresponding loader registered with the scheduler.
      * If a job with the same name is already scheduled, it will be overwritten.
      */
-    schedule: <D>(
-        job: JobDescriptor<D>
+    schedule: (
+        job: JobDescriptor
     ) => Promise<E.Either<SchedulingError, string>>;
 };
 
@@ -136,7 +132,7 @@ export const createJobScheduler = (
 ): JobScheduler => new DefaultJobScheduler(prisma, client);
 
 class DefaultJobScheduler implements JobScheduler {
-    private loaders = new Map<string, Loader<unknown>>();
+    private loaders = new Map<string, Loader>();
     private started = false;
     private prisma: PrismaClient;
     private client: ContentGatewayClient;
@@ -147,8 +143,98 @@ class DefaultJobScheduler implements JobScheduler {
         this.client = client;
     }
 
+    start(): Promise<E.Either<StartError, void>> {
+        if (this.started) {
+            this.logger.warn("Job scheduler already started.");
+            return TE.left(SchedulerAlreadyStartedError.create())();
+        }
+        this.logger.info("Starting job scheduler.");
+        this.started = true;
+        return TE.tryCatch(
+            async () => {
+                const everyMinute = "0 0/1 0 ? * * *";
+                const every5SEconds = "*/5 * * * * *";
+                schedule.scheduleJob(everyMinute, this.createJobScannerTask());
+            },
+            (e: Error) => {
+                return SchedulerStartupError.create(e);
+            }
+        )();
+    }
+
+    register(loader: Loader): Promise<E.Either<RegistrationError, void>> {
+        if (!this.started) {
+            this.logger.error(
+                "Can't register a loader before the scheduler is started."
+            );
+            return TE.left(SchedulerNotStartedError.create())();
+        }
+        if (this.loaders.has(loader.name)) {
+            this.logger.error(
+                `A loader by name ${loader.name} already exists.`
+            );
+            return TE.left(LoaderAlreadyRegisteredError.create(loader.name))();
+        }
+        this.logger.info(`Registering loader with name ${loader.name}.`);
+        this.loaders.set(loader.name, loader);
+        return loader.initialize({
+            client: this.client,
+            jobScheduler: this,
+        })();
+    }
+
+    remove(name: string): E.Either<NoLoaderFoundError, void> {
+        if (this.loaders.has(name)) {
+            this.loaders.delete(name);
+            return E.right(undefined);
+        } else {
+            return E.left(NoLoaderFoundError.create(name));
+        }
+    }
+
+    schedule(job: JobDescriptor): Promise<E.Either<SchedulingError, string>> {
+        if (!this.started) {
+            this.logger.warn("Job scheduler not started.");
+            return TE.left(SchedulerNotStartedError.create())();
+        }
+        if (!this.loaders.has(job.name)) {
+            this.logger.warn(`There is no loader with name ${job.name}`);
+            return TE.left(NoLoaderForJobError.create(job.name))();
+        }
+        return pipe(
+            TE.tryCatch(
+                async () => {
+                    this.logger.info(
+                        "Creating new job:",
+                        job.scheduledAt.toJSDate()
+                    );
+                    const entry = {
+                        name: job.name,
+                        cursor: job.cursor,
+                        scheduledAt: job.scheduledAt.toJSDate(),
+                        updatedAt: new Date(),
+                    };
+                    const result = await this.prisma.jobSchedule.upsert({
+                        where: {
+                            name: job.name,
+                        },
+                        create: entry,
+                        update: entry,
+                    });
+                    this.logger.info(`Job created: ${result}`);
+                    return result;
+                },
+                (e: Error) => {
+                    this.logger.warn(`Job creation failed:`, e);
+                    return JobCreationFailedError.create(job.name, e);
+                }
+            ),
+            TE.map((r) => r.name)
+        )();
+    }
+
     private loadNextJobs() {
-        return this.prisma.job.findMany({
+        return this.prisma.jobSchedule.findMany({
             where: {
                 scheduledAt: {
                     lte: DateTime.local().toJSDate(),
@@ -157,27 +243,28 @@ class DefaultJobScheduler implements JobScheduler {
         });
     }
 
-    private finishJob(job: Job<void>, state: JobState, note: string) {
+    private updateJob(
+        job: Job,
+        state: JobState,
+        note: string
+    ): TE.TaskEither<Error, void> {
         this.logger.info(
-            `Finishing job ${job.name} with state ${state} and note ${note}`
+            `Updating job ${job.name} with state ${state} and note '${note}'.`
         );
         return TE.tryCatch(
             async () => {
-                await this.prisma.job.update({
+                await this.prisma.jobSchedule.update({
                     where: {
                         name: job.name,
                     },
                     data: {
                         scheduledAt: new Date(0),
                         state: state,
-                        data: null,
                         cursor: null,
-                        limit: null,
-                        jobExecutions: {
+                        log: {
                             create: {
-                                finalState: state,
-                                note: note,
-                                finishedAt: new Date(),
+                                state: state,
+                                log: note,
                             },
                         },
                     },
@@ -188,14 +275,15 @@ class DefaultJobScheduler implements JobScheduler {
                     `Couldn't update job ${job.name} to state ${state}. Cause:`,
                     err
                 );
+                return err;
             }
         );
     }
 
-    private executeJob(job: Job<void>) {
+    private executeJob(job: Job) {
         const loader = this.loaders.get(job.name);
         if (loader) {
-            createJob(() => {
+            try {
                 pipe(
                     loader.load({
                         client: this.client,
@@ -203,7 +291,7 @@ class DefaultJobScheduler implements JobScheduler {
                         jobScheduler: this,
                     }),
                     TE.mapLeft((e) => {
-                        this.finishJob(
+                        this.updateJob(
                             job,
                             JobState.FAILED,
                             `Loader ${job.name} failed: ${e.message}`
@@ -213,7 +301,7 @@ class DefaultJobScheduler implements JobScheduler {
                     TE.chainFirst(() => {
                         return TE.tryCatch(
                             async () => {
-                                await this.finishJob(
+                                await this.updateJob(
                                     job,
                                     JobState.COMPLETED,
                                     `Job ${job.name} completed successfully.`
@@ -228,9 +316,14 @@ class DefaultJobScheduler implements JobScheduler {
                         }
                     })
                 )();
-            });
+            } catch (e: unknown) {
+                this.logger.error(
+                    "Job failed. This shouldn't have happened. There is probably a bug.",
+                    e
+                );
+            }
         } else {
-            this.finishJob(
+            this.updateJob(
                 job,
                 JobState.CANCELED,
                 `Job was canceled because no loader with name ${job.name} was found.`
@@ -250,118 +343,21 @@ class DefaultJobScheduler implements JobScheduler {
                 const jobs = await this.loadNextJobs();
                 this.logger.info(`Found ${jobs.length} jobs.`);
                 jobs.forEach((job) => {
-                    this.executeJob({
-                        name: job.name,
-                        scheduledAt: DateTime.fromJSDate(job.scheduledAt),
-                        execututionStartedAt: DateTime.now(),
-                        cursor: job.cursor
-                            ? DateTime.fromJSDate(job.cursor)
-                            : undefined,
-                        limit: job.limit,
-                        // TODO: 📙  implement this later
-                        data: undefined,
-                    });
+                    try {
+                        this.logger.info(`Executing job ${job.name}.`);
+                        this.executeJob({
+                            name: job.name,
+                            scheduledAt: DateTime.fromJSDate(job.scheduledAt),
+                            execututionStartedAt: DateTime.now(),
+                            cursor: job.cursor,
+                        });
+                    } catch (e) {
+                        this.logger.warn("Failed to start job:", e);
+                    }
                 });
             } catch (error: unknown) {
                 this.logger.warn("Job execution error", error);
             }
         };
-    }
-
-    start() {
-        if (this.started) {
-            this.logger.warn("Job scheduler already started.");
-            return Promise.resolve(
-                E.left(SchedulerAlreadyStartedError.create())
-            );
-        }
-        this.logger.info("Starting job scheduler.");
-        this.started = true;
-        return TE.tryCatch(
-            async () => {
-                const workerCount = Math.max(2, os.cpus().length);
-                this.logger.info(`Worker count is: ${workerCount}`);
-                await start({ maxWorkers: workerCount });
-                const everyMinute = "0 0/1 0 ? * * *";
-                const every5SEconds = "*/5 * * * * *";
-                schedule.scheduleJob(
-                    every5SEconds,
-                    this.createJobScannerTask()
-                );
-            },
-            (e: Error) => {
-                return SchedulerStartupError.create(e);
-            }
-        )();
-    }
-
-    register<T>(loader: Loader<T>): Promise<E.Either<RegistrationError, void>> {
-        if (!this.started) {
-            this.logger.error(
-                "Can't register a loader before the scheduler is started."
-            );
-            return Promise.resolve(E.left(SchedulerNotStartedError.create()));
-        }
-        if (this.loaders.has(loader.name)) {
-            this.logger.error(
-                `A loader by name ${loader.name} already exists.`
-            );
-            return Promise.resolve(
-                E.left(LoaderAlreadyRegisteredError.create(loader.name))
-            );
-        }
-        this.logger.info(`Registering loader with name ${loader.name}.`);
-        this.loaders.set(loader.name, loader);
-        return loader.initialize({
-            client: this.client,
-            jobScheduler: this,
-        })();
-    }
-
-    remove(name: string) {
-        if (this.loaders.has(name)) {
-            this.loaders.delete(name);
-            return E.right(undefined);
-        } else {
-            return E.left(NoLoaderFoundError.create(name));
-        }
-    }
-
-    schedule<D>(job: JobDescriptor<D>) {
-        if (!this.started) {
-            this.logger.warn("Job scheduler not started.");
-            return TE.left(SchedulerNotStartedError.create())();
-        }
-        if (!this.loaders.has(job.name)) {
-            this.logger.warn(`There is no loader with name ${job.name}`);
-            return TE.left(NoLoaderForJobError.create(job.name))();
-        }
-        return pipe(
-            TE.tryCatch(
-                async () => {
-                    this.logger.info(
-                        "Creating new job:",
-                        job.scheduledAt.toJSDate()
-                    );
-                    const entity = {
-                        name: job.name,
-                        cursor: job.cursor ? job.cursor.toJSDate() : null,
-                        limit: job.limit,
-                        scheduledAt: job.scheduledAt.toJSDate(),
-                        data: job.data,
-                    };
-                    const result = await this.prisma.job.create({
-                        data: entity,
-                    });
-                    this.logger.info(`Job created: ${result}`);
-                    return result;
-                },
-                (e: Error) => {
-                    this.logger.warn(`Job creation failed:`, e);
-                    return JobCreationFailedError.create(job.name, e);
-                }
-            ),
-            TE.map((r) => r.name)
-        )();
     }
 }

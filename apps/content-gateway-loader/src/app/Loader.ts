@@ -16,13 +16,13 @@ export type InitContext = {
 /**
  * Contains the necessary information for loading.
  */
-export type LoadContext<T> = {
+export type LoadContext = {
     client: ContentGatewayClient;
-    currentJob: Job<T>;
+    currentJob: Job;
     jobScheduler: JobScheduler;
 };
 
-type LoaderBase<T> = {
+type LoaderBase = {
     name: string;
     /**
      * Initializes this loader. This will be called once each time
@@ -35,29 +35,13 @@ type LoaderBase<T> = {
      * @returns an optional job to be scheduled next.
      */
     load: (
-        deps: LoadContext<T>
-    ) => TE.TaskEither<Error, JobDescriptor<T> | undefined>;
+        deps: LoadContext
+    ) => TE.TaskEither<Error, JobDescriptor | undefined>;
 };
 
-/**
- * A loader encapsulates the *pull* logic for a specific data source
- * (eg: it loads data periodically from a remote source).
- */
-export type LoaderWithData<T> = {
-    /**
-     * Serializes your custom data structure to be stored
-     */
-    serialize(data: T): string;
-    /**
-     * Deserializes the custom data
-     */
-    deserialize(data: string): T;
-} & LoaderBase<T> &
-    Tagged<"LoaderWithData">;
+export type SimpleLoader = LoaderBase & Tagged<"SimpleLoader">;
 
-export type SimpleLoader = LoaderBase<void> & Tagged<"SimpleLoader">;
-
-export type Loader<T> = LoaderWithData<T> | SimpleLoader;
+export type Loader = SimpleLoader;
 
 export const createSimpleLoader = (
     base: Omit<SimpleLoader, "__tag">
@@ -65,14 +49,5 @@ export const createSimpleLoader = (
     return {
         ...base,
         ...tagged("SimpleLoader"),
-    };
-};
-
-export const createLoaderWithData = <T>(
-    base: Omit<LoaderWithData<T>, "__tag">
-): LoaderWithData<T> => {
-    return {
-        ...base,
-        ...tagged("LoaderWithData"),
     };
 };

@@ -1,6 +1,5 @@
 import { createStubClient } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
-import { createContentGateway } from "@domain/feature-gateway";
 import * as express from "express";
 import { Logger } from "tslog";
 import { createJobScheduler, JobScheduler } from "./app";
@@ -9,7 +8,6 @@ import { exampleLoader } from "./app/loaders/ExampleLoader";
 const programError = (msg: string) => {
     throw new Error(msg);
 };
-
 const PORT =
     process.env.PORT ||
     process.env.CGL_PORT ||
@@ -40,7 +38,7 @@ const main = async () => {
     });
 
     app.get("/jobs", async (req, res) => {
-        const jobs = await prisma.job.findMany({});
+        const jobs = await prisma.jobSchedule.findMany({});
         const result = jobs.map((job) => {
             return {
                 name: job.name,

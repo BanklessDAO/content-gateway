@@ -1,5 +1,3 @@
-
-
 # Content Gateway
 
 This is the monorepo for *Content Gateway*. You can follow the links below to learn more.
@@ -123,6 +121,9 @@ Adding Postgres to Heroku is [relatively simple](https://devcenter.heroku.com/ar
 
 Fist you'll need to create a postgres for each app:
 
+> 📗 Note that this is already created for the production deployment, you'll only need this if you
+> want to push it for yourself.
+
 ```bash
 heroku addons:create heroku-postgresql:hobby-dev --remote cga --name=pg-cga --as=pg_cga
 heroku addons:create heroku-postgresql:hobby-dev --remote cgl --name=pg-cgl --as=pg_cgl
@@ -131,13 +132,3 @@ heroku addons:create heroku-postgresql:hobby-dev --remote cgl --name=pg-cgl --as
 The `--as` parameter will make sure that Heroku creates the proper environemntal variables (by default it will create `DATABASE_URL` which is not very nice).
 
 Now we'll need to set the databases up locally. Please refer to the [development](#development) part of this readme for more details.
-
-
-All is left to do now is to make sure that there is a release phase configured in all `Procfile`s:
-
-```bash
-release: npx prisma migrate deploy
-```
-
-
-

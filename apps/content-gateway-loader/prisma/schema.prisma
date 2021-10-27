@@ -9,28 +9,28 @@ generator client {
   output          = "../../../node_modules/@cgl/prisma"
 }
 
-model Job {
-  name          String         @id @db.VarChar(50)
-  scheduledAt   DateTime       @default(now()) @db.Timestamp(6)
-  cursor        DateTime?      @db.Timestamp(6)
-  limit         BigInt?        @db.BigInt
-  state         JobState       @default(SCHEDULED)
-  data          Json?          @db.JsonB
-  jobExecutions JobExecution[]
+// Contains scheduling metadata for a job
+model JobSchedule {
+  name        String   @id @db.VarChar(50)
+  scheduledAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @db.Timestamp(6)
+  cursor      BigInt?  @db.BigInt
+  state       JobState @default(SCHEDULED)
+  log         JobLog[]
 
   @@index([scheduledAt])
   @@index([cursor])
-  @@index([limit])
   @@index([state])
 }
 
-model JobExecution {
-  id         String   @id @default(uuid())
-  name       String   @db.VarChar(50)
-  finishedAt DateTime @default(now()) @db.Timestamp(6)
-  note       String   @db.Text
-  finalState JobState
-  job        Job      @relation(fields: [name], references: [name])
+// Represents a change in the state of a job
+model JobLog {
+  id        String      @id @default(uuid())
+  name      String      @db.VarChar(50)
+  log       String      @db.Text
+  state     JobState
+  job       JobSchedule @relation(fields: [name], references: [name])
+  createdAt DateTime    @default(now()) @db.Timestamp(6)
 
   @@index([name])
 }

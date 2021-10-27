@@ -23,20 +23,25 @@ const name = "example-loader";
 export const exampleLoader = createSimpleLoader({
     name: name,
     initialize: ({ client, jobScheduler }) => {
-        return TE.tryCatch(
-            async () => {
-                logger.info("Initializing example loader...");
-                client.register(info, CurrentTimestamp);
-                const result = await jobScheduler.schedule({
-                    name: name,
-                    scheduledAt: DateTime.now(),
-                });
+        return pipe(
+            TE.tryCatch(
+                () => {
+                    logger.info("Initializing example loader...");
+                    client.register(info, CurrentTimestamp);
+                    return jobScheduler.schedule({
+                        name: name,
+                        scheduledAt: DateTime.now(),
+                    });
+                },
+                (error: Error) => new Error(error.message)
+            ),
+            TE.map((result) => {
                 logger.info(`Scheduled job ${JSON.stringify(result)}`);
-            },
-            (error: Error) => new Error(error.message)
+                return undefined;
+            })
         );
     },
-    load: ({ client, currentJob, jobScheduler }) => {
+    load: ({ client, currentJob }) => {
         return pipe(
             TE.tryCatch(
                 async () => {
@@ -46,13 +51,12 @@ export const exampleLoader = createSimpleLoader({
                         value: DateTime.local().toMillis(),
                     });
                 },
-                (error: Error) => new Error(error.message)
+                (error: Error) => error
             ),
             TE.chain(() =>
                 TE.right({
                     name: name,
-                    // runs every minute
-                    scheduledAt: DateTime.now().plus({ minutes: 1 }),
+                    scheduledAt: DateTime.now().plus({ minutes: 15 }),
                 })
             )
         );
