@@ -327,3 +327,10 @@ it("When initialize is called Then it schedules a job", async () => {
 
 Well done! You've successfully unit tested `initialize`! 🎉
 
+### Some Notes on Testing
+
+Writing unit tests is useful if you want to make sure that your `Loader` works properly. This won't check your `Loader` end-to-end. The advantage of unit tests is that they are blazingly fast and if you keep the `--watch` on while you're working on them then you'll always know if something is broken.
+
+Writing integration tests (to see how this works end-to-end) is currently out of the scope of this guide. Check back later! 😎
+
+
