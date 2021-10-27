@@ -49,7 +49,7 @@ export type JobDescriptor = {
 
 Here the `name` corresponds with the `Loader`'s name. We're using [luxon](https://moment.github.io/luxon/#/tour) to represent dates. `scheduledAt` is the next time when the loader should run.
 
-The cursor is an arbitrary number (usually a timestamp) that represents the point where we "left off" since the last batch was loaded. You can use this construct to continue loading data if for example the data set is too big and it would be unfeasible to load it in one go. Another use case is when the data source is updated periodically and you want to remember when was the last update on your pat. More info about cursors [here](http://mysql.rjweb.org/doc.php/pagination).
+The cursor is an arbitrary number (usually a timestamp) that represents the point where we "left off" since the last batch was loaded. You can use this construct to continue loading data if for example the data set is too big and it would be unfeasible to load it in one go. Another use case is when the data source is updated periodically and you want to remember when was the last update on your part. More info about cursors [here](http://mysql.rjweb.org/doc.php/pagination).
 
 ### Writing a Loader
 
