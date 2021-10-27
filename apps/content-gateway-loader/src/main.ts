@@ -4,6 +4,7 @@ import * as express from "express";
 import { Logger } from "tslog";
 import { createJobScheduler, JobScheduler } from "./app";
 import { exampleLoader } from "./app/loaders/ExampleLoader";
+import { banklessAcademyLoader } from "./app/loaders/BanklessAcademyLoader";
 
 const programError = (msg: string) => {
     throw new Error(msg);
@@ -20,6 +21,7 @@ const CGA_URL = process.env.CGA_URL || programError("You must specify CGA_URL");
  */
 const registerLoaders = (scheduler: JobScheduler) => {
     scheduler.register(exampleLoader);
+    scheduler.register(banklessAcademyLoader);
 };
 
 const main = async () => {

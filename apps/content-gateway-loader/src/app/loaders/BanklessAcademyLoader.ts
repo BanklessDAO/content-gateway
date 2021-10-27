@@ -4,6 +4,7 @@ import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
 import { createSimpleLoader } from "..";
+import axios from 'axios'
 
 const logger = new Logger({ name: "BanklessAcademyLoader" });
 
@@ -25,6 +26,11 @@ const typeVersions = {
     course: {
         namespace: "bankless-academy",
         name: "Course",
+        version: "V1",
+    },
+    courseLibrary: {
+        namespace: "bankless-academy",
+        name: "CourseLibrary",
         version: "V1",
     }
 };
@@ -78,6 +84,12 @@ class Course {
     sections: Section[];
 }
 
+class CourseLibrary {
+    @Required(true)
+    @CollectionOf(Course)
+    courses: Course[]
+}
+
 /// Loader
 
 export const banklessAcademyLoader = createSimpleLoader({
@@ -89,6 +101,7 @@ export const banklessAcademyLoader = createSimpleLoader({
                 client.register(typeVersions.quiz, Quiz);
                 client.register(typeVersions.section, Section);
                 client.register(typeVersions.course, Course);
+                client.register(typeVersions.courseLibrary, CourseLibrary);
                 const result = await jobScheduler.schedule({
                     name: name,
                     scheduledAt: DateTime.now(),
@@ -107,35 +120,43 @@ export const banklessAcademyLoader = createSimpleLoader({
 
                     // TODO: Pull the actual data from the Bankless Academy API
 
-                    await client.save(typeVersions.course, {
-                        name: "Lorem Ipsum",
-                        slug: "Lorem Ipsum",
-                        notionId: "Lorem Ipsum",
-                        poapEventId: 123,
-                        description: "Lorem Ipsum",
-                        duration: 123,
-                        difficulty: "Lorem Ipsum",
-                        poapImageLink: "Lorem Ipsum",
-                        learnings: "Lorem Ipsum",
-                        learningActions: "Lorem Ipsum",
-                        knowledgeRequirements: "Lorem Ipsum",
-                        sections: [
-                            {
-                                type: "Lorem Ipsum",
-                                title: "Lorem Ipsum",
-                                content: "Lorem Ipsum",
-                                quiz: {
-                                    answers: [
-                                        "One",
-                                        "Two",
-                                        "Three"
-                                    ],
-                                    rightAnswerNumber: 1
-                                },
-                                component: "Lorem Ipsum"
-                            }
-                        ]
-                    });
+                    await axios
+                        .get(`https://bankless-academy-cg-lab.vercel.app/api/courses`)
+                        .then((response) => {
+                            logger.info(`Loaded data from the original source:`);
+                            logger.info(`${response.data}`);
+
+                            let courses = response.data
+                                .map(item => {
+                                    return {
+                                        name: item.name,
+                                        slug: item.slug,
+                                        notionId: item.notionId,
+                                        poapEventId: item.poapEventId,
+                                        description: item.description,
+                                        duration: item.duration,
+                                        difficulty: item.difficulty,
+                                        poapImageLink: item.poapImageLink,
+                                        learnings: item.learnings,
+                                        learningActions: item.learningActions,
+                                        knowledgeRequirements: item.knowledgeRequirements,
+                                        sections: item.slides
+                                            .map(slide => {
+                                                return {
+                                                    type: slide.type,
+                                                    title: slide.title,
+                                                    content: slide.content,
+                                                    // TODO: Add quiz support
+                                                    component: slide.component
+                                                }
+                                            })
+                                    }
+                                })
+
+                            client.save(typeVersions.courseLibrary, {
+                                courses: courses
+                            })
+                        })
                 },
                 (error: Error) => new Error(error.message)
             ),
