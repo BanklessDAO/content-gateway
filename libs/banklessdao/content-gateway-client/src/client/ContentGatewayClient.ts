@@ -78,13 +78,13 @@ export const createRESTAdapter = (): OutboundDataAdapter => {
     throw new Error("Not implemented");
 };
 
-type StubOutboundAdapterObjects = {
+export type StubOutboundAdapterObjects = {
     schemas: Array<string>;
     payloads: Array<string>;
     adapter: OutboundDataAdapter;
 };
 
-type StubClientObjects = {
+export type StubClientObjects = {
     adapter: StubOutboundAdapterObjects;
     client: ContentGatewayClient;
 };

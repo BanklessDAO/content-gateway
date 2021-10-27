@@ -8,6 +8,7 @@ import * as schedule from "node-schedule";
 import { Logger } from "tslog";
 import { Job, Loader } from ".";
 import { JobDescriptor } from "./JobDescriptor";
+import { SimpleLoader } from "./Loader";
 
 export class NoLoaderForJobError extends Error {
     public _tag = "NoLoaderForJobError";
@@ -125,6 +126,32 @@ export type JobScheduler = {
         job: JobDescriptor
     ) => Promise<E.Either<SchedulingError, string>>;
 };
+
+export class JobSchedulerStub implements JobScheduler {
+    starts = [] as boolean[];
+    loaders = [] as Loader[];
+    removedLoaders = [] as string[];
+    scheduledJobs = [] as JobDescriptor[];
+
+    start(): Promise<E.Either<StartError, void>> {
+        this.starts.push(true);
+        return Promise.resolve(E.right(undefined));
+    }
+    register(loader: Loader): Promise<E.Either<RegistrationError, void>> {
+        this.loaders.push(loader);
+        return Promise.resolve(E.right(undefined));
+    }
+    remove(name: string): E.Either<NoLoaderFoundError, void> {
+        this.removedLoaders.push(name);
+        return E.right(undefined);
+    }
+    schedule(job: JobDescriptor): Promise<E.Either<SchedulingError, string>> {
+        this.scheduledJobs.push(job);
+        return Promise.resolve(E.right(""));
+    }
+}
+
+export const createJobSchedulerStub = () => new JobSchedulerStub();
 
 export const createJobScheduler = (
     prisma: PrismaClient,
