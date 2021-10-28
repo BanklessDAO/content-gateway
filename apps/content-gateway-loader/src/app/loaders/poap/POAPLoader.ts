@@ -34,7 +34,7 @@ const pullTokensSince = (id) => {
         );
 }
 
-export const POAPLoader = createSimpleLoader({
+export const poapLoader = createSimpleLoader({
     name: name,
     initialize: ({ client, jobScheduler }) => {
         return TE.tryCatch(

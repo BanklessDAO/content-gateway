@@ -1,4 +1,4 @@
-import { createClient, createClientStub, createRESTAdapter } from "@banklessdao/content-gateway-client";
+import { createClient, createRESTAdapter } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
 import { createDefaultJSONSerializer } from "@shared/util-schema";
 import * as express from "express";
@@ -28,7 +28,7 @@ const registerLoaders = (scheduler: JobScheduler) => {
     scheduler.register(banklessAcademyLoader);
     scheduler.register(bountyBoardLoader);
     scheduler.register(poapLoader);
-    scheduler.register(banklessAcademyLoader);
+    scheduler.register(banklessTokenLoader);
 };
 
 const main = async () => {
