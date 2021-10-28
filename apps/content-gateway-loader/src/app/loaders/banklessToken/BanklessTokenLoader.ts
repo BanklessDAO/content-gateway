@@ -43,7 +43,7 @@ const pullAccountsSince = (id) => {
         );
 }
 
-export const BanklessTokenLoader = createSimpleLoader({
+export const banklessTokenLoader = createSimpleLoader({
     name: name,
     initialize: ({ client, jobScheduler }) => {
         return TE.tryCatch(
