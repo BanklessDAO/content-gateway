@@ -317,6 +317,7 @@ class DefaultJobScheduler implements JobScheduler {
                         jobScheduler: this,
                     }),
                     TE.mapLeft((e) => {
+                        this.logger.info(`Loader ${job.name} failed`, e);
                         this.updateJob(
                             job,
                             JobState.FAILED,
