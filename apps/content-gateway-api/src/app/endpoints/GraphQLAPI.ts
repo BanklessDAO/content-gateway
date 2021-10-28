@@ -79,7 +79,7 @@ export const generateGraphQLAPI = async ({
         map((schema) => {
             return graphqlHTTP({
                 schema: schema,
-                graphiql: isDev,
+                graphiql: true,
             });
         })
     );
