@@ -71,6 +71,7 @@ export const POAPLoader = createSimpleLoader({
                     }
 
                     client.save(typeVersions.poapTokenIndex, {
+                        id: "0",
                         tokens: tokens
                     });
                 },

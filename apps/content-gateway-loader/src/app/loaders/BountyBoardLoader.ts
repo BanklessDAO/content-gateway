@@ -1,10 +1,10 @@
-import { Required, CollectionOf, AdditionalProperties } from "@tsed/schema";
+import { Required, CollectionOf } from "@tsed/schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
 import { createSimpleLoader } from "..";
-import axios from "axios";
+import axios from 'axios'
 
 const logger = new Logger({ name: "BountyBoardLoader" });
 
@@ -37,7 +37,7 @@ const typeVersions = {
         namespace: "bounty-board",
         name: "BountyBoard",
         version: "V1",
-    },
+    }
 };
 
 // Will be extracted into a global scope later
@@ -106,8 +106,9 @@ class Bounty {
     reviewedBy: Member;
 }
 
-@AdditionalProperties(false)
 class BountyBoard {
+    @Required(true)
+    id: string;
     @Required(true)
     @CollectionOf(Bounty)
     bounties: Bounty[];
@@ -128,7 +129,7 @@ export const bountyBoardLoader = createSimpleLoader({
                 });
                 logger.info(`Scheduled job ${JSON.stringify(result)}`);
             },
-            (error: Error) => error
+            (error: Error) => new Error(error.message)
         );
     },
     load: ({ client, currentJob }) => {
@@ -139,67 +140,62 @@ export const bountyBoardLoader = createSimpleLoader({
                     logger.info(`Current job: ${currentJob}`);
 
                     await axios
-                        .get(
-                            `https://bountyboard.bankless.community/api/bounties`
-                        )
+                        .get(`https://bountyboard.bankless.community/api/bounties`)
                         .then((response) => {
-                            logger.info(
-                                `Loaded data from the original source:`
-                            );
+                            logger.info(`Loaded data from the original source:`);
                             logger.info(`${response.data}`);
 
-                            const bounties = response.data.data.map((item) => {
-                                return {
-                                    season: item.season,
-                                    title: item.title,
-                                    descrtiption: item.descrtiption,
-                                    criteria: item.criteria,
-                                    reward: {
-                                        currency: item.reward.currency,
-                                        amount: item.reward.amount,
-                                        scale: item.reward.scale,
-                                    },
-                                    createdBy: item.createdBy,
-                                    createdAt: item.createdAt,
-                                    dueAt: item.dueAt,
-                                    discordMessageId: item.discordMessageId,
-                                    status: item.status,
-                                    statusHistory: item.statusHistory.map(
-                                        (event) => {
-                                            return {
-                                                status: event.status,
-                                                setAt: event.setAt,
-                                            };
+                            let bounties = response.data.data
+                                .map(item => {
+                                    return {
+                                        season: item.season,
+                                        title: item.title,
+                                        descrtiption: item.descrtiption,
+                                        criteria: item.criteria,
+                                        reward: {
+                                            currency: item.reward.currency,
+                                            amount: item.reward.amount,
+                                            scale: item.reward.scale
+                                        },
+                                        createdBy: item.createdBy,
+                                        createdAt: item.createdAt,
+                                        dueAt: item.dueAt,
+                                        discordMessageId: item.discordMessageId,
+                                        status: item.status,
+                                        statusHistory: item.statusHistory
+                                            .map(event => {
+                                                return {
+                                                    status: event.status,
+                                                    setAt: event.setAt
+                                                }
+                                            }),
+                                        claimedBy: {
+                                            discordHandle: item.claimedBy.discordHandle,
+                                            discordId: item.claimedBy.discordId
+                                        },
+                                        claimedAt: item.claimedAt,
+                                        submissionNotes: item.submissionNotes,
+                                        submissionUrl: item.submissionUrl,
+                                        submittedAt: item.submittedAt,
+                                        submittedBy: {
+                                            discordHandle: item.submittedBy.discordHandle,
+                                            discordId: item.submittedBy.discordId
+                                        },
+                                        reviewedAt: item.reviewedAt,
+                                        reviewedBy: {
+                                            discordHandle: item.reviewedBy.discordHandle,
+                                            discordId: item.reviewedBy.discordId
                                         }
-                                    ),
-                                    claimedBy: {
-                                        discordHandle:
-                                            item.claimedBy.discordHandle,
-                                        discordId: item.claimedBy.discordId,
-                                    },
-                                    claimedAt: item.claimedAt,
-                                    submissionNotes: item.submissionNotes,
-                                    submissionUrl: item.submissionUrl,
-                                    submittedAt: item.submittedAt,
-                                    submittedBy: {
-                                        discordHandle:
-                                            item.submittedBy.discordHandle,
-                                        discordId: item.submittedBy.discordId,
-                                    },
-                                    reviewedAt: item.reviewedAt,
-                                    reviewedBy: {
-                                        discordHandle:
-                                            item.reviewedBy.discordHandle,
-                                        discordId: item.reviewedBy.discordId,
-                                    },
-                                };
-                            });
+                                    }
+                                })
+
                             client.save(typeVersions.bountyBoard, {
-                                bounties: bounties,
-                            });
-                        });
+                                id: "0",
+                                bounties: bounties
+                            })
+                        })
                 },
-                (error: Error) => error
+                (error: Error) => new Error(error.message)
             ),
             TE.chain(() =>
                 TE.right({

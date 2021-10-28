@@ -39,6 +39,8 @@ export class BANKAccount {
 
 export class BanklessTokenIndex {
     @Required(true)
+    id: string;
+    @Required(true)
     @CollectionOf(BANKAccount)
     accounts: BANKAccount[];
 }

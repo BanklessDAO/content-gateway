@@ -24,6 +24,8 @@ export class POAPToken {
 
 export class POAPTokenIndex {
     @Required(true)
+    id: string;
+    @Required(true)
     @CollectionOf(POAPToken)
     tokens: POAPToken[];
 }

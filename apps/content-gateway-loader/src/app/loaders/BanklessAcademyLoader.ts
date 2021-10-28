@@ -87,6 +87,8 @@ class Course {
 @AdditionalProperties(false)
 class CourseLibrary {
     @Required(true)
+    id: string;
+    @Required(true)
     @CollectionOf(Course)
     courses: Course[]
 }
@@ -150,6 +152,7 @@ export const banklessAcademyLoader = createSimpleLoader({
                                 })
 
                             client.save(typeVersions.courseLibrary, {
+                                id: "0",
                                 courses: courses
                             })
                         })

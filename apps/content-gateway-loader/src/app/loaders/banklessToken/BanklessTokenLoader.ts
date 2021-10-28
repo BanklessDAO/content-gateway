@@ -16,6 +16,7 @@ const mapAccounts = (accounts) => {
     return accounts
         .map(account => {
             return {
+                id: account.id,
                 address: account.id,
                 balance: account.ERC20balances[0].value,
                 transactions: account.ERC20balances[0].transferToEvent
@@ -79,6 +80,7 @@ export const BanklessTokenLoader = createSimpleLoader({
                     }
 
                     client.save(typeVersions.banklessTokenIndex, {
+                        id: "0",
                         accounts: accounts
                     });
                 },
