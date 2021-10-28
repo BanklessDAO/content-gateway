@@ -180,7 +180,7 @@ class DefaultJobScheduler implements JobScheduler {
             async () => {
                 const everyMinute = "0 0/1 0 ? * * *";
                 const every5SEconds = "*/5 * * * * *";
-                schedule.scheduleJob(everyMinute, this.createJobScannerTask());
+                schedule.scheduleJob(every5SEconds, this.createJobScannerTask());
             },
             (e: Error) => {
                 return SchedulerStartupError.create(e);
@@ -247,7 +247,7 @@ class DefaultJobScheduler implements JobScheduler {
                         create: entry,
                         update: entry,
                     });
-                    this.logger.info(`Job created: ${result}`);
+                    this.logger.info("Job created:", result);
                     return result;
                 },
                 (e: Error) => {

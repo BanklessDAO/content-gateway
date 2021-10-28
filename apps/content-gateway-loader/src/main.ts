@@ -1,5 +1,6 @@
-import { createClientStub } from "@banklessdao/content-gateway-client";
+import { createClient, createClientStub, createRESTAdapter } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
+import { createDefaultJSONSerializer } from "@shared/util-schema";
 import * as express from "express";
 import { Logger } from "tslog";
 import { createJobScheduler, JobScheduler } from "./app";
@@ -29,7 +30,10 @@ const main = async () => {
     const app = express();
 
     const prisma = new PrismaClient();
-    const clientStub = createClientStub();
+    const clientStub = createClient({
+        serializer: createDefaultJSONSerializer(),
+        adapter: createRESTAdapter(CGA_URL)
+    })
 
     app.get("/", (req, res) => {
         res.send(

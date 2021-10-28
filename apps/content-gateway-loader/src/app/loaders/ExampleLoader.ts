@@ -4,25 +4,21 @@ import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
 import { createSimpleLoader } from "..";
+import {v4 as uuid} from "uuid";
 
 const logger = new Logger({ name: "ExampleLoader" });
 
 const info = {
     namespace: "test",
     name: "CurrentTimestamp",
-    version: "V1",
+    version: "V2",
 };
 
 class CurrentTimestamp {
     @Required(true)
+    id: string;
+    @Required(true)
     value: number;
-    @Required(true)
-    foo: Foo
-}
-
-class Foo {
-    @Required(true)
-    value: string;
 }
 
 const name = "example-loader";
@@ -32,9 +28,9 @@ export const exampleLoader = createSimpleLoader({
     initialize: ({ client, jobScheduler }) => {
         return pipe(
             TE.tryCatch(
-                () => {
+                async () => {
                     logger.info("Initializing example loader...");
-                    client.register(info, CurrentTimestamp);
+                    await client.register(info, CurrentTimestamp);
                     return jobScheduler.schedule({
                         name: name,
                         scheduledAt: DateTime.now(),
@@ -43,7 +39,7 @@ export const exampleLoader = createSimpleLoader({
                 (error: Error) => new Error(error.message)
             ),
             TE.map((result) => {
-                logger.info(`Scheduled job ${JSON.stringify(result)}`);
+                logger.info("Scheduled Example Loader...", result);
                 return undefined;
             })
         );
@@ -55,6 +51,7 @@ export const exampleLoader = createSimpleLoader({
                     logger.info("Executing example loader.");
                     logger.info(`current job: ${currentJob}`);
                     await client.save(info, {
+                        id: uuid(),
                         value: DateTime.local().toMillis(),
                     });
                 },
@@ -63,7 +60,7 @@ export const exampleLoader = createSimpleLoader({
             TE.chain(() =>
                 TE.right({
                     name: name,
-                    scheduledAt: DateTime.now().plus({ minutes: 15 }),
+                    scheduledAt: DateTime.now().plus({ seconds: 5 }),
                 })
             )
         );
