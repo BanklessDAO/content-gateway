@@ -1,4 +1,4 @@
-import { createStubClient } from "@banklessdao/content-gateway-client";
+import { createClientStub } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
 import * as express from "express";
 import { Logger } from "tslog";
@@ -29,7 +29,7 @@ const main = async () => {
     const app = express();
 
     const prisma = new PrismaClient();
-    const stubClient = createStubClient();
+    const clientStub = createClientStub();
 
     app.get("/", (req, res) => {
         res.send(
@@ -57,7 +57,7 @@ const main = async () => {
         logger.error(err);
     });
 
-    const scheduler = createJobScheduler(prisma, stubClient.client);
+    const scheduler = createJobScheduler(prisma, clientStub);
     await scheduler.start();
 
     registerLoaders(scheduler);

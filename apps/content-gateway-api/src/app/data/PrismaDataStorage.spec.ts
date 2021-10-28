@@ -1,17 +1,16 @@
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { PrismaClient } from "@cga/prisma";
+import { extractUnsafe } from "@shared/util-fp";
 import {
     createDefaultJSONSerializer,
     createSchemaFromObject,
     createSchemaFromType,
-    Schema,
 } from "@shared/util-schema";
 import { Required } from "@tsed/schema";
 import * as E from "fp-ts/lib/Either";
 import * as O from "fp-ts/lib/Option";
 import { v4 as uuid } from "uuid";
-import { createPrismaDataStorage } from "./PrismaDataStorage";
-import * as RE from "fp-ts/ReaderEither";
+import { createPrismaDataStorage } from ".";
 
 class Address {
     @Required(true)
@@ -40,18 +39,16 @@ const client = new PrismaClient();
 const serializer = createDefaultJSONSerializer();
 
 describe("Given a Prisma data storage", () => {
-    const schema = (createSchemaFromType(serializer)(
-        info,
-        Address
-    ) as E.Right<Schema>).right;
-
+    const schema = extractUnsafe(
+        createSchemaFromType(serializer)(info, Address)
+    );
 
     const storage = createPrismaDataStorage(
         createSchemaFromObject(serializer),
         client
     );
 
-    const prepareDatabase = async () => {
+    const truncateTables = async () => {
         await client.data.deleteMany({});
         await client.schema.deleteMany({});
     };
@@ -80,13 +77,12 @@ describe("Given a Prisma data storage", () => {
     };
 
     beforeEach(async () => {
-        await prepareDatabase();
+        await truncateTables();
         await prepareUserSchema();
     });
 
     describe("When creating a new data entry", () => {
         it("Then it is successfully created when valid", async () => {
-
             const result = await storage.store({
                 info: info,
                 data: {
@@ -145,7 +141,6 @@ describe("Given a Prisma data storage", () => {
     });
 
     describe("When querying data by its schema info", () => {
-        
         it("Then when there is data it is returned", async () => {
             await prepareAddresses();
             const result = await storage.findBySchema(info)();

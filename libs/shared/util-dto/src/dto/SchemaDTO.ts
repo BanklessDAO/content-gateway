@@ -1,15 +1,16 @@
-import { JSONSerializer, Schema } from "@shared/util-schema";
+import { Schema } from "@shared/util-schema";
 import { deserialize, serialize } from "@tsed/json-mapper";
 import { Required } from "@tsed/schema";
+import * as E from "fp-ts/Either";
 import { SchemaInfoDTO } from ".";
 
 export class SchemaDTO {
     @Required(true)
     info: SchemaInfoDTO;
     @Required(true)
-    schema: string;
+    schema: Record<string, unknown>;
 
-    constructor(info: SchemaInfoDTO, schema: string) {
+    constructor(info: SchemaInfoDTO, schema: Record<string, unknown>) {
         this.info = info;
         this.schema = schema;
     }
@@ -18,26 +19,14 @@ export class SchemaDTO {
         return serialize(dto);
     }
 
-    static fromJSON(data: Record<string, unknown>): SchemaDTO {
-        return deserialize(data, { type: SchemaDTO });
+    static fromJSON(data: Record<string, unknown>): E.Either<Error, SchemaDTO> {
+        return E.tryCatch(() => deserialize(data, SchemaDTO), E.toError);
     }
 
     static fromSchema(schema: Schema): SchemaDTO {
         return new SchemaDTO(
             SchemaInfoDTO.fromSchemaInfo(schema.info),
-            schema.toJSONString()
+            schema.schemaObject
         );
     }
 }
-
-export const schemaToString: (
-    serializer: JSONSerializer
-) => (schema: Schema) => string = (serializer) => (schema) => {
-    return serializer.serialize(SchemaDTO.toJSON(SchemaDTO.fromSchema(schema)));
-};
-
-export const stringToSchemaDTO: (
-    serializer: JSONSerializer
-) => (schema: string) => SchemaDTO = (serializer) => (schema) => {
-    return SchemaDTO.fromJSON(serializer.deserialize(schema));
-};

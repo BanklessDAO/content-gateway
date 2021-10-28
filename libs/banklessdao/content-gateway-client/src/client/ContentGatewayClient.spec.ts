@@ -4,6 +4,10 @@ import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import * as TE from "fp-ts/TaskEither";
 import { createClient, OutboundDataAdapter } from "./";
+import {
+    createStubOutboundAdapter,
+    OutboundDataAdapterStub,
+} from "./ContentGatewayClient";
 
 class Comment {
     @Required(true)
@@ -58,19 +62,12 @@ const invalidPostWithMissingData = {
 
 describe("Given a gateway client", () => {
     const serializer = createDefaultJSONSerializer();
-    const schemas = [] as Array<string>;
-    const payloads = [];
 
-    const adapterStub: OutboundDataAdapter = {
-        register: (schema) => {
-            schemas.push(schema);
-            return TE.right(undefined);
-        },
-        send: (payload) => {
-            payloads.push(payload);
-            return TE.right(undefined);
-        },
-    };
+    let adapterStub: OutboundDataAdapterStub;
+
+    beforeEach(() => {
+        adapterStub = createStubOutboundAdapter();
+    });
 
     const client = createClient({ adapter: adapterStub, serializer });
 
@@ -79,13 +76,30 @@ describe("Given a gateway client", () => {
 
         const expected = {
             info: { namespace: "test", name: "Post", version: "V1" },
-            schema: `{"type":"object","properties":{"id":{"type":"string","minLength":1},"content":{"type":"string","minLength":1},"comments":{"type":"array","items":{"$ref":"#/definitions/Comment"}}},"additionalProperties":false,"required":["id","content","comments"],"definitions":{"Comment":{"type":"object","properties":{"text":{"type":"string","minLength":1}},"required":["text"]}}}`,
+            schema: {
+                type: "object",
+                properties: {
+                    id: { type: "string", minLength: 1 },
+                    content: { type: "string", minLength: 1 },
+                    comments: {
+                        type: "array",
+                        items: { $ref: "#/definitions/Comment" },
+                    },
+                },
+                additionalProperties: false,
+                required: ["id", "content", "comments"],
+                definitions: {
+                    Comment: {
+                        type: "object",
+                        properties: { text: { type: "string", minLength: 1 } },
+                        required: ["text"],
+                    },
+                },
+            },
         };
 
         expect(result).toEqual(E.right(undefined));
-        expect(SchemaDTO.fromJSON(serializer.deserialize(schemas[0]))).toEqual(
-            expected
-        );
+        expect(SchemaDTO.fromJSON(adapterStub.schemas[0])).toEqual(expected);
     });
 
     it("When registering an invalid schema Then it returns an error", async () => {
@@ -97,7 +111,7 @@ describe("Given a gateway client", () => {
         const result = await client.save(info, validPost);
 
         expect(result).toEqual(E.right(undefined));
-        expect(payloads).toEqual([
+        expect(adapterStub.payloads).toEqual([
             '{"info":{"namespace":"test","name":"Post","version":"V1"},"data":{"id":"1","content":"Hello World","comments":[{"text":"Hello"},{"text":"World"}]}}',
         ]);
     });

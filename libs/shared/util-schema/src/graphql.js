@@ -64,8 +64,6 @@ var queryType = new graphql.GraphQLObjectType({
 
 var schema = new graphql.GraphQLSchema({ query: queryType });
 
-console.log(graphql.printSchema(schema));
-
 var app = express();
 app.use(
     "/graphql",

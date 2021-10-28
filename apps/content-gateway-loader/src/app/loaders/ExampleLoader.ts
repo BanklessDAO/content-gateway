@@ -16,6 +16,13 @@ const info = {
 class CurrentTimestamp {
     @Required(true)
     value: number;
+    @Required(true)
+    foo: Foo
+}
+
+class Foo {
+    @Required(true)
+    value: string;
 }
 
 const name = "example-loader";

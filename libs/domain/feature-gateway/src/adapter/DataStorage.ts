@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { SchemaInfo, schemaInfoToKey } from "@shared/util-schema";
+import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import { v4 as uuid } from "uuid";
@@ -15,17 +15,22 @@ export type DataStorage = {
     findById: (id: string) => TO.TaskOption<Data>;
 };
 
+export type DataStorageStub = {
+    storage: Map<string, Data[]>;
+} & DataStorage;
+
 /**
  * This factory function creates a new [[DataStorage]] instance that will
  * use the supplied [[map]] as the storage. This is useful for testing.
  */
-export const createInMemoryDataStorage = (
+export const createDataStorageStub = (
     map: Map<string, Data[]> = new Map()
-): DataStorage => {
+): DataStorageStub => {
     const lookup = new Map<string, Data>();
     return {
+        storage: map,
         store: function (data: Data): TE.TaskEither<Error, string> {
-            const keyStr = schemaInfoToKey(data.info);
+            const keyStr = schemaInfoToString(data.info);
             if (!map.has(keyStr)) {
                 map.set(keyStr, []);
             }
@@ -35,7 +40,7 @@ export const createInMemoryDataStorage = (
             return TE.right(id);
         },
         findBySchema: function (key: SchemaInfo): TO.TaskOption<Array<Data>> {
-            const keyStr = schemaInfoToKey(key);
+            const keyStr = schemaInfoToString(key);
             if (map.has(keyStr)) {
                 return TO.fromNullable(map.get(keyStr));
             } else {

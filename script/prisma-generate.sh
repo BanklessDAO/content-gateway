@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source projects.sh
+
 cd "$(dirname "$0")"
 
 if [ -z "$1" ]; then

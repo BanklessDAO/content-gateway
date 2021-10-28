@@ -1,7 +1,7 @@
 import { Payload } from "@domain/feature-gateway";
-import { JSONSerializer } from "@shared/util-schema";
 import { deserialize, serialize } from "@tsed/json-mapper";
 import { Required } from "@tsed/schema";
+import * as E from "fp-ts/Either";
 import { SchemaInfoDTO } from ".";
 
 export class PayloadDTO<T> {
@@ -19,8 +19,10 @@ export class PayloadDTO<T> {
         return serialize(dto);
     }
 
-    static fromJSON<T>(data: Record<string, unknown>): PayloadDTO<T> {
-        return deserialize(data, { type: PayloadDTO });
+    static fromJSON<T>(
+        data: Record<string, unknown>
+    ): E.Either<Error, PayloadDTO<T>> {
+        return E.tryCatch(() => deserialize(data, PayloadDTO), E.toError);
     }
 
     static fromPayload<T>(payload: Payload<T>): PayloadDTO<T> {
@@ -33,21 +35,7 @@ export class PayloadDTO<T> {
     static toPayload<T>(dto: PayloadDTO<T>): Payload<T> {
         return {
             info: dto.info,
-            data: dto.data
-        }
+            data: dto.data,
+        };
     }
 }
-
-export const payloadToString: (
-    serializer: JSONSerializer
-) => <T>(payload: Payload<T>) => string = (serializer) => (payload) => {
-    return serializer.serialize(
-        PayloadDTO.toJSON(PayloadDTO.fromPayload(payload))
-    );
-};
-
-export const stringToPayloadDTO: (
-    serializer: JSONSerializer
-) => <T>(payload: string) => PayloadDTO<T> = (serializer) => (payload) => {
-    return PayloadDTO.fromJSON(serializer.deserialize(payload));
-};

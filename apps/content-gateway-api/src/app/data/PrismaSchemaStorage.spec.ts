@@ -5,6 +5,7 @@ import {
     createSchemaFromObject,
     createSchemaFromType,
     Schema,
+    schemaInfoToString,
 } from "@shared/util-schema";
 import { Required } from "@tsed/schema";
 import * as E from "fp-ts/lib/Either";
@@ -36,10 +37,13 @@ describe("Given a Prisma schema storage", () => {
         client
     );
 
+    beforeEach(async () => {
+        await client.data.deleteMany({});
+        await client.schema.deleteMany({});
+    });
+
     describe("When creating a new schema entry", () => {
         it("Then it is successfully created when valid", async () => {
-            await client.schema.deleteMany({});
-
             const result = await storage.register(userSchema)();
 
             expect(result).toEqual(E.right(undefined));
@@ -50,7 +54,15 @@ describe("Given a Prisma schema storage", () => {
 
             const result = await storage.register(userSchema)();
 
-            expect(result).toEqual(E.left(new Error("Schema already exists")));
+            const info = schemaInfoToString(userInfo);
+
+            expect(result).toEqual(
+                E.left(
+                    new Error(
+                        `There is an incompatible registered schema with key ${info}`
+                    )
+                )
+            );
         });
     });
 });

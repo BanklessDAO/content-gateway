@@ -1,23 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-    PayloadDTO,
-    payloadToString,
-    SchemaDTO,
+    PayloadDTO, SchemaDTO,
     SchemaInfoDTO,
-    schemaInfoToString,
+    schemaInfoToString
 } from "@shared/util-dto";
 import {
     createDefaultJSONSerializer,
     createSchemaFromType,
     JSONSerializer,
     Schema,
-    SchemaInfo,
+    SchemaInfo
 } from "@shared/util-schema";
 import { isArray, Type } from "@tsed/core";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/function";
 import * as O from "fp-ts/Option";
-import * as R from "fp-ts/Reader";
+import { Reader } from "fp-ts/Reader";
 import * as TE from "fp-ts/TaskEither";
 import { failure } from "io-ts/lib/PathReporter";
 import { Logger } from "tslog";
@@ -65,9 +63,14 @@ export type ContentGatewayClient = {
  * This abstraction hides the implementation details of how data is sent over the wire.
  */
 export type OutboundDataAdapter = {
-    register: (schema: string) => TE.TaskEither<Error, void>;
-    send: (payload: string) => TE.TaskEither<Error, void>;
+    register: (schema: Record<string, unknown>) => TE.TaskEither<Error, void>;
+    send: (payload: Record<string, unknown>) => TE.TaskEither<Error, void>;
 };
+
+export type OutboundDataAdapterStub = {
+    schemas: Array<Record<string, unknown>>;
+    payloads: Array<Record<string, unknown>>;
+} & OutboundDataAdapter;
 
 export type ClientDependencies = {
     serializer: JSONSerializer;
@@ -78,25 +81,20 @@ export const createRESTAdapter = (): OutboundDataAdapter => {
     throw new Error("Not implemented");
 };
 
-export type StubOutboundAdapterObjects = {
-    schemas: Array<string>;
-    payloads: Array<string>;
-    adapter: OutboundDataAdapter;
-};
-
-export type StubClientObjects = {
-    adapter: StubOutboundAdapterObjects;
-    client: ContentGatewayClient;
-};
+export type ContentGatewayClientStub = {
+    adapter: OutboundDataAdapterStub;
+} & ContentGatewayClient;
 
 /**
  * Creates a stub {@link OutboundDataAdapter} with the corresponding storage
  * objects that can be used for testing.
  */
-const createStubOutboundAdapter = (): StubOutboundAdapterObjects => {
-    const schemas = [] as Array<string>;
-    const payloads = [] as Array<string>;
-    const adapter: OutboundDataAdapter = {
+export const createStubOutboundAdapter = (): OutboundDataAdapterStub => {
+    const schemas = [] as Array<Record<string, unknown>>;
+    const payloads = [] as Array<Record<string, unknown>>;
+    return {
+        schemas,
+        payloads,
         register: (schema) => {
             logger.info(`Registering schema: ${schema}`);
             schemas.push(schema);
@@ -110,36 +108,30 @@ const createStubOutboundAdapter = (): StubOutboundAdapterObjects => {
             return TE.right(undefined);
         },
     };
-    return {
-        schemas,
-        payloads,
-        adapter,
-    };
 };
 
 /**
- * Creates a new {@link ContentGatewayClient} instance that uses
+ * Creates a new {@link ContentGatewayClientStub} instance that uses
  * in-memory storage and default serialization. Can be used for
  * testing purposes.
  */
-export const createStubClient: () => StubClientObjects = () => {
+export const createClientStub: () => ContentGatewayClientStub = () => {
     const serializer = createDefaultJSONSerializer();
     const adapter = createStubOutboundAdapter();
-    const client = createClient({ serializer, adapter: adapter.adapter });
+    const client = createClient({ serializer, adapter });
     return {
         adapter,
-        client,
+        ...client,
     };
 };
 
 /**
  * This object is instantiated in the client.
  */
-export const createClient: R.Reader<ClientDependencies, ContentGatewayClient> =
+export const createClient: Reader<ClientDependencies, ContentGatewayClient> =
     ({ serializer, adapter }) => {
         const schemas = new Map<string, Schema>();
         const schemaInfoSerializer = schemaInfoToString(serializer);
-        const payloadSerializer = payloadToString(serializer);
         const typeToSchema = createSchemaFromType(serializer);
 
         return {
@@ -157,10 +149,8 @@ export const createClient: R.Reader<ClientDependencies, ContentGatewayClient> =
                     ),
                     TE.chain((schema) =>
                         adapter.register(
-                            serializer.serialize(
-                                SchemaDTO.toJSON(
-                                    new SchemaDTO(info, schema.toJSONString())
-                                )
+                            SchemaDTO.toJSON(
+                                new SchemaDTO(info, schema.schemaObject)
                             )
                         )
                     )
@@ -198,7 +188,7 @@ export const createClient: R.Reader<ClientDependencies, ContentGatewayClient> =
                     }),
                     TE.chain((dataRecord) =>
                         adapter.send(
-                            payloadSerializer(
+                            PayloadDTO.toJSON(
                                 new PayloadDTO(
                                     SchemaInfoDTO.fromSchemaInfo(info),
                                     dataRecord

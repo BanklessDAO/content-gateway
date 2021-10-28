@@ -8,7 +8,6 @@ import * as schedule from "node-schedule";
 import { Logger } from "tslog";
 import { Job, Loader } from ".";
 import { JobDescriptor } from "./JobDescriptor";
-import { SimpleLoader } from "./Loader";
 
 export class NoLoaderForJobError extends Error {
     public _tag = "NoLoaderForJobError";
