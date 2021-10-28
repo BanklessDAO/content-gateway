@@ -96,6 +96,9 @@ export const createApp = async (prisma: PrismaClient) => {
 
     const clientBuildPath = join(__dirname, "../content-gateway-frontend");
 
+    app.use("/api/graphql", await generateGraphQLAPI(appContext));
+    app.use("/api/rest/", await generateContentGatewayAPI(appContext));
+
     if (isProd) {
         app.use(express.static(clientBuildPath));
         app.get("*", (request, response) => {
@@ -103,7 +106,5 @@ export const createApp = async (prisma: PrismaClient) => {
         });
     }
 
-    app.use("/api/graphql", await generateGraphQLAPI(appContext));
-    app.use("/api/rest/", await generateContentGatewayAPI(appContext));
     return app;
 };
