@@ -65,6 +65,15 @@ export const createApp = async (prisma: PrismaClient) => {
                     TE.chain(() => TE.of(undefined))
                 );
             },
+            sendBatch: (payload): TE.TaskEither<Error, void> => {
+                return pipe(
+                    PayloadDTO.fromJSON(payload),
+                    E.map((dto) => PayloadDTO.toPayload(dto)),
+                    TE.fromEither,
+                    TE.chain(gateway.receiveBatch),
+                    TE.chain(() => TE.of(undefined))
+                );
+            },
         },
     });
 

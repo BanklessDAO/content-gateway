@@ -18,6 +18,12 @@ export type ContentGateway = {
      * returned.
      */
     receive: <T>(payload: Payload<T>) => TE.TaskEither<Error, string>;
+    /**
+     * Same as {@link receive} but for a batch of items.
+     */
+    receiveBatch: <T>(
+        payload: Payload<Array<T>>
+    ) => TE.TaskEither<Error, string>;
 };
 
 export type ContentGatewayFactory = (
@@ -40,8 +46,18 @@ export const createContentGateway: ContentGatewayFactory = (
         receive: <T>(payload: Payload<T>) => {
             return dataStorage.store({
                 info: payload.info,
-                data: payload.data as Record<string, unknown>
+                data: payload.data as Record<string, unknown>,
             });
+        },
+        receiveBatch: <T>(payload: Payload<Array<T>>) => {
+            const { info, data } = payload;
+            data.forEach((item) => {
+                dataStorage.store({
+                    info: info,
+                    data: item as Record<string, unknown>,
+                });
+            });
+            return TE.right("implement this later");
         },
     };
 };

@@ -59,6 +59,10 @@ export type ContentGatewayClient = {
      *  {@link ContentGatewayClient#register | register}ed.
      */
     save: <T>(info: SchemaInfo, data: T) => Promise<E.Either<Error, void>>;
+    /**
+     * Same as {@link ContentGatewayClient#save} but sends a batch
+     */
+     saveBatch: <T>(info: SchemaInfo, data: Array<T>) => Promise<E.Either<Error, void>>;
 };
 
 /**
@@ -67,6 +71,7 @@ export type ContentGatewayClient = {
 export type OutboundDataAdapter = {
     register: (schema: Record<string, unknown>) => TE.TaskEither<Error, void>;
     send: (payload: Record<string, unknown>) => TE.TaskEither<Error, void>;
+    sendBatch: (payload: Record<string, unknown>) => TE.TaskEither<Error, void>;
 };
 
 export type OutboundDataAdapterStub = {
@@ -90,6 +95,12 @@ export const createRESTAdapter = (url: string): OutboundDataAdapter => {
         send: (payload: Record<string, unknown>) => {
             return TE.tryCatch(
                 () => axios.post(`${url}/api/rest/receive`, payload),
+                (err) => new Error(`Error sending payload: ${err}`)
+            );
+        },
+        sendBatch: (payload: Record<string, unknown>) => {
+            return TE.tryCatch(
+                () => axios.post(`${url}/api/rest/receive-batch`, payload),
                 (err) => new Error(`Error sending payload: ${err}`)
             );
         },
@@ -117,6 +128,12 @@ export const createStubOutboundAdapter = (): OutboundDataAdapterStub => {
             return TE.right(undefined);
         },
         send: (payload) => {
+            logger.info(`Sending payload: ${payload}`);
+            payloads.push(payload);
+            logger.debug(`Sent payloads: ${payloads}`);
+            return TE.right(undefined);
+        },
+        sendBatch: (payload) => {
             logger.info(`Sending payload: ${payload}`);
             payloads.push(payload);
             logger.debug(`Sent payloads: ${payloads}`);
@@ -203,6 +220,49 @@ export const createClient: Reader<ClientDependencies, ContentGatewayClient> = ({
                 }),
                 TE.chain((dataRecord) =>
                     adapter.send(
+                        PayloadDTO.toJSON(
+                            new PayloadDTO(
+                                SchemaInfoDTO.fromSchemaInfo(info),
+                                dataRecord
+                            )
+                        )
+                    )
+                )
+            )();
+        },
+        saveBatch: <T>(
+            info: SchemaInfo,
+            data: Array<T>
+        ): Promise<E.Either<Error, void>> => {
+            const mapKey = schemaInfoSerializer(info);
+            const maybeSchema = O.fromNullable(schemas.get(mapKey));
+            return pipe(
+                maybeSchema,
+                TE.fromOption(
+                    () =>
+                        new Error(`The given type ${mapKey} is not registered`)
+                ),
+                TE.chainW((schema) =>
+                    
+                    // TODO: implement validation for batch ⚠
+                    // TE.fromEither(
+                    //     schema.validate(data as Record<string, unknown>)
+                    // )
+                    TE.right(data)
+                ),
+                TE.mapLeft((err) => {
+                    let result: string;
+                    if (isArray(err)) {
+                        result = err
+                            .map((e) => `field ${e.field} ${e.message}`)
+                            .join(",");
+                    } else {
+                        result = err.message;
+                    }
+                    return new Error(result);
+                }),
+                TE.chain((dataRecord) =>
+                    adapter.sendBatch(
                         PayloadDTO.toJSON(
                             new PayloadDTO(
                                 SchemaInfoDTO.fromSchemaInfo(info),

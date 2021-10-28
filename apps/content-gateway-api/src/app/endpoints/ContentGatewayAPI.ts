@@ -93,5 +93,29 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
             )
         )();
     });
+    router.post("/receive-batch", async (req, res) => {
+        await pipe(
+            PayloadDTO.fromJSON(req.body),
+            E.map(PayloadDTO.toPayload),
+            TE.fromEither,
+            TE.chain(gateway.receiveBatch),
+            TE.fold(
+                (e) => {
+                    console.error("Receiving payload failed.", e);
+                    res.status(500).json({
+                        result: "failure",
+                        error: e.message,
+                    });
+                    return T.of(undefined);
+                },
+                () => {
+                    res.status(200).json({
+                        result: "ok",
+                    });
+                    return T.of(undefined);
+                }
+            )
+        )();
+    });
     return router;
 };
