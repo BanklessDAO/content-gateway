@@ -23,12 +23,17 @@ const mapTokens = (tokens) => {
         })
 }
 
+var totalCount = 0
 const pullTokensSince = (id) => {
     return graphAPIClient
         .query(
             POAP_TOKEN_SUBGRAPH_TOKENS, 
             { count: 1000, offsetID: id }, 
             (response) => { 
+                totalCount += 1000
+                logger.info(`Loaded data chunk from the original source:`);
+                logger.info(`Total count: ${ totalCount }; OffsetID: ${ id }`);
+
                 return mapTokens(response.data.tokens)
             }
         );

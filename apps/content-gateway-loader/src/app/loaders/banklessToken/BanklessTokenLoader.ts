@@ -32,12 +32,17 @@ const mapAccounts = (accounts) => {
         })
 }
 
+var totalCount = 0
 const pullAccountsSince = (id) => {
     return graphAPIClient
         .query(
             BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS, 
             { count: 1000, offsetID: id }, 
             (response) => { 
+                totalCount += 1000
+                logger.info(`Loaded data chunk from the original source:`);
+                logger.info(`Total count: ${ totalCount }; OffsetID: ${ id }`);
+
                 return mapAccounts(response.data.accounts)
             }
         );

@@ -38,8 +38,8 @@ class TheGraphAPIClient implements GraphQLAPIClient {
         //fetchPolicy: "no-cache"
       })
       .then(response => {
-        console.log('TheGraph query result:')
-        console.log(response)
+        // console.log('TheGraph query result:')
+        // console.log(response)
 
         const mappedResult = mappingCallback(response)
 

@@ -2,7 +2,7 @@ import { DocumentNode } from '@apollo/client/core'
 import gql from 'graphql-tag';
 
 const BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS: DocumentNode = gql`
-  query banklessTokenAccounts($count: String, $offsetID: String) {
+  query banklessTokenAccounts($count: Int, $offsetID: String) {
     accounts(
       first: $count, 
       where: { id_gt: $offsetID }
