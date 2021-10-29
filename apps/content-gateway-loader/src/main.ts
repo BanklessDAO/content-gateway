@@ -27,8 +27,8 @@ const registerLoaders = (scheduler: JobScheduler) => {
     scheduler.register(exampleLoader);
     scheduler.register(banklessAcademyLoader);
     scheduler.register(bountyBoardLoader);
-    scheduler.register(poapLoader);
-    scheduler.register(banklessTokenLoader);
+    // scheduler.register(poapLoader);
+    // scheduler.register(banklessTokenLoader);
 };
 
 const main = async () => {
