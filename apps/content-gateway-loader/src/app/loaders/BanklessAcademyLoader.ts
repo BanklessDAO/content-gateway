@@ -122,7 +122,7 @@ export const banklessAcademyLoader = createSimpleLoader({
                         .get(`https://bankless-academy-cg-lab.vercel.app/api/courses`)
                         .then((response) => {
                             logger.info(`Loaded data from the original source:`);
-                            logger.info(`${response.data}`);
+                            logger.info(`${JSON.stringify(response.data)}`);
 
                             let courses = response.data
                                 .map(item => {
