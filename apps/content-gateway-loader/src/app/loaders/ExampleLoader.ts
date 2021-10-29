@@ -3,8 +3,8 @@ import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
+import { v4 as uuid } from "uuid";
 import { createSimpleLoader } from "..";
-import {v4 as uuid} from "uuid";
 
 const logger = new Logger({ name: "ExampleLoader" });
 
@@ -31,7 +31,10 @@ export const exampleLoader = createSimpleLoader({
             TE.tryCatch(
                 async () => {
                     logger.info("Initializing example loader...");
-                    const result = await client.register(info, CurrentTimestamp);
+                    const result = await client.register(
+                        info,
+                        CurrentTimestamp
+                    );
                     return jobScheduler.schedule({
                         name: name,
                         scheduledAt: DateTime.now(),
@@ -45,12 +48,11 @@ export const exampleLoader = createSimpleLoader({
             })
         );
     },
-    load: ({ client, currentJob }) => {
+    load: ({ client }) => {
         return pipe(
             TE.tryCatch(
                 async () => {
                     logger.info("Executing example loader.");
-                    logger.info(`current job: ${currentJob}`);
                     await client.save(info, {
                         id: uuid(),
                         value: DateTime.local().toMillis(),

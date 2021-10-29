@@ -230,18 +230,16 @@ class DefaultJobScheduler implements JobScheduler {
             this.logger.warn(`There is no loader with name ${job.name}`);
             return TE.left(NoLoaderForJobError.create(job.name))();
         }
+        // TODO: check if job is already scheduled
         return pipe(
             TE.tryCatch(
                 async () => {
-                    this.logger.info(
-                        "Creating new job:",
-                        job.scheduledAt.toJSDate()
-                    );
                     const entry = {
                         name: job.name,
                         cursor: job.cursor,
                         scheduledAt: job.scheduledAt.toJSDate(),
                         updatedAt: new Date(),
+                        state: JobState.SCHEDULED,
                     };
                     const result = await this.prisma.jobSchedule.upsert({
                         where: {
@@ -344,6 +342,10 @@ class DefaultJobScheduler implements JobScheduler {
                     }),
                     TE.map((nextJob) => {
                         if (nextJob) {
+                            this.logger.info("Scheduling next job", {
+                                ...nextJob,
+                                scheduledAt: nextJob.scheduledAt.toJSDate(),
+                            });
                             this.schedule(nextJob);
                         }
                     })

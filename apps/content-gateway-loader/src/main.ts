@@ -1,14 +1,14 @@
-import { createClient, createRESTAdapter } from "@banklessdao/content-gateway-client";
+import {
+    createClient,
+    createRESTAdapter
+} from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
-import { createDefaultJSONSerializer } from "@shared/util-schema";
 import * as express from "express";
 import { Logger } from "tslog";
 import { createJobScheduler, JobScheduler } from "./app";
-import { exampleLoader } from "./app/loaders/ExampleLoader";
 import { banklessAcademyLoader } from "./app/loaders/BanklessAcademyLoader";
 import { bountyBoardLoader } from "./app/loaders/BountyBoardLoader";
-import { poapLoader } from "./app/loaders/poap/POAPLoader";
-import { banklessTokenLoader } from "./app/loaders/banklessToken/BanklessTokenLoader";
+import { exampleLoader } from "./app/loaders/ExampleLoader";
 
 const programError = (msg: string) => {
     throw new Error(msg);
@@ -27,8 +27,6 @@ const registerLoaders = (scheduler: JobScheduler) => {
     scheduler.register(exampleLoader);
     scheduler.register(banklessAcademyLoader);
     scheduler.register(bountyBoardLoader);
-    // scheduler.register(poapLoader);
-    // scheduler.register(banklessTokenLoader);
 };
 
 const main = async () => {
@@ -39,9 +37,8 @@ const main = async () => {
 
     const prisma = new PrismaClient();
     const clientStub = createClient({
-        serializer: createDefaultJSONSerializer(),
-        adapter: createRESTAdapter(CGA_URL)
-    })
+        adapter: createRESTAdapter(CGA_URL),
+    });
 
     app.get("/", (req, res) => {
         res.send(
