@@ -1,4 +1,4 @@
-import { exampleLoader } from "./ExampleLoader";
+import { banklessAcademyLoader } from "./BanklessAcademyLoader";
 import {
     createClientStub,
     ContentGatewayClientStub,
@@ -6,8 +6,8 @@ import {
 import { createJobSchedulerStub, JobSchedulerStub } from "..";
 import { isRight } from "fp-ts/lib/Either";
 
-describe("Given an example loader", () => {
-    const loader = exampleLoader;
+describe("Given an Bankless Academy loader", () => {
+    const loader = banklessAcademyLoader;
 
     let clientStub: ContentGatewayClientStub;
     let jobSchedulerStub: JobSchedulerStub;
