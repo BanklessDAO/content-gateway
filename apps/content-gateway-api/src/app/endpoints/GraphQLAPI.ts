@@ -8,18 +8,21 @@ import * as O from "fp-ts/Option";
 import * as T from "fp-ts/Task";
 import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
+import { Logger } from "tslog";
 import Pluralize from "typescript-pluralize";
 import * as v from "voca";
 import { AppContext } from "../..";
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
 
+const logger = new Logger({ name: "GraphQLAPI" });
+
 export const generateGraphQLAPI = async ({
     schemaStorage,
     dataStorage,
-    isDev,
 }: AppContext) => {
+    const schemas = await schemaStorage.findAll()();
     return pipe(
-        await schemaStorage.findAll()(),
+        schemas,
         O.getOrElse(() => [] as Schema[]),
         A.map(
             (schema: Schema) =>

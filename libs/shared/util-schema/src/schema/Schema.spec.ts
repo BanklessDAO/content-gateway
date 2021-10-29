@@ -1,13 +1,7 @@
-import { CollectionOf, Required } from "@tsed/schema";
+import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
-import { pipe } from "fp-ts/lib/function";
-import {
-    createDefaultJSONSerializer,
-    createSchemaFromObject,
-    createSchemaFromString,
-    createSchemaFromType,
-    Schema,
-} from ".";
+import { createSchemaFromObject, createSchemaFromType, Schema } from ".";
+import { extractRight } from "@shared/util-fp";
 
 class Comment {
     @Required(true)
@@ -26,6 +20,7 @@ class Address {
     city: City;
 }
 
+@AdditionalProperties(false)
 class User {
     @Required(true)
     id: string;
@@ -76,6 +71,7 @@ const expectedProperties = {
 const expectedSchemaObject = {
     type: "object",
     properties: expectedProperties,
+    additionalProperties: false,
     required: ["id", "name", "address"],
     definitions: {
         Comment: {
@@ -114,92 +110,12 @@ const expectedSchemaObject = {
     },
 };
 
-const schemaStr = `{
-    "type":"object",
-    "properties":{
-       "id":{
-          "type":"string",
-          "minLength":1
-       },
-       "name":{
-          "type":"string",
-          "minLength":1
-       },
-       "comments":{
-          "type":"array",
-          "items":{
-             "$ref":"#/definitions/Comment"
-          }
-       },
-       "skills":{
-          "type":"array",
-          "items":{
-             "type":"string"
-          }
-       },
-       "address":{
-          "$ref":"#/definitions/Address"
-       }
-    },
-    "required":[
-       "id",
-       "name",
-       "address"
-    ],
-    "definitions":{
-       "Comment":{
-          "type":"object",
-          "properties":{
-             "text":{
-                "type":"string",
-                "minLength":1
-             }
-          },
-          "required":[
-             "text"
-          ]
-       },
-       "Address":{
-          "type":"object",
-          "properties":{
-             "address":{
-                "type":"string",
-                "minLength":1
-             },
-             "city":{
-                "$ref":"#/definitions/City"
-             }
-          },
-          "required":[
-             "address",
-             "city"
-          ]
-       },
-       "City":{
-          "type":"object",
-          "properties":{
-             "name":{
-                "type":"string",
-                "minLength":1
-             }
-          },
-          "required":[
-             "name"
-          ]
-       }
-    }
-}`;
-
-const serializer = createDefaultJSONSerializer();
-
 describe("Given a Schema", () => {
     describe("created from a type", () => {
-        const schema = (
-            createSchemaFromType(serializer)(userInfo, User) as E.Right<Schema>
-        ).right;
+        const schema = extractRight(createSchemaFromType(userInfo, User));
 
         it("When accessing its schema object then it should be correct", () => {
-            expect(schema.schemaObject).toEqual(expectedSchemaObject);
+            expect(schema.jsonSchema).toEqual(expectedSchemaObject);
         });
 
         it("When validating a bad object it is invalid", () => {
@@ -250,50 +166,21 @@ describe("Given a Schema", () => {
             );
         });
 
-        it("When serializing and deserializing Then the same object is produced", () => {
-            const user = {
-                id: "1",
-                name: "Jane",
-                comments: [{ text: "Hey" }],
-                skills: ["programming", "drinking"],
-                address: {
-                    address: "Some Street 1",
-                    city: { name: "London" },
-                },
-            };
-            expect(
-                pipe(schema.serialize(user), E.chain(schema.deserialize))
-            ).toEqual(E.right(user));
-        });
-
         it("When creating a GraphQL type, the proper type is produced", () => {
             expect(null).toEqual(null);
         });
     });
 
-    describe("created from a string", () => {
-        const schema = (
-            createSchemaFromString(serializer)(
-                userInfo,
-                schemaStr
-            ) as E.Right<Schema>
-        ).right;
-
-        it("When accessing its schema object then it should be correct", () => {
-            expect(schema.schemaObject).toEqual(expectedSchemaObject);
-        });
-    });
-
     describe("created from an object", () => {
-        const schema = (
-            createSchemaFromObject(serializer)(
-                userInfo,
-                expectedSchemaObject
-            ) as E.Right<Schema>
-        ).right;
+        const schema = extractRight(
+            createSchemaFromObject({
+                info: userInfo,
+                jsonSchema: expectedSchemaObject,
+            })
+        );
 
         it("When accessing its schema object then it should be correct", () => {
-            expect(schema.schemaObject).toEqual(expectedSchemaObject);
+            expect(schema.jsonSchema).toEqual(expectedSchemaObject);
         });
     });
 });

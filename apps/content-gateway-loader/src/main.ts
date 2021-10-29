@@ -1,12 +1,17 @@
-import { createClient, createClientStub, createRESTAdapter } from "@banklessdao/content-gateway-client";
+import {
+    createClient, createRESTAdapter
+} from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
-import { createDefaultJSONSerializer } from "@shared/util-schema";
 import * as express from "express";
 import { Logger } from "tslog";
 import { createJobScheduler, JobScheduler } from "./app";
-import { exampleLoader } from "./app/loaders/ExampleLoader";
 import { banklessAcademyLoader } from "./app/loaders/BanklessAcademyLoader";
 import { bountyBoardLoader } from "./app/loaders/BountyBoardLoader";
+import { exampleLoader } from "./app/loaders/ExampleLoader";
+
+const logger = new Logger({
+    name: "main",
+});
 
 const programError = (msg: string) => {
     throw new Error(msg);
@@ -17,6 +22,8 @@ const PORT =
     programError("You must specify either PORT or CGL_PORT");
 
 const CGA_URL = process.env.CGA_URL || programError("You must specify CGA_URL");
+
+logger.info("CGA_URL is", CGA_URL);
 
 /**
  * 📗 Note for developers: this is where you should register your loaders.
@@ -34,10 +41,9 @@ const main = async () => {
     const app = express();
 
     const prisma = new PrismaClient();
-    const clientStub = createClient({
-        serializer: createDefaultJSONSerializer(),
-        adapter: createRESTAdapter(CGA_URL)
-    })
+    const client = createClient({
+        adapter: createRESTAdapter(CGA_URL),
+    });
 
     app.get("/", (req, res) => {
         res.send(
@@ -65,7 +71,7 @@ const main = async () => {
         logger.error(err);
     });
 
-    const scheduler = createJobScheduler(prisma, clientStub);
+    const scheduler = createJobScheduler(prisma, client);
     await scheduler.start();
 
     registerLoaders(scheduler);

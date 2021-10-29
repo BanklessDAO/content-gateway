@@ -43,7 +43,6 @@
             "root": "apps/content-gateway-api",
             "sourceRoot": "apps/content-gateway-api/src",
             "projectType": "application",
-            "implicitDependencies": ["content-gateway-frontend"],
             "targets": {
                 "build": {
                     "executor": "@nrwl/node:build",
@@ -280,38 +279,6 @@
                     "outputs": ["coverage/libs/domain/feature-gateway"],
                     "options": {
                         "jestConfig": "libs/domain/feature-gateway/jest.config.js",
-                        "passWithNoTests": true
-                    }
-                }
-            }
-        },
-        "shared-util-dto": {
-            "root": "libs/shared/util-dto",
-            "sourceRoot": "libs/shared/util-dto/src",
-            "projectType": "library",
-            "targets": {
-                "build": {
-                    "executor": "@nrwl/workspace:tsc",
-                    "outputs": ["{options.outputPath}"],
-                    "options": {
-                        "outputPath": "dist/libs/shared/util-dto",
-                        "main": "libs/shared/util-dto/src/index.ts",
-                        "tsConfig": "libs/shared/util-dto/tsconfig.lib.json",
-                        "assets": ["libs/shared/util-dto/*.md"]
-                    }
-                },
-                "lint": {
-                    "executor": "@nrwl/linter:eslint",
-                    "outputs": ["{options.outputFile}"],
-                    "options": {
-                        "lintFilePatterns": ["libs/shared/util-dto/**/*.ts"]
-                    }
-                },
-                "test": {
-                    "executor": "@nrwl/jest:jest",
-                    "outputs": ["coverage/libs/shared/util-dto"],
-                    "options": {
-                        "jestConfig": "libs/shared/util-dto/jest.config.js",
                         "passWithNoTests": true
                     }
                 }

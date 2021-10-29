@@ -1,10 +1,6 @@
-import {
-    createDefaultJSONSerializer,
-    createSchemaFromType,
-    Schema
-} from "@shared/util-schema";
-import { CollectionOf, Required } from "@tsed/schema";
-import * as E from "fp-ts/Either";
+import { extractRight } from "@shared/util-fp";
+import { createSchemaFromType } from "@shared/util-schema";
+import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as g from "graphql";
 import { toGraphQLType } from "./converters";
 
@@ -25,6 +21,7 @@ class Address {
     city: City;
 }
 
+@AdditionalProperties(false)
 class User {
     @Required(true)
     id: string;
@@ -46,12 +43,16 @@ const userKey = {
     version: "v1",
 };
 
-const expectedSDL = `type Comment {
-  text: String
+const expectedSDL = `type User {
+  id: ID
+  name: String
+  comments: [Comment]
+  skills: [String]
+  address: Address
 }
 
-type City {
-  name: String
+type Comment {
+  text: String
 }
 
 type Address {
@@ -59,22 +60,13 @@ type Address {
   city: City
 }
 
-type User {
-  id: ID
+type City {
   name: String
-  comments: [Comment]
-  skills: [String]
-  address: Address
 }
 `;
 
 describe("Given a JSON schema type", () => {
-    const schema = (
-        createSchemaFromType(createDefaultJSONSerializer())(
-            userKey,
-            User
-        ) as E.Right<Schema>
-    ).right;
+    const schema = extractRight(createSchemaFromType(userKey, User));
 
     describe("when converting it to a GraphQL schema", () => {
         const types = toGraphQLType(schema);

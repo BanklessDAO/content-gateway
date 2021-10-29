@@ -69,7 +69,10 @@ export const supportedPropertyCodec = withMessage(
         refPropertyCodec,
         arrayRefPropertyCodec,
     ]),
-    (input) => `${JSON.stringify(input)} property is not supported. Did you forget to add an annotation somewhere?`
+    (input) =>
+        `${JSON.stringify(
+            input
+        )} property is not supported. Did you forget to add an annotation somewhere?`
 );
 
 export type SupportedProperty = t.TypeOf<typeof supportedPropertyCodec>;
@@ -85,10 +88,20 @@ export type SupportedPropertyRecord = t.TypeOf<
 
 export const jsonSchemaTypeCodec = t.intersection([
     t.strict({
-        type: t.literal("object"),
+        type: withMessage(
+            t.literal("object"),
+            () => "A json schema type must have type of object"
+        ),
         properties: supportedPropertyRecordCodec,
     }),
-    t.exact(t.partial({ required: t.array(t.string) })),
+    t.exact(
+        t.partial({
+            required: withMessage(
+                t.array(t.string),
+                () => "The required field must be an array"
+            ),
+        })
+    ),
 ]);
 
 export type JSONSchemaType = t.TypeOf<typeof jsonSchemaTypeCodec>;
@@ -130,12 +143,52 @@ export const hasIdCodec = withMessage(
 export type HasId = t.TypeOf<typeof hasIdCodec>;
 
 export const supportedJSONSchemaCodec = t.intersection([
+    withMessage(
+        t.strict({
+            additionalProperties: t.literal(false),
+        }),
+        () =>
+            "A schema must have additional properties disabled. Did you add @AdditionalProperties(false)?"
+    ),
     jsonSchemaTypeCodec,
     t.exact(
         t.partial({
-            definitions: t.record(t.string, jsonSchemaTypeCodec),
+            definitions: withMessage(
+                t.record(t.string, jsonSchemaTypeCodec),
+                () => "Definitions is not a valid json schema type record"
+            ),
         })
     ),
 ]);
 
 export type SupportedJSONSchema = t.TypeOf<typeof supportedJSONSchemaCodec>;
+
+export const schemaInfoCodec = withMessage(
+    t.strict({
+        namespace: t.string,
+        name: t.string,
+        version: t.string,
+    }),
+    () => "Schema information is invalid"
+);
+
+export const schemaCodec = t.strict({
+    info: schemaInfoCodec,
+    jsonSchema: supportedJSONSchemaCodec,
+});
+
+export const payloadCodec = t.strict({
+    info: schemaInfoCodec,
+    data: withMessage(
+        t.record(t.string, t.unknown),
+        () => "Data is not a valid json object"
+    ),
+});
+
+export const batchPayloadCodec = withMessage(
+    t.strict({
+        info: schemaInfoCodec,
+        data: t.array(t.record(t.string, t.unknown)),
+    }),
+    () => "Payload is invalid"
+);

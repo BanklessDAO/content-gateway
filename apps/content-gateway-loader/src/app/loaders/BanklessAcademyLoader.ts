@@ -1,4 +1,4 @@
-import { Required, CollectionOf } from "@tsed/schema";
+import { Required, CollectionOf, AdditionalProperties } from "@tsed/schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
@@ -84,6 +84,7 @@ class Course {
     sections: Section[];
 }
 
+@AdditionalProperties(false)
 class CourseLibrary {
     @Required(true)
     @CollectionOf(Course)

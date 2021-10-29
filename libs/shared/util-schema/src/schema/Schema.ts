@@ -3,10 +3,11 @@ import { Type } from "@tsed/core";
 import { getJsonSchema } from "@tsed/schema";
 import Ajv from "ajv/dist/ajv";
 import * as E from "fp-ts/Either";
+import { pipe } from "fp-ts/lib/function";
 import { Errors } from "io-ts";
-import { JSONSerializer } from ".";
+import { schemaCodec } from ".";
 import { SchemaInfo } from "..";
-import { SupportedJSONSchema, supportedJSONSchemaCodec } from "./codecs";
+import { SupportedJSONSchema } from "./codecs";
 
 const ajv = new Ajv({
     allErrors: true,
@@ -21,6 +22,24 @@ export type ValidationError = {
     message: string;
 };
 
+export type PayloadJson = {
+    info: SchemaInfo;
+    data: Record<string, unknown>;
+};
+
+export type BatchPayloadJson = {
+    info: SchemaInfo;
+    data: Record<string, unknown>[];
+};
+
+/**
+ * Represents a {@link Schema} in JSON form.
+ */
+export type SchemaJson = {
+    info: SchemaInfo;
+    jsonSchema: Record<string, unknown>
+}
+
 /**
  * A Schema contains metadata about a specific type and functions
  * for validation and serialization. Note that all types will be
@@ -29,40 +48,18 @@ export type ValidationError = {
  */
 export type Schema = {
     info: SchemaInfo;
-    schemaObject: SupportedJSONSchema;
+    jsonSchema: SupportedJSONSchema;
     /**
      * Serializes this schema into a JSON string.
      */
-    toJson(): Record<string, unknown>;
+    toJson(): SchemaJson;
     /**
      * Validates the given record against the schema.
      */
     validate: (
         data: Record<string, unknown>
     ) => E.Either<ValidationError[], Record<string, unknown>>;
-    /**
-     * Serializes the given record into a JSON string.
-     */
-    serialize: (data: Record<string, unknown>) => E.Either<Error, string>;
-    /**
-     * Deserializes the given JSON string into a record.
-     */
-    deserialize: (data: string) => E.Either<Error, Record<string, unknown>>;
 };
-
-/**
- * Creates a [[Schema]] object from the given JSON Schema (string)
- * and the given schema info.
- */
-export const createSchemaFromString: (
-    serializer: JSONSerializer
-) => (key: SchemaInfo, schema: string) => E.Either<Errors, Schema> =
-    (serializer) => (key, schema) => {
-        return createSchemaFromObject(serializer)(
-            key,
-            serializer.deserialize(schema)
-        );
-    };
 
 /**
  * Creates a [[Schema]] object from the given [[type]]
@@ -71,64 +68,50 @@ export const createSchemaFromString: (
  * in order to work.
  */
 export const createSchemaFromType: <T>(
-    serializer: JSONSerializer
-) => (info: SchemaInfo, type: Type<T>) => E.Either<Errors, Schema> =
-    (serializer) => (info, type) => {
-        return createSchemaFromObject(serializer)(info, getJsonSchema(type));
-    };
+    info: SchemaInfo,
+    type: Type<T>
+) => E.Either<Errors, Schema> = (info, type) => {
+    return createSchemaFromObject({
+        info: info,
+        jsonSchema: getJsonSchema(type),
+    });
+};
 
 /**
  * Creates a [[Schema]] object from the given JSON schema object
  * and the given schema [[info]].
  */
-export const createSchemaFromObject: (
-    serializer: JSONSerializer
-) => (
-    info: SchemaInfo,
-    schema: Record<string, unknown>
-) => E.Either<Errors, Schema> = (serializer) => (info, schema) => {
-    const schemaValidationResult = supportedJSONSchemaCodec.decode(schema);
-    if (E.isLeft(schemaValidationResult)) {
-        return schemaValidationResult;
-    }
-    const validator = ajv.compile(schema);
-    return E.right({
-        info: info,
-        // 👇 safe cast, we validated above
-        schemaObject: schema as SupportedJSONSchema,
-        toJson: () => {
+export const createSchemaFromObject = (
+    schema: SchemaJson
+): E.Either<Errors, Schema> => {
+    return pipe(
+        E.Do,
+        E.bind("validSchema", () => schemaCodec.decode(schema)),
+        E.bind("validator", ({ validSchema }) =>
+            E.right(ajv.compile(validSchema.jsonSchema))
+        ),
+        E.map(({ validSchema, validator }) => {
             return {
-                info,
-                schema,
+                info: validSchema.info,
+                jsonSchema: validSchema.jsonSchema,
+                toJson: () => {
+                    return validSchema;
+                },
+                validate: (data: Record<string, unknown>) => {
+                    const validationResult = validator(data);
+                    if (validationResult) {
+                        return E.right(data);
+                    } else {
+                        return E.left(
+                            // ❗ Take a look at what is actually produced by ajv here
+                            validator.errors?.map((e) => ({
+                                field: e.instancePath ?? "unknown field",
+                                message: e.message ?? "The value is invalid",
+                            })) ?? []
+                        );
+                    }
+                },
             };
-        },
-
-        validate: (data: Record<string, unknown>) => {
-            const validationResult = validator(data);
-            if (validationResult) {
-                return E.right(data);
-            } else {
-                return E.left(
-                    // ❗ Take a look at what is actually produced by ajv here
-                    validator.errors?.map((e) => ({
-                        field: e.instancePath ?? "unknown field",
-                        message: e.message ?? "The value is invalid",
-                    })) ?? []
-                );
-            }
-        },
-
-        serialize: (data: Record<string, unknown>) => {
-            return E.tryCatch(
-                () => serializer.serialize(data),
-                (e) => new Error(String(e))
-            );
-        },
-        deserialize: (data: string) => {
-            return E.tryCatch(
-                () => serializer.deserialize(data),
-                (e) => new Error(String(e))
-            );
-        },
-    });
+        })
+    );
 };

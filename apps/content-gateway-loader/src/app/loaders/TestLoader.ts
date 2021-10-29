@@ -1,4 +1,4 @@
-import { Required } from "@tsed/schema";
+import { AdditionalProperties, Required } from "@tsed/schema";
 import { Logger } from "tslog";
 import { createSimpleLoader } from "..";
 import * as TE from "fp-ts/TaskEither";
@@ -13,6 +13,7 @@ const info = {
     version: "V1",
 };
 
+@AdditionalProperties(false)
 class CurrentTimestamp {
     @Required(true)
     value: number;

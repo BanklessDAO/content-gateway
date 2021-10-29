@@ -6,15 +6,12 @@ import {
     DataStorageStub,
     SchemaStorageStub,
 } from "@domain/feature-gateway";
-import { PayloadDTO } from "@shared/util-dto";
-import { extractUnsafe } from "@shared/util-fp";
-import {
-    createDefaultJSONSerializer,
-    createSchemaFromType,
-} from "@shared/util-schema";
-import { Required } from "@tsed/schema";
+import { extractRight } from "@shared/util-fp";
+import { createSchemaFromType } from "@shared/util-schema";
+import { AdditionalProperties, Required } from "@tsed/schema";
 import * as express from "express";
 import * as request from "supertest";
+import { Logger } from "tslog";
 import { generateContentGatewayAPI } from "./ContentGatewayAPI";
 
 const userInfo = {
@@ -30,6 +27,7 @@ class Address {
     name: string;
 }
 
+@AdditionalProperties(false)
 class User {
     @Required(true)
     id: string;
@@ -38,8 +36,6 @@ class User {
     @Required(true)
     address: Address;
 }
-
-const typeToSchema = createSchemaFromType(createDefaultJSONSerializer());
 
 describe("Given a content gateway api", () => {
     let app: express.Application;
@@ -62,8 +58,7 @@ describe("Given a content gateway api", () => {
     });
 
     it("When a valid schema is sent, Then it registers", async () => {
-        const schema = extractUnsafe(typeToSchema(userInfo, User));
-
+        const schema = extractRight(createSchemaFromType(userInfo, User));
         const result = await request(app)
             .post("/register")
             .send(schema.toJson())

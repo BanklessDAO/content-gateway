@@ -1,49 +1,26 @@
-import { Data, DataStorage } from "@domain/feature-gateway";
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { Prisma, PrismaClient } from "@cga/prisma";
-import { Schema, SchemaInfo } from "@shared/util-schema";
-import * as E from "fp-ts/Either";
+import { Data, DataStorage, SchemaStorage } from "@domain/feature-gateway";
+import { SchemaInfo } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
-import { Errors } from "io-ts";
 
 export const createPrismaDataStorage = (
-    createSchema: (
-        info: SchemaInfo,
-        schema: Record<string, unknown>
-    ) => E.Either<Errors, Schema>,
-    prisma: PrismaClient
+    prisma: PrismaClient,
+    schemaStorage: SchemaStorage
 ): DataStorage => {
-    const findSchema = (info: SchemaInfo) =>
-        pipe(
-            TE.tryCatch(
-                () =>
-                    prisma.schema.findUnique({
-                        where: { namespace_name_version: info },
-                    }),
-                (e) => new Error(`Failed to find schema: ${e}`)
-            ),
-            TE.chainW((schemaEntity) =>
-                TE.fromEither(
-                    createSchema(
-                        info,
-                        schemaEntity.schemaObject as Record<string, unknown>
-                    )
-                )
-            )
-        );
-
     return {
         store: (payload: Data): TE.TaskEither<Error, string> =>
             pipe(
-                findSchema(payload.info),
+                schemaStorage.find(payload.info),
+                TE.fromTaskOption(() => new Error("Schema not found")),
                 TE.chainW((schema) => {
                     return TE.fromEither(schema.validate(payload.data));
                 }),
                 TE.chain((record) => {
                     return TE.tryCatch(
-                        () =>
+                        async () =>
                             prisma.data.create({
                                 data: {
                                     id: record.id as string,
@@ -81,6 +58,7 @@ export const createPrismaDataStorage = (
                 TO.tryCatch(() =>
                     prisma.data.findUnique({
                         where: {
+                            // TODO: ❗ change this because id might not be globally unique!
                             id: id,
                         },
                     })

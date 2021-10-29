@@ -1,20 +1,21 @@
 import { createClient } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cga/prisma";
 import { createContentGateway } from "@domain/feature-gateway";
-import { PayloadDTO, SchemaDTO } from "@shared/util-dto";
 import {
-    createDefaultJSONSerializer,
+    batchPayloadCodec,
     createSchemaFromObject,
+    payloadCodec
 } from "@shared/util-schema";
 import * as express from "express";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { Errors } from "io-ts";
+import { formatValidationErrors } from "io-ts-reporters";
 import { failure } from "io-ts/lib/PathReporter";
 import { join } from "path";
 import { Logger } from "tslog";
-import { AppContext, generateFixtures } from "../";
+import { AppContext } from "../";
 import { createPrismaDataStorage, createPrismaSchemaStorage } from "./";
 import { generateContentGatewayAPI } from "./endpoints/ContentGatewayAPI";
 import { generateGraphQLAPI } from "./endpoints/GraphQLAPI";
@@ -28,38 +29,31 @@ export const createApp = async (prisma: PrismaClient) => {
     logger.info(`Running in ${env} mode`);
 
     const app = express();
-    const serializer = createDefaultJSONSerializer();
-    const deserializeSchemaFromObject = createSchemaFromObject(serializer);
 
-    const schemaStorage = createPrismaSchemaStorage(
-        deserializeSchemaFromObject,
-        prisma
-    );
-    const dataStorage = createPrismaDataStorage(
-        deserializeSchemaFromObject,
-        prisma
-    );
+    const schemaStorage = createPrismaSchemaStorage(prisma);
+    const dataStorage = createPrismaDataStorage(prisma, schemaStorage);
 
     const gateway = createContentGateway(schemaStorage, dataStorage);
 
     const client = createClient({
-        serializer,
         adapter: {
             register: (schema): TE.TaskEither<Error, void> => {
                 return pipe(
-                    SchemaDTO.fromJSON(schema),
-                    E.chainW((dto) =>
-                        deserializeSchemaFromObject(dto.info, dto.schema)
-                    ),
+                    createSchemaFromObject(schema),
                     TE.fromEither,
                     TE.chainW(gateway.register),
-                    TE.mapLeft((err: Errors) => new Error(failure(err).join("\n")))
+                    TE.mapLeft(
+                        (err: Errors) => new Error(failure(err).join("\n"))
+                    )
                 );
             },
             send: (payload): TE.TaskEither<Error, void> => {
                 return pipe(
-                    PayloadDTO.fromJSON(payload),
-                    E.map((dto) => PayloadDTO.toPayload(dto)),
+                    payloadCodec.decode(payload),
+                    E.mapLeft(
+                        (err: Errors) =>
+                            new Error(formatValidationErrors(err).join())
+                    ),
                     TE.fromEither,
                     TE.chain(gateway.receive),
                     TE.chain(() => TE.of(undefined))
@@ -67,8 +61,11 @@ export const createApp = async (prisma: PrismaClient) => {
             },
             sendBatch: (payload): TE.TaskEither<Error, void> => {
                 return pipe(
-                    PayloadDTO.fromJSON(payload),
-                    E.map((dto) => PayloadDTO.toPayload(dto)),
+                    batchPayloadCodec.decode(payload),
+                    E.mapLeft(
+                        (err: Errors) =>
+                            new Error(formatValidationErrors(err).join())
+                    ),
                     TE.fromEither,
                     TE.chain(gateway.receiveBatch),
                     TE.chain(() => TE.of(undefined))
@@ -89,10 +86,6 @@ export const createApp = async (prisma: PrismaClient) => {
         gateway,
         client,
     };
-
-    if (isDev) {
-        await generateFixtures(prisma, client);
-    }
 
     const clientBuildPath = join(__dirname, "../content-gateway-frontend");
 

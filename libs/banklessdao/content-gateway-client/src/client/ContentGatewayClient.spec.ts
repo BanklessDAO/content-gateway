@@ -1,11 +1,10 @@
-import { SchemaDTO } from "@shared/util-dto";
-import { createDefaultJSONSerializer } from "@shared/util-schema";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
-import * as TE from "fp-ts/TaskEither";
-import { createClient, OutboundDataAdapter } from "./";
+import { Logger } from "tslog";
+import { createClient } from "./";
 import {
-    createStubOutboundAdapter,
+    ContentGatewayClient,
+    createOutboundAdapterStub,
     OutboundDataAdapterStub,
 } from "./ContentGatewayClient";
 
@@ -61,15 +60,14 @@ const invalidPostWithMissingData = {
 };
 
 describe("Given a gateway client", () => {
-    const serializer = createDefaultJSONSerializer();
-
+    const logger = new Logger({ name: "ContentGatewayClientTest" });
     let adapterStub: OutboundDataAdapterStub;
+    let client: ContentGatewayClient;
 
     beforeEach(() => {
-        adapterStub = createStubOutboundAdapter();
+        adapterStub = createOutboundAdapterStub();
+        client = createClient({ adapter: adapterStub });
     });
-
-    const client = createClient({ adapter: adapterStub, serializer });
 
     it("When registering a valid schema Then it should register properly", async () => {
         const result = await client.register(info, Post);
@@ -99,7 +97,7 @@ describe("Given a gateway client", () => {
         };
 
         expect(result).toEqual(E.right(undefined));
-        expect(SchemaDTO.fromJSON(adapterStub.schemas[0])).toEqual(expected);
+        expect(adapterStub.schemas[0]).toEqual(expected);
     });
 
     it("When registering an invalid schema Then it returns an error", async () => {
@@ -108,15 +106,32 @@ describe("Given a gateway client", () => {
     });
 
     it("When sending a valid payload Then it is sent properly", async () => {
+        await client.register(info, Post);
         const result = await client.save(info, validPost);
 
         expect(result).toEqual(E.right(undefined));
         expect(adapterStub.payloads).toEqual([
-            '{"info":{"namespace":"test","name":"Post","version":"V1"},"data":{"id":"1","content":"Hello World","comments":[{"text":"Hello"},{"text":"World"}]}}',
+            {
+                info: { namespace: "test", name: "Post", version: "V1" },
+                data: {
+                    id: "1",
+                    content: "Hello World",
+                    comments: [{ text: "Hello" }, { text: "World" }],
+                },
+            },
         ]);
     });
 
+    it("When sending an unregistered payload Then an error is returned", async () => {
+        const result = await client.save(info, validPost);
+
+        expect(result).toEqual(
+            E.left(new Error("The given type test.Post.V1 is not registered"))
+        );
+    });
+
     it("When sending a payload with missing data Then an error is returned", async () => {
+        await client.register(info, Post);
         const result = await client.save(info, invalidPostWithMissingData);
 
         expect(result).toEqual(
@@ -126,6 +141,7 @@ describe("Given a gateway client", () => {
 
     // TODO: add it to the docs that they should use @AdditionalProperties(false)
     it("When sending a payload with extra data Then an error is returned", async () => {
+        await client.register(info, Post);
         const result = await client.save(info, invalidPostWithExtraData);
 
         expect(result).toEqual(

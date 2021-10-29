@@ -6,20 +6,20 @@ datasource db {
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["filterJson"]
-  output   = "../../../node_modules/@cga/prisma"
+  output          = "../../../node_modules/@cga/prisma"
 }
 
 model Schema {
-  namespace    String    @db.VarChar(50)
-  name         String    @db.VarChar(50)
-  version      String    @db.VarChar(50)
-  schemaObject Json      @map("schemaObject") @db.JsonB
+  namespace  String    @db.VarChar(50)
+  name       String    @db.VarChar(50)
+  version    String    @db.VarChar(50)
+  jsonSchema Json      @db.JsonB
   // dates
-  createdAt    DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt    DateTime  @default(now()) @db.Timestamp(6)
-  deletedAt    DateTime? @db.Timestamp(6)
+  createdAt  DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime  @default(now()) @db.Timestamp(6)
+  deletedAt  DateTime? @db.Timestamp(6)
   // relations
-  data         Data[]
+  data       Data[]
 
   // indexes
   @@id([namespace, name, version])
@@ -43,6 +43,7 @@ model Data {
   schema    Schema    @relation(fields: [namespace, name, version], references: [namespace, name, version])
 
   // indexes
+  // @@id([id, namespace, name, version])
   @@index([createdAt])
   @@index([updatedAt])
   @@index([deletedAt])

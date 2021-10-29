@@ -3,7 +3,7 @@ CREATE TABLE "Schema" (
     "namespace" VARCHAR(50) NOT NULL,
     "name" VARCHAR(50) NOT NULL,
     "version" VARCHAR(50) NOT NULL,
-    "schemaObject" JSONB NOT NULL,
+    "jsonSchema" JSONB NOT NULL,
     "createdAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deletedAt" TIMESTAMP(6),

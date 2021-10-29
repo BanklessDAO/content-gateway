@@ -1,4 +1,4 @@
-import { Required } from "@tsed/schema";
+import { AdditionalProperties, Required } from "@tsed/schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
@@ -14,6 +14,7 @@ const info = {
     version: "V2",
 };
 
+@AdditionalProperties(false)
 class CurrentTimestamp {
     @Required(true)
     id: string;
@@ -30,7 +31,7 @@ export const exampleLoader = createSimpleLoader({
             TE.tryCatch(
                 async () => {
                     logger.info("Initializing example loader...");
-                    await client.register(info, CurrentTimestamp);
+                    const result = await client.register(info, CurrentTimestamp);
                     return jobScheduler.schedule({
                         name: name,
                         scheduledAt: DateTime.now(),

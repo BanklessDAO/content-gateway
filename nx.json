@@ -32,7 +32,8 @@
             "tags": ["sdk"]
         },
         "content-gateway-api": {
-            "tags": []
+            "tags": [],
+            "implicitDependencies": ["content-gateway-frontend"]
         },
         "content-gateway-frontend": {
             "tags": []
@@ -46,9 +47,6 @@
         },
         "domain-feature-gateway": {
             "tags": ["lib:feature"]
-        },
-        "shared-util-dto": {
-            "tags": []
         },
         "shared-util-fp": {
             "tags": []

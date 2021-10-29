@@ -1,25 +1,25 @@
-import { exampleLoader } from "./ExampleLoader";
 import {
-    createStubClient,
-    StubClientObjects,
+    ContentGatewayClientStub,
+    createClientStub,
 } from "@banklessdao/content-gateway-client";
-import { createJobSchedulerStub, JobSchedulerStub } from "..";
 import { isRight } from "fp-ts/lib/Either";
+import { createJobSchedulerStub, JobSchedulerStub } from "..";
+import { exampleLoader } from "./ExampleLoader";
 
 describe("Given an example loader", () => {
     const loader = exampleLoader;
 
-    let clientStub: StubClientObjects;
+    let clientStub: ContentGatewayClientStub;
     let jobSchedulerStub: JobSchedulerStub;
 
     beforeEach(() => {
-        clientStub = createStubClient();
+        clientStub = createClientStub();
         jobSchedulerStub = createJobSchedulerStub();
     });
 
     it("When initialize is called Then it runs successfully", async () => {
         const result = await loader.initialize({
-            client: clientStub.client,
+            client: clientStub,
             jobScheduler: jobSchedulerStub,
         })();
 
@@ -28,7 +28,7 @@ describe("Given an example loader", () => {
 
     it("When initialize is called Then it schedules a job", async () => {
         await loader.initialize({
-            client: clientStub.client,
+            client: clientStub,
             jobScheduler: jobSchedulerStub,
         })();
 

@@ -1,8 +1,6 @@
+import { extractLeft } from "@shared/util-fp";
 import * as E from "fp-ts/Either";
-import { Errors } from "io-ts";
 import {
-    HasId,
-    JSONSchemaType,
     SupportedJSONSchema,
     supportedJSONSchemaCodec,
     SupportedPropertyRecord,
@@ -46,25 +44,9 @@ const invalidSchemaWithIdObject = {
     required: ["id"],
 };
 
-const validSchemaWithIdObject: HasId = {
-    type: "object",
-    properties: {
-        id: {
-            type: "string",
-            minLength: 1,
-        },
-    },
-    required: ["id"],
-};
-
-const validSchemaType: JSONSchemaType = {
-    type: "object",
-    properties: validSupportedSchemaProperties,
-    required: ["id", "name", "comments", "skills", "address"],
-};
-
 const validSchemaObject: SupportedJSONSchema = {
     type: "object",
+    additionalProperties: false,
     properties: {
         id: {
             type: "string",
@@ -125,6 +107,18 @@ const validSchemaObject: SupportedJSONSchema = {
             },
             required: ["name"],
         },
+    },
+};
+
+const invalidSchemaObjectWithoutAdditionalProperties = {
+    info: {
+        namespace: "test",
+        name: "User",
+        version: "V1",
+    },
+    schema: {
+        ...validSchemaObject,
+        additionalProperties: undefined,
     },
 };
 
@@ -422,8 +416,9 @@ describe("Given a type guard", () => {
      * This object used to return an error about a missing id
      * while the comments specification was wrong instead.
      */
-    const schemaObjectWithIdRegression = {
+    const jsonSchemaWithIdRegression = {
         type: "object",
+        additionalProperties: false,
         properties: {
             id: { type: "string", minLength: 1 },
             content: { type: "string", minLength: 1 },
@@ -443,12 +438,26 @@ describe("Given a type guard", () => {
         });
     });
 
+    describe("for a schema that should have additional properties", () => {
+        it("it tests properly when invalid", () => {
+            const result = extractLeft(
+                t.schemaCodec.decode(
+                    invalidSchemaObjectWithoutAdditionalProperties
+                )
+            );
+            const firstError = result[0];
+            expect(firstError.message).toEqual(
+                `A schema must have additional properties disabled. Did you add @AdditionalProperties(false)?`
+            );
+        });
+    });
+
     describe("the regression for a schema that should contain an embed error", () => {
         it("to contain an error about the missing embed annotation", () => {
-            const result = supportedJSONSchemaCodec.decode(
-                schemaObjectWithIdRegression
-            ) as E.Left<Errors>;
-            const firstError = result.left[0];
+            const result = extractLeft(
+                supportedJSONSchemaCodec.decode(jsonSchemaWithIdRegression)
+            );
+            const firstError = result[0];
             expect(firstError.message).toEqual(
                 `{"type":"array"} property is not supported. Did you forget to add an annotation somewhere?`
             );

@@ -10,7 +10,7 @@ import * as g from "graphql";
 export const toGraphQLType = (schema: s.Schema): g.GraphQLObjectType => {
     const types = new Map<string, s.JSONSchemaType>();
     const result = new Map<string, g.GraphQLObjectType>();
-    const jsonSchema = schema.schemaObject;
+    const jsonSchema = schema.jsonSchema;
     types.set(schema.info.name, {
         type: jsonSchema.type,
         properties: jsonSchema.properties,

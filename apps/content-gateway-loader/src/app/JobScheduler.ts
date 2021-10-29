@@ -1,5 +1,5 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
-import { JobState, PrismaClient } from "@cgl/prisma";
+import { JobSchedule, JobState, PrismaClient } from "@cgl/prisma";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
@@ -180,7 +180,10 @@ class DefaultJobScheduler implements JobScheduler {
             async () => {
                 const everyMinute = "0 0/1 0 ? * * *";
                 const every5SEconds = "*/5 * * * * *";
-                schedule.scheduleJob(every5SEconds, this.createJobScannerTask());
+                schedule.scheduleJob(
+                    every5SEconds,
+                    this.createJobScannerTask()
+                );
             },
             (e: Error) => {
                 return SchedulerStartupError.create(e);
@@ -262,6 +265,7 @@ class DefaultJobScheduler implements JobScheduler {
     private loadNextJobs() {
         return this.prisma.jobSchedule.findMany({
             where: {
+                state: JobState.SCHEDULED,
                 scheduledAt: {
                     lte: DateTime.local().toJSDate(),
                 },
@@ -273,13 +277,13 @@ class DefaultJobScheduler implements JobScheduler {
         job: Job,
         state: JobState,
         note: string
-    ): TE.TaskEither<Error, void> {
+    ): TE.TaskEither<Error, JobSchedule> {
         this.logger.info(
             `Updating job ${job.name} with state ${state} and note '${note}'.`
         );
         return TE.tryCatch(
             async () => {
-                await this.prisma.jobSchedule.update({
+                return this.prisma.jobSchedule.update({
                     where: {
                         name: job.name,
                     },
@@ -306,10 +310,15 @@ class DefaultJobScheduler implements JobScheduler {
         );
     }
 
-    private executeJob(job: Job) {
+    private async executeJob(job: Job) {
         const loader = this.loaders.get(job.name);
         if (loader) {
             try {
+                await this.updateJob(
+                    job,
+                    JobState.RUNNING,
+                    `Job execution started.`
+                )();
                 pipe(
                     loader.load({
                         client: this.client,
@@ -325,17 +334,13 @@ class DefaultJobScheduler implements JobScheduler {
                         )();
                         return e;
                     }),
-                    TE.chainFirst(() => {
-                        return TE.tryCatch(
-                            async () => {
-                                await this.updateJob(
-                                    job,
-                                    JobState.COMPLETED,
-                                    `Job ${job.name} completed successfully.`
-                                )();
-                            },
-                            (err: Error) => err
-                        );
+                    TE.map((r) => {
+                        this.updateJob(
+                            job,
+                            JobState.COMPLETED,
+                            `Job ${job.name} completed successfully.`
+                        )();
+                        return r;
                     }),
                     TE.map((nextJob) => {
                         if (nextJob) {
@@ -369,22 +374,26 @@ class DefaultJobScheduler implements JobScheduler {
                 );
                 const jobs = await this.loadNextJobs();
                 this.logger.info(`Found ${jobs.length} jobs.`);
-                jobs.forEach((job) => {
+                for (const job of jobs) {
                     try {
                         this.logger.info(`Executing job ${job.name}.`);
-                        this.executeJob({
-                            name: job.name,
-                            scheduledAt: DateTime.fromJSDate(job.scheduledAt),
-                            execututionStartedAt: DateTime.now(),
-                            cursor: job.cursor,
-                        });
+                        await this.executeJob(
+                            jobScheduleToJob(job, DateTime.now())
+                        );
                     } catch (e) {
                         this.logger.warn("Failed to start job:", e);
                     }
-                });
+                }
             } catch (error: unknown) {
                 this.logger.warn("Job execution error", error);
             }
         };
     }
 }
+
+const jobScheduleToJob = (js: JobSchedule, startedAt: DateTime): Job => ({
+    name: js.name,
+    scheduledAt: DateTime.fromJSDate(js.scheduledAt),
+    cursor: js.cursor,
+    execututionStartedAt: startedAt,
+});
