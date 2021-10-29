@@ -2,7 +2,7 @@ import { DocumentNode } from '@apollo/client/core'
 import gql from 'graphql-tag';
 
 const POAP_TOKEN_SUBGRAPH_TOKENS: DocumentNode = gql`
-  query poapTokens:($count: String, $offsetID: String) {
+  query poapTokens($count: String, $offsetID: String) {
     tokens {
       id
       created

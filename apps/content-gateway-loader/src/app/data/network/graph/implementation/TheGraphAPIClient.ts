@@ -1,5 +1,7 @@
+import fetch from 'cross-fetch';
 import {
   ApolloClient,
+  HttpLink,
   DocumentNode,
   InMemoryCache,
   NormalizedCacheObject,
@@ -18,6 +20,7 @@ class TheGraphAPIClient implements GraphQLAPIClient {
   ) {
     this.client = new ApolloClient({
       uri: uri,
+      link: new HttpLink({ uri: uri, fetch }),
       cache: new InMemoryCache()
     })
   }
