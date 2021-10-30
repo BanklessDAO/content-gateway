@@ -67,13 +67,22 @@ export const poapLoader = createSimpleLoader({
 
                     while (lastTokenID != null) {
                         const tokensSlice = await pullTokensSince(lastTokenID)
+                        console.log(`Tokens slice total count: ${ tokensSlice.length }`)
 
                         if (tokensSlice.length == 0) {
                             lastTokenID = null
+                            totalCount = 0
+                        }else {
+                            lastTokenID = tokensSlice[tokensSlice.length - 1].id
                         }
 
-                        tokens.concat(tokensSlice)
+                        tokens = tokens.concat(tokensSlice)
+                        console.log(`Tokens total count: ${ tokens.length }`)
+
+                        lastTokenID = null // Limit this to a single slice for now
                     }
+
+                    console.log(`Sample token: ${ JSON.stringify(tokens[1], null, 2) }`)
 
                     client.save(typeVersions.poapTokenIndex, {
                         id: "0",
