@@ -1,4 +1,4 @@
-import { exampleLoader } from "./ExampleLoader";
+import { exampleTimestampLoader } from "./ExampleTimestampLoader";
 import {
     createClientStub,
     ContentGatewayClientStub,
@@ -7,7 +7,7 @@ import { createJobSchedulerStub, JobSchedulerStub } from "..";
 import { isRight } from "fp-ts/lib/Either";
 
 describe("Given an example loader", () => {
-    const loader = exampleLoader;
+    const loader = exampleTimestampLoader;
 
     let clientStub: ContentGatewayClientStub;
     let jobSchedulerStub: JobSchedulerStub;

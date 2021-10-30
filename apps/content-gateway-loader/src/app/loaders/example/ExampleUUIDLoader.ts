@@ -4,37 +4,33 @@ import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
 import { v4 as uuid } from "uuid";
-import { createSimpleLoader } from "..";
+import { createSimpleLoader } from "../..";
 
-const logger = new Logger({ name: "ExampleLoader" });
+const name = "example-uuid-loader";
+
+const logger = new Logger({ name });
 
 const info = {
-    namespace: "test",
-    name: "CurrentTimestamp",
-    version: "V2",
+    namespace: "example",
+    name: "RandomUUID",
+    version: "V1",
 };
 
 @AdditionalProperties(false)
-class CurrentTimestamp {
+class RandomUUID {
     @Required(true)
     id: string;
-    @Required(true)
-    value: number;
 }
 
-const name = "example-loader";
-
-export const exampleLoader = createSimpleLoader({
+export const exampleUUIDLoader = createSimpleLoader({
     name: name,
     initialize: ({ client, jobScheduler }) => {
         return pipe(
             TE.tryCatch(
                 async () => {
-                    logger.info("Initializing example loader...");
-                    const result = await client.register(
-                        info,
-                        CurrentTimestamp
-                    );
+                    logger.info("Initializing example uuid loader...");
+                    // TODO: check the result
+                    await client.register(info, RandomUUID);
                     return jobScheduler.schedule({
                         name: name,
                         scheduledAt: DateTime.now(),
@@ -43,7 +39,7 @@ export const exampleLoader = createSimpleLoader({
                 (error: Error) => new Error(error.message)
             ),
             TE.map((result) => {
-                logger.info("Scheduled Example Loader...", result);
+                logger.info("Scheduled example UUID loader...", result);
                 return undefined;
             })
         );
@@ -52,10 +48,9 @@ export const exampleLoader = createSimpleLoader({
         return pipe(
             TE.tryCatch(
                 async () => {
-                    logger.info("Executing example loader.");
+                    logger.info("Executing example uuid loader.");
                     await client.save(info, {
                         id: uuid(),
-                        value: DateTime.local().toMillis(),
                     });
                 },
                 (error: Error) => error

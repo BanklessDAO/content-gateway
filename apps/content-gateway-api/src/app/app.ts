@@ -1,6 +1,8 @@
 import { createClient } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cga/prisma";
-import { createContentGateway } from "@domain/feature-gateway";
+import {
+    createContentGateway
+} from "@domain/feature-gateway";
 import {
     batchPayloadCodec,
     createSchemaFromObject,
@@ -18,7 +20,9 @@ import { Logger } from "tslog";
 import { AppContext } from "../";
 import { createPrismaDataStorage, createPrismaSchemaStorage } from "./";
 import { generateContentGatewayAPI } from "./endpoints/ContentGatewayAPI";
-import { generateGraphQLAPI } from "./endpoints/GraphQLAPI";
+import {
+    decorateSchemaStorage, createGraphQLAPI
+} from "./endpoints/GraphQLAPI";
 
 const env = process.env.NODE_ENV;
 const isDev = env === "development";
@@ -29,8 +33,9 @@ export const createApp = async (prisma: PrismaClient) => {
     logger.info(`Running in ${env} mode`);
 
     const app = express();
-
-    const schemaStorage = createPrismaSchemaStorage(prisma);
+    const schemaStorage = decorateSchemaStorage(
+        createPrismaSchemaStorage(prisma)
+    );
     const dataStorage = createPrismaDataStorage(prisma, schemaStorage);
 
     const gateway = createContentGateway(schemaStorage, dataStorage);
@@ -75,7 +80,7 @@ export const createApp = async (prisma: PrismaClient) => {
     });
 
     const appContext: AppContext = {
-        logger,
+        logger: logger,
         env,
         isDev,
         isProd,
@@ -89,8 +94,8 @@ export const createApp = async (prisma: PrismaClient) => {
 
     const clientBuildPath = join(__dirname, "../content-gateway-frontend");
 
-    app.use("/api/graphql", await generateGraphQLAPI(appContext));
     app.use("/api/rest/", await generateContentGatewayAPI(appContext));
+    app.use("/api/graphql/", await createGraphQLAPI(appContext));
 
     if (isProd) {
         app.use(express.static(clientBuildPath));

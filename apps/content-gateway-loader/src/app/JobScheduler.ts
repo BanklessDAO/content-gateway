@@ -248,7 +248,7 @@ class DefaultJobScheduler implements JobScheduler {
                         create: entry,
                         update: entry,
                     });
-                    this.logger.info("Job created:", result);
+                    this.logger.info("Job entry created:", result);
                     return result;
                 },
                 (e: Error) => {
@@ -342,7 +342,7 @@ class DefaultJobScheduler implements JobScheduler {
                     }),
                     TE.map((nextJob) => {
                         if (nextJob) {
-                            this.logger.info("Scheduling next job", {
+                            this.logger.info("A next job was returned, scheduling...", {
                                 ...nextJob,
                                 scheduledAt: nextJob.scheduledAt.toJSDate(),
                             });

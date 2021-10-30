@@ -1,14 +1,17 @@
 import { AdditionalProperties, Required } from "@tsed/schema";
-import { Logger } from "tslog";
-import { createSimpleLoader } from "..";
-import * as TE from "fp-ts/TaskEither";
 import { pipe } from "fp-ts/lib/function";
+import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
+import { Logger } from "tslog";
+import { v4 as uuid } from "uuid";
+import { createSimpleLoader } from "../..";
 
-const logger = new Logger({ name: "ExampleLoader" });
+const name = "example-timestamp-loader";
+
+const logger = new Logger({ name });
 
 const info = {
-    namespace: "test",
+    namespace: "example",
     name: "CurrentTimestamp",
     version: "V1",
 };
@@ -16,19 +19,20 @@ const info = {
 @AdditionalProperties(false)
 class CurrentTimestamp {
     @Required(true)
+    id: string;
+    @Required(true)
     value: number;
 }
 
-const name = "example-loader";
-
-export const exampleLoader = createSimpleLoader({
+export const exampleTimestampLoader = createSimpleLoader({
     name: name,
     initialize: ({ client, jobScheduler }) => {
         return pipe(
             TE.tryCatch(
-                () => {
-                    logger.info("Initializing example loader...");
-                    client.register(info, CurrentTimestamp);
+                async () => {
+                    logger.info("Initializing example timestamp loader...");
+                    // TODO: check the result
+                    await client.register(info, CurrentTimestamp);
                     return jobScheduler.schedule({
                         name: name,
                         scheduledAt: DateTime.now(),
@@ -37,18 +41,18 @@ export const exampleLoader = createSimpleLoader({
                 (error: Error) => new Error(error.message)
             ),
             TE.map((result) => {
-                logger.info(`Scheduled job ${JSON.stringify(result)}`);
+                logger.info("Scheduled example timestamp loader...", result);
                 return undefined;
             })
         );
     },
-    load: ({ client, currentJob }) => {
+    load: ({ client }) => {
         return pipe(
             TE.tryCatch(
                 async () => {
-                    logger.info("Executing example loader.");
-                    logger.info(`current job: ${currentJob}`);
+                    logger.info("Executing example timestamp loader.");
                     await client.save(info, {
+                        id: uuid(),
                         value: DateTime.local().toMillis(),
                     });
                 },
@@ -57,7 +61,7 @@ export const exampleLoader = createSimpleLoader({
             TE.chain(() =>
                 TE.right({
                     name: name,
-                    scheduledAt: DateTime.now().plus({ minutes: 15 }),
+                    scheduledAt: DateTime.now().plus({ seconds: 5 }),
                 })
             )
         );
