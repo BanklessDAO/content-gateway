@@ -1,4 +1,4 @@
-import { Required, CollectionOf } from "@tsed/schema";
+import { Required, CollectionOf, AdditionalProperties } from "@tsed/schema";
 
 export const typeVersions = {
     poapToken: {
@@ -22,6 +22,7 @@ export class POAPToken {
     mintedAt: number;
 }
 
+@AdditionalProperties(false)
 export class POAPTokenIndex {
     @Required(true)
     id: string;

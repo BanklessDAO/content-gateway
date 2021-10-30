@@ -14,39 +14,50 @@ const name = "bankless-token-loader";
 
 const mapAccounts = (accounts) => {
     let mappedAccounts = accounts
-        .map(account => {
+        .map(function (account) {
             var acc = {
-                id: account.id,
-                address: account.id,
-                balance: 0,
+                id: "",
+                address: "",
+                balance: 0.0,
                 transactions: [
                     {
                         fromAddress: "",
                         toAddress: "",
-                        amount: 0
+                        amount: 0.0
                     }
                 ]
             }
             
-            acc.id = account.id
-            acc.address = account.id
-            if (account.ERC20balances[0].value) acc.balance = parseFloat(account.ERC20balances[0].value)
-            acc.transactions = account.ERC20balances[0].transferToEvent
-                .concat(account.ERC20balances[0].transferFromEvent)
-                .map(transfer => {
-                    var tr = {
-                        fromAddress: transfer.from.id,
-                        toAddress: transfer.to.id,
-                        amount: 0
-                    }
+            try {
+                acc.id = account.id
+                acc.address = account.id
 
-                    if (transfer.value) tr.amount = parseFloat(transfer.value)
+                const balances = account.ERC20balances
+                const balance = balances[0]
+                if (balance.value) acc.balance = parseFloat(balance.value)
 
-                    return tr
-                })
+                const transfersTo = balance.transferToEvent
+                const transfersFrom = balance.transferFromEvent
+                const allTransfers = transfersTo.concat(transfersFrom)
+
+                acc.transactions = allTransfers
+                    .map(transfer => {
+                        var tr = {
+                            fromAddress: transfer.from.id,
+                            toAddress: transfer.to.id,
+                            amount: 0.0
+                        }
+
+                        if (transfer.value) tr.amount = parseFloat(transfer.value)
+
+                        return tr
+                    })
+
+                return acc
+            } catch {
+                return acc
+            }
         })
-
-    console.log(mappedAccounts[1])
 
     return mappedAccounts
 }
@@ -97,13 +108,20 @@ export const banklessTokenLoader = createSimpleLoader({
 
                     while (lastAccountID != null) {
                         const accountsSlice = await pullAccountsSince(lastAccountID)
+                        console.log(`Accounts slice total count: ${ accountsSlice.length }`)
 
                         if (accountsSlice.length == 0) {
                             lastAccountID = null
+                            totalCount = 0
+                        } else {
+                            lastAccountID = accountsSlice[accountsSlice.length - 1].id
                         }
-
-                        accounts.concat(accountsSlice)
+                        
+                        accounts = accounts.concat(accountsSlice)
+                        console.log(`Accounts total count: ${ accounts.length }`)
                     }
+
+                    console.log(`Sample account: ${ JSON.stringify(accounts[1], null, 2) }`)
 
                     client.save(typeVersions.banklessTokenIndex, {
                         id: "0",

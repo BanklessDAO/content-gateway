@@ -49,7 +49,7 @@ class TheGraphAPIClient implements GraphQLAPIClient {
                     resolve(mappedResult);
                 })
                 .catch((err) => {
-                    throw new Error("Couldn't fetch subgraph data: " + err);
+                    throw new Error("Couldn't complete subgraph data fetch and/or mapping: " + err);
                 });
         });
     }

@@ -1,4 +1,4 @@
-import { Required, CollectionOf } from "@tsed/schema";
+import { Required, CollectionOf, AdditionalProperties } from "@tsed/schema";
 
 export const typeVersions = {
     transaction: {
@@ -37,6 +37,7 @@ export class BANKAccount {
     transactions: Transaction[];
 }
 
+@AdditionalProperties(false)
 export class BanklessTokenIndex {
     @Required(true)
     id: string;

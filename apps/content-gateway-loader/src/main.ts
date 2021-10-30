@@ -29,7 +29,7 @@ const registerLoaders = (scheduler: JobScheduler) => {
     // scheduler.register(exampleUUIDLoader);
 
     // scheduler.register(banklessAcademyLoader);
-    // scheduler.register(banklessTokenLoader);
+    scheduler.register(banklessTokenLoader);
     // scheduler.register(bountyBoardLoader);
 };
 
