@@ -1,7 +1,8 @@
+import { extractRight } from "@shared/util-fp";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
-import { createSchemaFromObject, createSchemaFromType, Schema } from ".";
-import { extractRight } from "@shared/util-fp";
+import { createSchemaFromObject, createSchemaFromType } from ".";
+import { User as UserWithBackwardsCompatibleNestedAddress } from "./user/UserWithBackwardsCompatibleAddress";
 
 class Comment {
     @Required(true)
@@ -20,6 +21,13 @@ class Address {
     city: City;
 }
 
+class BackwardsIncompatibleAddress {
+    @Required(true)
+    address: string;
+    @Required(true)
+    city: string;
+}
+
 @AdditionalProperties(false)
 class User {
     @Required(true)
@@ -34,6 +42,56 @@ class User {
     skills: string[];
     @Required(true)
     address: Address;
+}
+
+@AdditionalProperties(false)
+class BackwardsCompatibleUser {
+    @Required(true)
+    id: string;
+    @Required(true)
+    name?: string;
+    @Required(false)
+    @CollectionOf(Comment)
+    comments: Comment[];
+    @Required(false)
+    @CollectionOf(String)
+    skills: string[];
+    @Required(true)
+    address: Address;
+    @Required(false)
+    favoriteHobby: string;
+}
+
+@AdditionalProperties(false)
+class BackwardsIncompatibleUser {
+    @Required(true)
+    id: string;
+    @Required(true)
+    name?: string;
+    @Required(false)
+    @CollectionOf(Comment)
+    comments: Comment[];
+    @Required(false)
+    @CollectionOf(String)
+    skills: string[];
+    @Required(true)
+    address: string;
+}
+
+@AdditionalProperties(false)
+class BackwardsCompatibleUserWithIncompatibleAddress {
+    @Required(true)
+    id: string;
+    @Required(true)
+    name?: string;
+    @Required(false)
+    @CollectionOf(Comment)
+    comments: Comment[];
+    @Required(false)
+    @CollectionOf(String)
+    skills: string[];
+    @Required(true)
+    address: BackwardsIncompatibleAddress;
 }
 
 const userInfo = {
@@ -168,6 +226,56 @@ describe("Given a Schema", () => {
 
         it("When creating a GraphQL type, the proper type is produced", () => {
             expect(null).toEqual(null);
+        });
+
+        it("When has backward compatible changes to other Then it is compatible", () => {
+            const oldSchema = extractRight(
+                createSchemaFromType(userInfo, User)
+            );
+            const newSchema = extractRight(
+                createSchemaFromType(userInfo, BackwardsCompatibleUser)
+            );
+
+            expect(newSchema.isBackwardCompatibleWith(oldSchema)).toBe(true);
+        });
+
+        it("When has nested backward compatible changes to other Then it is compatible", () => {
+            const oldSchema = extractRight(
+                createSchemaFromType(userInfo, User)
+            );
+            const newSchema = extractRight(
+                createSchemaFromType(
+                    userInfo,
+                    UserWithBackwardsCompatibleNestedAddress
+                )
+            );
+
+            expect(newSchema.isBackwardCompatibleWith(oldSchema)).toBe(true);
+        });
+
+        it("When has backward incompatible changes to other Then it is incompatible", () => {
+            const oldSchema = extractRight(
+                createSchemaFromType(userInfo, User)
+            );
+            const newSchema = extractRight(
+                createSchemaFromType(userInfo, BackwardsIncompatibleUser)
+            );
+
+            expect(newSchema.isBackwardCompatibleWith(oldSchema)).toBe(false);
+        });
+
+        it("When has backward incompatible changes in nested type to other Then it is incompatible", () => {
+            const oldSchema = extractRight(
+                createSchemaFromType(userInfo, User)
+            );
+            const newSchema = extractRight(
+                createSchemaFromType(
+                    userInfo,
+                    BackwardsCompatibleUserWithIncompatibleAddress
+                )
+            );
+
+            expect(newSchema.isBackwardCompatibleWith(oldSchema)).toBe(false);
         });
     });
 

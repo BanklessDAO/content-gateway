@@ -3,12 +3,12 @@ import { PrismaClient, Schema as PrismaSchema } from "@cga/prisma";
 import {
     RegisteredSchemaIncompatibleError,
     SchemaCreationFailedError,
-    SchemaStorage
+    SchemaStorage,
 } from "@domain/feature-gateway";
 import {
     createSchemaFromObject,
     Schema,
-    SchemaInfo
+    SchemaInfo,
 } from "@shared/util-schema";
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
@@ -57,6 +57,21 @@ export const createPrismaSchemaStorage = (
             (e: Error) => SchemaCreationFailedError.create(e.message)
         );
 
+    const updateSchema = (schema: Schema) => () =>
+        TE.tryCatch(
+            () =>
+                prisma.schema.update({
+                    where: {
+                        namespace_name_version: schema.info,
+                    },
+                    data: {
+                        ...schema.info,
+                        jsonSchema: schema.jsonSchema,
+                    },
+                }),
+            (e: Error) => SchemaCreationFailedError.create(e.message)
+        );
+
     const prismaSchemaToSchema: (
         schema: PrismaSchema
     ) => E.Either<Errors, Schema> = (schema) =>
@@ -75,9 +90,11 @@ export const createPrismaSchemaStorage = (
                 findSchema(schema.info),
                 TE.fromTaskOption(() => undefined),
                 TE.swap,
-                TE.mapLeft(() =>
-                    RegisteredSchemaIncompatibleError.create(schema.info)
-                ),
+                TE.mapLeft(() => {
+                    return RegisteredSchemaIncompatibleError.create(
+                        schema.info
+                    );
+                }),
                 TE.chain(() => {
                     return storeSchema(schema)();
                 }),

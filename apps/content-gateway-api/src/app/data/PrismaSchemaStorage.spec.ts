@@ -20,12 +20,35 @@ class User {
     name: string;
 }
 
+@AdditionalProperties(false)
+class IncompatibleUser {
+    @Required(true)
+    id: string;
+    @Required(true)
+    name: string;
+    @Required(true)
+    age: number;
+}
+
+
 const userInfo = {
     namespace: "test",
     name: "User",
 };
 
 const createSchema = (version: string) => {
+    return extractRight(
+        createSchemaFromType(
+            {
+                ...userInfo,
+                version,
+            },
+            User
+        )
+    );
+};
+
+const createIncompatibleSchema = (version: string) => {
     return extractRight(
         createSchemaFromType(
             {
@@ -51,13 +74,14 @@ describe("Given a Prisma schema storage", () => {
             expect(result).toEqual(E.right(undefined));
         });
 
-        it("Then it fails when the schema already exists", async () => {
+        it("Then it fails when it is incompatible with an existing schema with the same info", async () => {
             const version = uuid();
-            const userSchema = createSchema(version);
+            const oldSchema = createSchema(version);
+            const newSchema = createIncompatibleSchema(version);
 
-            await storage.register(userSchema)();
+            await storage.register(oldSchema)();
 
-            const result = await storage.register(userSchema)();
+            const result = await storage.register(newSchema)();
 
             const info = schemaInfoToString({ ...userInfo, version: version });
 
@@ -69,6 +93,21 @@ describe("Given a Prisma schema storage", () => {
                 )
             );
         });
+
+        // it("Then it succeeds when it is backward compatible with an existing schema with the same info", async () => {
+        //     const version = uuid();
+        //     const userSchema = createSchema(version);
+
+        //     await storage.register(userSchema)();
+
+        //     const result = await storage.register(userSchema)();
+
+        //     const info = schemaInfoToString({ ...userInfo, version: version });
+
+        //     expect(result).toEqual(
+        //         E.right(undefined)
+        //     );
+        // });
 
         it("Then it returns the proper schema When we try to find it", async () => {
             const version = uuid();
