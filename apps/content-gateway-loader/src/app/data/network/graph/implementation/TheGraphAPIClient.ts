@@ -19,7 +19,9 @@ class TheGraphAPIClient implements GraphQLAPIClient {
         this.client = new ApolloClient({
             uri: uri,
             link: new HttpLink({ uri: uri, fetch }),
-            cache: new InMemoryCache(),
+            cache: new InMemoryCache({
+                addTypename: false
+            }),
         });
     }
 
@@ -33,13 +35,16 @@ class TheGraphAPIClient implements GraphQLAPIClient {
                 .query({
                     query: query,
                     variables: vars,
-                    //fetchPolicy: "no-cache"
+                    fetchPolicy: "no-cache"
                 })
                 .then((response) => {
+                    if (response.loading == true || response.partial || response.data === undefined) { return }
+                    console.log(`Is loading: ${ response.loading }`)
+
                     // console.log('TheGraph query result:')
                     // console.log(response)
 
-                    const mappedResult = mappingCallback(response);
+                    const mappedResult = mappingCallback(response.data);
 
                     resolve(mappedResult);
                 })

@@ -13,23 +13,42 @@ const graphAPIClient = (new DefaultNetworkProvider()).graph(subgraphURI)
 const name = "bankless-token-loader";
 
 const mapAccounts = (accounts) => {
-    return accounts
+    let mappedAccounts = accounts
         .map(account => {
-            return {
+            var acc = {
                 id: account.id,
                 address: account.id,
-                balance: account.ERC20balances[0].value,
-                transactions: account.ERC20balances[0].transferToEvent
-                    .concat(account.ERC20balances[0].transferFromEvent)
-                    .map(transfer => {
-                        return {
-                            fromAddress: transfer.from.id,
-                            toAddress: transfer.to.id,
-                            amount: transfer.value
-                        }
-                    })
+                balance: 0,
+                transactions: [
+                    {
+                        fromAddress: "",
+                        toAddress: "",
+                        amount: 0
+                    }
+                ]
             }
+            
+            acc.id = account.id
+            acc.address = account.id
+            if (account.ERC20balances[0].value) acc.balance = parseFloat(account.ERC20balances[0].value)
+            acc.transactions = account.ERC20balances[0].transferToEvent
+                .concat(account.ERC20balances[0].transferFromEvent)
+                .map(transfer => {
+                    var tr = {
+                        fromAddress: transfer.from.id,
+                        toAddress: transfer.to.id,
+                        amount: 0
+                    }
+
+                    if (transfer.value) tr.amount = parseFloat(transfer.value)
+
+                    return tr
+                })
         })
+
+    console.log(mappedAccounts[1])
+
+    return mappedAccounts
 }
 
 var totalCount = 0
@@ -38,12 +57,14 @@ const pullAccountsSince = (id) => {
         .query(
             BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS, 
             { count: 1000, offsetID: id }, 
-            (response) => { 
+            (data) => { 
                 totalCount += 1000
                 logger.info(`Loaded data chunk from the original source:`);
                 logger.info(`Total count: ${ totalCount }; OffsetID: ${ id }`);
 
-                return mapAccounts(response.data.accounts)
+                // logger.info(`Data: ${ JSON.stringify(data) }`)
+
+                return mapAccounts(data.accounts)
             }
         );
 }

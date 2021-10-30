@@ -10,7 +10,6 @@ const BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS: DocumentNode = gql`
       id
       ERC20balances {
         value
-        valueExact
         transferToEvent {
           value
           from {

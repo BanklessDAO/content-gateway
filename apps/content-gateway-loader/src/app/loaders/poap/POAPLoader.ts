@@ -29,12 +29,12 @@ const pullTokensSince = (id) => {
         .query(
             POAP_TOKEN_SUBGRAPH_TOKENS, 
             { count: 1000, offsetID: id }, 
-            (response) => { 
+            (data) => { 
                 totalCount += 1000
                 logger.info(`Loaded data chunk from the original source:`);
                 logger.info(`Total count: ${ totalCount }; OffsetID: ${ id }`);
 
-                return mapTokens(response.data.tokens)
+                return mapTokens(data.tokens)
             }
         );
 }
