@@ -7,9 +7,11 @@ import * as express from "express";
 import { Logger } from "tslog";
 import { createJobScheduler, JobScheduler } from "./app";
 import { banklessAcademyLoader } from "./app/loaders/BanklessAcademyLoader";
+import { bountyBoardLoader } from "./app/loaders/BountyBoardLoader"
 import { banklessTokenLoader } from "./app/loaders/banklessToken/BanklessTokenLoader";
 import { exampleTimestampLoader } from "./app/loaders/example/ExampleTimestampLoader";
 import { exampleUUIDLoader } from "./app/loaders/example/ExampleUUIDLoader";
+import { poapLoader } from "./app/loaders/poap/POAPLoader";
 
 const programError = (msg: string) => {
     throw new Error(msg);
@@ -27,10 +29,10 @@ const CGA_URL = process.env.CGA_URL || programError("You must specify CGA_URL");
 const registerLoaders = (scheduler: JobScheduler) => {
     scheduler.register(exampleTimestampLoader);
     // scheduler.register(exampleUUIDLoader);
-
-    // scheduler.register(banklessAcademyLoader);
+    scheduler.register(banklessAcademyLoader);
+    scheduler.register(bountyBoardLoader);
     scheduler.register(banklessTokenLoader);
-    // scheduler.register(bountyBoardLoader);
+    scheduler.register(poapLoader);
 };
 
 const main = async () => {
