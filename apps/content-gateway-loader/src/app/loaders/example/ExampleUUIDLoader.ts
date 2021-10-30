@@ -30,16 +30,12 @@ export const exampleUUIDLoader = createSimpleLoader({
                 async () => {
                     logger.info("Initializing example uuid loader...");
                     // TODO: check the result
-                    await client.register(info, RandomUUID);
-                    return jobScheduler.schedule({
-                        name: name,
-                        scheduledAt: DateTime.now(),
-                    });
+                    return await client.register(info, RandomUUID);
                 },
                 (error: Error) => new Error(error.message)
             ),
             TE.map((result) => {
-                logger.info("Scheduled example UUID loader...", result);
+                logger.info("Scheduled example UUID loader...");
                 return undefined;
             })
         );

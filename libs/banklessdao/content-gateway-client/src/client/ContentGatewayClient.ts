@@ -122,21 +122,21 @@ export const createOutboundAdapterStub = (): OutboundDataAdapterStub => {
         schemas,
         payloads,
         register: (schema) => {
-            logger.info(`Registering schema: ${schema}`);
+            logger.info(`Registering schema:`, schema);
             schemas.push(schema);
-            logger.debug(`Registered schemas: ${schemas}`);
+            logger.debug(`Registered schemas:`, schemas);
             return TE.right(undefined);
         },
         send: (payload) => {
-            logger.info(`Sending payload: ${payload}`);
+            logger.info(`Sending payload:`, payload);
             payloads.push(payload);
-            logger.debug(`Sent payloads: ${payloads}`);
+            logger.debug(`Sent payloads:`, payloads);
             return TE.right(undefined);
         },
         sendBatch: (payload) => {
-            logger.info(`Sending payload: ${payload}`);
+            logger.info(`Sending payload:`, payload);
             payloads.push(payload);
-            logger.debug(`Sent payloads: ${payloads}`);
+            logger.debug(`Sent payloads:`, payloads);
             return TE.right(undefined);
         },
     };

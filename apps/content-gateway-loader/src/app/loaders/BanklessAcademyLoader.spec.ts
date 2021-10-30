@@ -1,10 +1,10 @@
-import { banklessAcademyLoader } from "./BanklessAcademyLoader";
 import {
-    createClientStub,
     ContentGatewayClientStub,
+    createClientStub,
 } from "@banklessdao/content-gateway-client";
-import { createJobSchedulerStub, JobSchedulerStub } from "..";
 import { isRight } from "fp-ts/lib/Either";
+import { createJobSchedulerStub, JobSchedulerStub } from "..";
+import { banklessAcademyLoader } from "./BanklessAcademyLoader";
 
 describe("Given an Bankless Academy loader", () => {
     const loader = banklessAcademyLoader;

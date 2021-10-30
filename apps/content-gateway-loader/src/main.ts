@@ -26,7 +26,7 @@ const CGA_URL = process.env.CGA_URL || programError("You must specify CGA_URL");
  */
 const registerLoaders = (scheduler: JobScheduler) => {
     scheduler.register(exampleTimestampLoader);
-    scheduler.register(exampleUUIDLoader);
+    // scheduler.register(exampleUUIDLoader);
 
     // scheduler.register(banklessAcademyLoader);
     // scheduler.register(banklessTokenLoader);

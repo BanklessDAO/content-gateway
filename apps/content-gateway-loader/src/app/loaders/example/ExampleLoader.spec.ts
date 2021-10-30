@@ -1,10 +1,10 @@
-import { exampleTimestampLoader } from "./ExampleTimestampLoader";
 import {
-    createClientStub,
     ContentGatewayClientStub,
+    createClientStub,
 } from "@banklessdao/content-gateway-client";
-import { createJobSchedulerStub, JobSchedulerStub } from "..";
 import { isRight } from "fp-ts/lib/Either";
+import { createJobSchedulerStub, JobSchedulerStub } from "../../";
+import { exampleTimestampLoader } from "./ExampleTimestampLoader";
 
 describe("Given an example loader", () => {
     const loader = exampleTimestampLoader;

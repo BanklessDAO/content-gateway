@@ -1,9 +1,7 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
 import { Tagged, tagged } from "@shared/util-fp";
 import * as TE from "fp-ts/TaskEither";
-import { JobDescriptor } from ".";
-import { Job } from "./Job";
-import { JobScheduler } from "./JobScheduler";
+import { Job, JobDescriptor, JobScheduler } from ".";
 
 /**
  * Contains the necessary information for initializing.
