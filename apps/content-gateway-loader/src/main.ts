@@ -30,9 +30,9 @@ const registerLoaders = (scheduler: JobScheduler) => {
     // scheduler.register(exampleTimestampLoader);
     // scheduler.register(exampleUUIDLoader);
     scheduler.register(banklessAcademyLoader);
-    scheduler.register(bountyBoardLoader);
-    scheduler.register(banklessTokenLoader);
-    scheduler.register(poapLoader);
+    // scheduler.register(bountyBoardLoader);
+    // scheduler.register(banklessTokenLoader);
+    // scheduler.register(poapLoader);
 };
 
 const main = async () => {

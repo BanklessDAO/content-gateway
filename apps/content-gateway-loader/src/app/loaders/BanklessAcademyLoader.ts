@@ -4,7 +4,7 @@ import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
 import { createSimpleLoader } from "..";
-import axios from 'axios'
+import axios from "axios";
 
 const logger = new Logger({ name: "BanklessAcademyLoader" });
 
@@ -32,28 +32,28 @@ const typeVersions = {
         namespace: "bankless-academy",
         name: "CourseLibrary",
         version: "V1",
-    }
+    },
 };
 
 class Quiz {
     @Required(true)
     @CollectionOf(String)
-    answers: [string]
+    answers: [string];
     @Required(true)
-    rightAnswerNumber: number
+    rightAnswerNumber: number;
 }
 
 class Section {
     @Required(true)
-    type: string
+    type: string;
     @Required(true)
-    title: string
+    title: string;
     @Required(false)
-    content: string
+    content: string;
     @Required(false)
-    quiz: Quiz
+    quiz: Quiz;
     @Required(false)
-    component: string
+    component: string;
 }
 
 class Course {
@@ -90,7 +90,7 @@ class CourseLibrary {
     id: string;
     @Required(true)
     @CollectionOf(Course)
-    courses: Course[]
+    courses: Course[];
 }
 
 /// Loader
@@ -119,43 +119,46 @@ export const banklessAcademyLoader = createSimpleLoader({
                     logger.info(`Current job: ${currentJob}`);
 
                     await axios
-                        .get(`https://bankless-academy-cg-lab.vercel.app/api/courses`)
+                        .get(
+                            `https://bankless-academy-cg-lab.vercel.app/api/courses`
+                        )
                         .then((response) => {
-                            logger.info(`Loaded data from the original source:`);
+                            logger.info(
+                                `Loaded data from the original source:`
+                            );
                             logger.info(`${JSON.stringify(response.data)}`);
 
-                            let courses = response.data
-                                .map(item => {
-                                    return {
-                                        name: item.name,
-                                        slug: item.slug,
-                                        notionId: item.notionId,
-                                        poapEventId: item.poapEventId,
-                                        description: item.description,
-                                        duration: item.duration,
-                                        difficulty: item.difficulty,
-                                        poapImageLink: item.poapImageLink,
-                                        learnings: item.learnings,
-                                        learningActions: item.learningActions,
-                                        knowledgeRequirements: item.knowledgeRequirements,
-                                        sections: item.slides
-                                            .map(slide => {
-                                                return {
-                                                    type: slide.type,
-                                                    title: slide.title,
-                                                    content: slide.content,
-                                                    // TODO: Add quiz support
-                                                    component: slide.component
-                                                }
-                                            })
-                                    }
-                                })
+                            const courses = response.data.map((item) => {
+                                return {
+                                    name: item.name,
+                                    slug: item.slug,
+                                    notionId: item.notionId,
+                                    poapEventId: item.poapEventId,
+                                    description: item.description,
+                                    duration: item.duration,
+                                    difficulty: item.difficulty,
+                                    poapImageLink: item.poapImageLink,
+                                    learnings: item.learnings,
+                                    learningActions: item.learningActions,
+                                    knowledgeRequirements:
+                                        item.knowledgeRequirements,
+                                    sections: item.slides.map((slide) => {
+                                        return {
+                                            type: slide.type,
+                                            title: slide.title,
+                                            content: slide.content,
+                                            // TODO: Add quiz support
+                                            component: slide.component,
+                                        };
+                                    }),
+                                };
+                            });
 
                             client.save(typeVersions.courseLibrary, {
                                 id: "0",
-                                courses: courses
-                            })
-                        })
+                                courses: courses,
+                            });
+                        });
                 },
                 (error: Error) => new Error(error.message)
             ),
