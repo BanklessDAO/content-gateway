@@ -101,8 +101,22 @@ export const createRESTAdapter = (url: string): OutboundDataAdapter => {
         },
         sendBatch: (payload: BatchPayloadJson) => {
             return TE.tryCatch(
-                () => axios.post(`${url}/api/rest/receive-batch`, payload),
-                (err) => new Error(`Error sending payload: ${err}`)
+                async () => {
+                    const result = await axios.post(
+                        `${url}/api/rest/receive-batch`,
+                        payload
+                    );
+
+                    logger.info(`status: ${result.status}, text: ${result.statusText}`)
+
+                },
+                (err: unknown) => {
+                    if (axios.isAxiosError(err)) {
+                        return new Error(`Error sending payload.`);
+                    } else {
+                        return new Error(`Error sending payload.`);
+                    }
+                }
             );
         },
     };
