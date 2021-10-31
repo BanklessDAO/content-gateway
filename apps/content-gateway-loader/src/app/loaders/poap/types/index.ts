@@ -13,6 +13,7 @@ export const typeVersions = {
     }
 };
 
+@AdditionalProperties(false)
 export class POAPToken {
     @Required(true)
     id: string;

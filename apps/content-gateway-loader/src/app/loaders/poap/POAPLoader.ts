@@ -3,7 +3,7 @@ import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
 import { createSimpleLoader } from "../..";
-import { typeVersions, POAPTokenIndex } from "./types";
+import { typeVersions, POAPTokenIndex, POAPToken } from "./types";
 import DefaultNetworkProvider from '../../data/network/DefaultNetworkProvider'
 import { POAP_TOKEN_SUBGRAPH_TOKENS } from "./data/network/graph/queries";
 
@@ -15,12 +15,18 @@ const name = "poap-loader";
 const mapTokens = (tokens) => {
     return tokens
         .map(token => {
-            return {
-                id: token.id,
-                owner: token.owner.id,
-                mintedAt: token.created
+            try {
+                return {
+                    id: token.id,
+                    owner: token.owner.id,
+                    mintedAt: token.created
+                }
+            } catch {
+                console.log(`Spotted token with corrupt data`)
+                return null;
             }
         })
+        .filter(token => token)
 }
 
 var totalCount = 0
@@ -45,7 +51,7 @@ export const poapLoader = createSimpleLoader({
         return TE.tryCatch(
             async () => {
                 logger.info("Initializing POAP loader...");
-                client.register(typeVersions.poapTokenIndex, POAPTokenIndex);
+                client.register(typeVersions.poapToken, POAPToken);
                 const result = await jobScheduler.schedule({
                     name: name,
                     scheduledAt: DateTime.now(),
@@ -84,10 +90,10 @@ export const poapLoader = createSimpleLoader({
 
                     console.log(`Sample token: ${ JSON.stringify(tokens[1], null, 2) }`)
 
-                    client.save(typeVersions.poapTokenIndex, {
-                        id: "0",
-                        tokens: tokens
-                    });
+                    client.saveBatch(
+                        typeVersions.poapToken,
+                        tokens
+                    );
                 },
                 (error: Error) => new Error(error.message)
             ),

@@ -16,49 +16,52 @@ const subgraphURI =
 const graphAPIClient = new DefaultNetworkProvider().graph(subgraphURI);
 
 const mapAccounts = (accounts) => {
-    const mappedAccounts = accounts.map(function (account) {
-        const acc = {
-            id: "",
-            address: "",
-            balance: 0.0,
-            transactions: [
-                {
-                    fromAddress: "",
-                    toAddress: "",
-                    amount: 0.0,
-                },
-            ],
-        };
+    const mappedAccounts = accounts
+        .map(function (account) {
+            const acc = {
+                id: "",
+                address: "",
+                balance: 0.0,
+                transactions: [
+                    {
+                        fromAddress: "",
+                        toAddress: "",
+                        amount: 0.0,
+                    },
+                ],
+            };
 
-        try {
             acc.id = account.id;
             acc.address = account.id;
 
-            const balances = account.ERC20balances;
-            const balance = balances[0];
-            if (balance.value) acc.balance = parseFloat(balance.value);
+            try {
+                const balances = account.ERC20balances;
+                const balance = balances[0];
+                if (balance.value) acc.balance = parseFloat(balance.value);
 
-            const transfersTo = balance.transferToEvent;
-            const transfersFrom = balance.transferFromEvent;
-            const allTransfers = transfersTo.concat(transfersFrom);
+                const transfersTo = balance.transferToEvent;
+                const transfersFrom = balance.transferFromEvent;
+                const allTransfers = transfersTo.concat(transfersFrom);
 
-            acc.transactions = allTransfers.map((transfer) => {
-                const tr = {
-                    fromAddress: transfer.from.id,
-                    toAddress: transfer.to.id,
-                    amount: 0.0,
-                };
+                acc.transactions = allTransfers.map((transfer) => {
+                    const tr = {
+                        fromAddress: transfer.from.id,
+                        toAddress: transfer.to.id,
+                        amount: 0.0,
+                    };
 
-                if (transfer.value) tr.amount = parseFloat(transfer.value);
+                    if (transfer.value) tr.amount = parseFloat(transfer.value);
 
-                return tr;
-            });
+                    return tr;
+                });
 
-            return acc;
-        } catch {
-            return acc;
-        }
-    });
+                return acc;
+            } catch {
+                console.log(`Spotted account with missing data: ${ acc.id }`)
+                return null;
+            }
+        })
+        .filter(account => account);
 
     return mappedAccounts;
 };

@@ -15,7 +15,10 @@ export class Transaction {
     amount: number;
 }
 
+@AdditionalProperties(false)
 export class BANKAccount {
+    @Required(true)
+    id: string;
     @Required(true)
     address: string;
     @Required(true)
