@@ -24,6 +24,7 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
     app.use(
         express.json({
             strict: true,
+            limit: "50mb",
         })
     );
 
