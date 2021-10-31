@@ -92,7 +92,7 @@ const createGraphQLMiddleware = async ({
                 )();
             };
             return {
-                [`find${name}ById`]: {
+                [`${name}`]: {
                     type: type,
                     args: {
                         id: { type: g.GraphQLString },
@@ -101,7 +101,7 @@ const createGraphQLMiddleware = async ({
                         return findById(id);
                     },
                 },
-                [`findAll${pluralize.plural(name)}`]: {
+                [`${pluralize.plural(name)}`]: {
                     type: g.GraphQLList(type),
                     resolve: () => {
                         return findAll();
