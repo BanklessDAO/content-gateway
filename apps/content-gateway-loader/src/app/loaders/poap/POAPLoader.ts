@@ -3,47 +3,47 @@ import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
 import { createSimpleLoader } from "../..";
-import { typeVersions, POAPTokenIndex, POAPToken } from "./types";
-import DefaultNetworkProvider from '../../data/network/DefaultNetworkProvider'
+import DefaultNetworkProvider from "../../data/network/DefaultNetworkProvider";
 import { POAP_TOKEN_SUBGRAPH_TOKENS } from "./data/network/graph/queries";
+import { POAPToken, info } from "./types";
 
 const logger = new Logger({ name: "POAPLoader" });
-const subgraphURI = "https://api.thegraph.com/subgraphs/name/poap-xyz/poap-xdai"
-const graphAPIClient = (new DefaultNetworkProvider()).graph(subgraphURI)
+const subgraphURI =
+    "https://api.thegraph.com/subgraphs/name/poap-xyz/poap-xdai";
+const graphAPIClient = new DefaultNetworkProvider().graph(subgraphURI);
 const name = "poap-loader";
 
 const mapTokens = (tokens) => {
     return tokens
-        .map(token => {
+        .map((token) => {
             try {
                 return {
                     id: token.id,
                     owner: token.owner.id,
-                    mintedAt: token.created
-                }
+                    mintedAt: token.created,
+                };
             } catch {
-                console.log(`Spotted token with corrupt data`)
+                console.log(`Spotted token with corrupt data`);
                 return null;
             }
         })
-        .filter(token => token)
-}
+        .filter((token) => token);
+};
 
-var totalCount = 0
+let totalCount = 0;
 const pullTokensSince = (id) => {
-    return graphAPIClient
-        .query(
-            POAP_TOKEN_SUBGRAPH_TOKENS, 
-            { count: 1000, offsetID: id }, 
-            (data) => { 
-                totalCount += 1000
-                logger.info(`Loaded data chunk from the original source:`);
-                logger.info(`Total count: ${ totalCount }; OffsetID: ${ id }`);
+    return graphAPIClient.query(
+        POAP_TOKEN_SUBGRAPH_TOKENS,
+        { count: 1000, offsetID: id },
+        (data) => {
+            totalCount += 1000;
+            logger.info(`Loaded data chunk from the original source:`);
+            logger.info(`Total count: ${totalCount}; OffsetID: ${id}`);
 
-                return mapTokens(data.tokens)
-            }
-        );
-}
+            return mapTokens(data.tokens);
+        }
+    );
+};
 
 export const poapLoader = createSimpleLoader({
     name: name,
@@ -51,7 +51,7 @@ export const poapLoader = createSimpleLoader({
         return TE.tryCatch(
             async () => {
                 logger.info("Initializing POAP loader...");
-                client.register(typeVersions.poapToken, POAPToken);
+                client.register(info, POAPToken);
                 const result = await jobScheduler.schedule({
                     name: name,
                     scheduledAt: DateTime.now(),
@@ -68,32 +68,35 @@ export const poapLoader = createSimpleLoader({
                     logger.info("Executing POAP loader.");
                     logger.info(`Current job: ${currentJob}`);
 
-                    var tokens = []
-                    var lastTokenID = ""
+                    let tokens = [];
+                    let lastTokenID = "";
 
                     while (lastTokenID != null) {
-                        const tokensSlice = await pullTokensSince(lastTokenID)
-                        console.log(`Tokens slice total count: ${ tokensSlice.length }`)
+                        const tokensSlice = await pullTokensSince(lastTokenID);
+                        console.log(
+                            `Tokens slice total count: ${tokensSlice.length}`
+                        );
 
                         if (tokensSlice.length == 0) {
-                            lastTokenID = null
-                            totalCount = 0
-                        }else {
-                            lastTokenID = tokensSlice[tokensSlice.length - 1].id
+                            lastTokenID = null;
+                            totalCount = 0;
+                        } else {
+                            lastTokenID =
+                                tokensSlice[tokensSlice.length - 1].id;
                         }
 
-                        tokens = tokens.concat(tokensSlice)
-                        console.log(`Tokens total count: ${ tokens.length }`)
+                        tokens = tokens.concat(tokensSlice);
+                        console.log(`Tokens total count: ${tokens.length}`);
 
-                        lastTokenID = null // Limit this to a single slice for now
+                        lastTokenID = null; // Limit this to a single slice for now
                     }
 
-                    console.log(`Sample token: ${ JSON.stringify(tokens[1], null, 2) }`)
-
-                    client.saveBatch(
-                        typeVersions.poapToken,
-                        tokens
+                    console.log(
+                        `Sample token: ${JSON.stringify(tokens[1], null, 2)}`
                     );
+
+                    const result = await client.saveBatch(info, tokens);
+                    logger.info("Batch saving result:", result);
                 },
                 (error: Error) => new Error(error.message)
             ),
