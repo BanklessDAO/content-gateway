@@ -31,13 +31,11 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
     const router = express.Router();
 
     router.post("/register", async (req, res) => {
-        logger.info("Validating new schema...");
         await pipe(
             createSchemaFromObject(req.body),
             mapErrors("The supplied schema was invalid"),
             TE.fromEither,
             TE.chain((schema) => {
-                logger.info("Schema was valid, registering...");
                 return gateway.register(schema);
             }),
             createResponseTask(res, "Schema registration")
@@ -45,13 +43,11 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
     });
 
     router.post("/receive", async (req, res) => {
-        logger.info("Validating payload...");
         await pipe(
             payloadCodec.decode(req.body),
-            mapErrors("Validating payload..."),
+            mapErrors("Validating payload failed"),
             TE.fromEither,
             TE.chain((data) => {
-                logger.info("Payload was valid, receiving...");
                 return gateway.receive(data);
             }),
             createResponseTask(res, "Payload receiving ")
@@ -59,13 +55,11 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
     });
 
     router.post("/receive-batch", async (req, res) => {
-        logger.info("Validating batch payload...");
         await pipe(
             batchPayloadCodec.decode(req.body),
             mapErrors("The supplied payload batch was invalid"),
             TE.fromEither,
             TE.chain((data) => {
-                logger.info("Batch payload was valid, receiving...");
                 return gateway.receiveBatch(data);
             }),
             createResponseTask(res, "Batch payload receiving")

@@ -57,11 +57,6 @@ export const createSchemaStorageStub = (
             schema: Schema
         ): TE.TaskEither<SchemaStorageError, void> => {
             const keyStr = schemaInfoToString(schema.info);
-            if (map.has(keyStr)) {
-                return TE.left(
-                    RegisteredSchemaIncompatibleError.create(schema.info)
-                );
-            }
             map.set(keyStr, schema);
             return TE.right(undefined);
         },

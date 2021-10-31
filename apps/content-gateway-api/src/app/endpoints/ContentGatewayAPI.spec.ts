@@ -7,10 +7,12 @@ import {
     SchemaStorageStub,
 } from "@domain/feature-gateway";
 import { extractRight } from "@shared/util-fp";
-import { createSchemaFromType } from "@shared/util-schema";
+import { createSchemaFromType, Schema, schemaInfoToString } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as express from "express";
 import * as request from "supertest";
+import { Logger } from "tslog";
+import { v4 as uuid } from "uuid";
 import { generateContentGatewayAPI } from "./ContentGatewayAPI";
 
 const userInfo = {
@@ -36,16 +38,31 @@ class User {
     address: Address;
 }
 
+const logger = new Logger({
+    name: "ContentGatewayAPI.spec",
+});
+
+const generateUser = () => ({
+    id: uuid(),
+    name: "John",
+    address: {
+        id: uuid(),
+        name: "Home",
+    },
+})
+// TODO: check stub activity too (was the stuff stored?)
 describe("Given a content gateway api", () => {
     let app: express.Application;
     let gateway: ContentGateway;
     let dataStorageStub: DataStorageStub;
     let schemaStorageStub: SchemaStorageStub;
+    let schemas: Map<string, Schema>;
 
     beforeEach(async () => {
         app = express();
+        schemas = new Map();
         dataStorageStub = createDataStorageStub();
-        schemaStorageStub = createSchemaStorageStub();
+        schemaStorageStub = createSchemaStorageStub(schemas);
         gateway = createContentGateway(schemaStorageStub, dataStorageStub);
         app.use(
             "/",
@@ -83,14 +100,10 @@ describe("Given a content gateway api", () => {
 
     it("When a valid payload is sent, Then it is saved properly", async () => {
         const result = await request(app)
-            .post("/register")
+            .post("/receive")
             .send({
                 info: userInfo,
-                data: {
-                    id: "1",
-                    name: "John",
-                    address: { id: "1", name: "Home" },
-                },
+                data: generateUser(),
             })
             .accept("text/plain")
             .expect(200);
@@ -105,10 +118,44 @@ describe("Given a content gateway api", () => {
             .send({ hey: "ho" })
             .expect(500);
 
+        logger.info(result.body);
+
         expect(result.status).toBe(500);
         expect(result.body).toEqual({
             result: "failure",
-            error: "The supplied schema was invalid",
+            error: "Validating payload failed",
         });
+    });
+
+    it("When a valid batch payload is sent, Then it is saved properly", async () => {
+        const users = [generateUser(), generateUser()];
+        const result = await request(app)
+            .post("/receive-batch")
+            .send({
+                info: userInfo,
+                data: users,
+            })
+            .accept("text/plain")
+            .expect(200);
+
+        expect(result.status).toBe(200);
+        expect(result.body).toEqual({ result: "ok" });
+    });
+
+    it("When an invalid batch payload is sent, Then it fails", async () => {
+        const result = await request(app)
+            .post("/receive-batch")
+            .send({
+                info: userInfo,
+                data: generateUser(),
+            })
+            .accept("text/plain")
+            .expect(500);
+
+            expect(result.status).toBe(500);
+            expect(result.body).toEqual({
+                result: "failure",
+                error: "The supplied payload batch was invalid",
+            });
     });
 });
