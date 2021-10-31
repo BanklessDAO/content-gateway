@@ -5,11 +5,13 @@ import { SchemaInfo } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
+import { Logger } from "tslog";
 
 export const createPrismaDataStorage = (
     prisma: PrismaClient,
     schemaStorage: SchemaStorage
 ): DataStorage => {
+    const logger = new Logger({ name: "PrismaDataStorage" });
     return {
         store: (payload: Data): TE.TaskEither<Error, string> =>
             pipe(
@@ -30,8 +32,11 @@ export const createPrismaDataStorage = (
                                     ...payload.info,
                                 },
                             }),
-                        (e: Error) =>
-                            new Error(`Failed to store data: ${e.message}`)
+                        (e: Error) => {
+                            const msg = `Failed to store data: ${e.message}`;
+                            logger.warn(msg);
+                            return new Error(msg);
+                        }
                     );
                 }),
                 TE.map((data) => data.id)

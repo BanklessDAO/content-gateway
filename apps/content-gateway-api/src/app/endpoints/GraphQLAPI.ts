@@ -11,9 +11,8 @@ import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
-import { Logger } from "tslog";
 import * as pluralize from "pluralize";
-import * as v from "voca";
+import { Logger } from "tslog";
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
 
 const logger = new Logger({ name: "GraphQLAPI" });
@@ -76,12 +75,9 @@ const createGraphQLMiddleware = async ({
             const name = schema.info.name;
             const findById = async (id: string) => {
                 return pipe(
-                    dataStorage.findBySchema(schema.info),
-                    TO.map((data) =>
-                        data.filter((entity) => entity.data.id === id)
-                    ),
-                    TO.map((data) => data.map((entity) => entity.data)),
-                    TO.getOrElse(() => T.of([]))
+                    dataStorage.findById(id),
+                    TO.map((data) => data.data),
+                    TO.getOrElse(() => T.of(undefined))
                 )();
             };
             const findAll = async () => {
@@ -92,18 +88,18 @@ const createGraphQLMiddleware = async ({
                 )();
             };
             return {
-                [`${name}`]: {
+                [name]: {
                     type: type,
                     args: {
                         id: { type: g.GraphQLString },
                     },
-                    resolve: (_, { id }) => {
+                    resolve: async (_, { id }) => {
                         return findById(id);
                     },
                 },
                 [`${pluralize.plural(name)}`]: {
                     type: g.GraphQLList(type),
-                    resolve: () => {
+                    resolve: async () => {
                         return findAll();
                     },
                 },
