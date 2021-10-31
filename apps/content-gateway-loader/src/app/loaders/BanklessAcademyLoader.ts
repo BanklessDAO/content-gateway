@@ -4,11 +4,11 @@ import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
 import { createSimpleLoader } from "..";
-import axios from 'axios'
-
-const logger = new Logger({ name: "BanklessAcademyLoader" });
+import axios from "axios";
+import { v4 as uuid } from "uuid";
 
 const name = "bankless-academy-loader";
+const logger = new Logger({ name });
 
 /// Types
 
@@ -32,28 +32,28 @@ const typeVersions = {
         namespace: "bankless-academy",
         name: "CourseLibrary",
         version: "V1",
-    }
+    },
 };
 
 class Quiz {
     @Required(true)
     @CollectionOf(String)
-    answers: [string]
+    answers: [string];
     @Required(true)
-    rightAnswerNumber: number
+    rightAnswerNumber: number;
 }
 
 class Section {
     @Required(true)
-    type: string
+    type: string;
     @Required(true)
-    title: string
+    title: string;
     @Required(false)
-    content: string
+    content: string;
     @Required(false)
-    quiz: Quiz
+    quiz: Quiz;
     @Required(false)
-    component: string
+    component: string;
 }
 
 class Course {
@@ -90,7 +90,7 @@ class CourseLibrary {
     id: string;
     @Required(true)
     @CollectionOf(Course)
-    courses: Course[]
+    courses: Course[];
 }
 
 /// Loader
@@ -101,12 +101,18 @@ export const banklessAcademyLoader = createSimpleLoader({
         return TE.tryCatch(
             async () => {
                 logger.info("Initializing Bankless Academy loader...");
-                client.register(typeVersions.courseLibrary, CourseLibrary);
+                // TODO: add the option to modify the state. For example we should save
+                // TODO: it if this fails as a failed job with a note about this hiccup
+                const registrationResult = await client.register(
+                    typeVersions.courseLibrary,
+                    CourseLibrary
+                );
+                logger.info("Registration result:", registrationResult);
                 const result = await jobScheduler.schedule({
                     name: name,
                     scheduledAt: DateTime.now(),
                 });
-                logger.info(`Scheduled job ${JSON.stringify(result)}`);
+                logger.info(`Scheduled job`, result);
             },
             (error: Error) => new Error(error.message)
         );
@@ -116,46 +122,49 @@ export const banklessAcademyLoader = createSimpleLoader({
             TE.tryCatch(
                 async () => {
                     logger.info("Executing Bankless Academy loader.");
-                    logger.info(`Current job: ${currentJob}`);
+                    logger.info(`Current job:`, currentJob);
 
                     await axios
-                        .get(`https://bankless-academy-cg-lab.vercel.app/api/courses`)
+                        .get(
+                            `https://bankless-academy-cg-lab.vercel.app/api/courses`
+                        )
                         .then((response) => {
-                            logger.info(`Loaded data from the original source:`);
-                            logger.info(`${JSON.stringify(response.data)}`);
+                            logger.info(
+                                `Loaded data from the original source:`,
+                                // response.data
+                            );
 
-                            let courses = response.data
-                                .map(item => {
-                                    return {
-                                        name: item.name,
-                                        slug: item.slug,
-                                        notionId: item.notionId,
-                                        poapEventId: item.poapEventId,
-                                        description: item.description,
-                                        duration: item.duration,
-                                        difficulty: item.difficulty,
-                                        poapImageLink: item.poapImageLink,
-                                        learnings: item.learnings,
-                                        learningActions: item.learningActions,
-                                        knowledgeRequirements: item.knowledgeRequirements,
-                                        sections: item.slides
-                                            .map(slide => {
-                                                return {
-                                                    type: slide.type,
-                                                    title: slide.title,
-                                                    content: slide.content,
-                                                    // TODO: Add quiz support
-                                                    component: slide.component
-                                                }
-                                            })
-                                    }
-                                })
+                            const courses = response.data.map((item) => {
+                                return {
+                                    name: item.name,
+                                    slug: item.slug,
+                                    notionId: item.notionId,
+                                    poapEventId: item.poapEventId,
+                                    description: item.description,
+                                    duration: item.duration,
+                                    difficulty: item.difficulty,
+                                    poapImageLink: item.poapImageLink,
+                                    learnings: item.learnings,
+                                    learningActions: item.learningActions,
+                                    knowledgeRequirements:
+                                        item.knowledgeRequirements,
+                                    sections: item.slides.map((slide) => {
+                                        return {
+                                            type: slide.type,
+                                            title: slide.title,
+                                            content: slide.content,
+                                            // TODO: Add quiz support
+                                            component: slide.component,
+                                        };
+                                    }),
+                                };
+                            });
 
                             client.save(typeVersions.courseLibrary, {
-                                id: "0",
-                                courses: courses
-                            })
-                        })
+                                id: uuid(),
+                                courses: courses,
+                            });
+                        });
                 },
                 (error: Error) => new Error(error.message)
             ),

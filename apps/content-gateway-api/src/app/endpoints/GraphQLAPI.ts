@@ -12,7 +12,7 @@ import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
 import { Logger } from "tslog";
-import Pluralize from "typescript-pluralize";
+import * as pluralize from "pluralize";
 import * as v from "voca";
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
 
@@ -42,7 +42,7 @@ export type SchemaStorageDecorator = SchemaStorage & {
 export const createGraphQLAPI = async (deps: Deps): Promise<Middleware> => {
     let currentMiddleware = await createGraphQLMiddleware(deps);
     deps.schemaStorage.onRegister(() => {
-        createGraphQLMiddleware(deps).then(middleware => {
+        createGraphQLMiddleware(deps).then((middleware) => {
             currentMiddleware = middleware;
         });
     });
@@ -92,7 +92,7 @@ const createGraphQLMiddleware = async ({
                 )();
             };
             return {
-                [v.lowerCase(name)]: {
+                [`find${name}ById`]: {
                     type: type,
                     args: {
                         id: { type: g.GraphQLString },
@@ -101,7 +101,7 @@ const createGraphQLMiddleware = async ({
                         return findById(id);
                     },
                 },
-                [v.lowerCase(Pluralize.plural(name))]: {
+                [`findAll${pluralize.plural(name)}`]: {
                     type: g.GraphQLList(type),
                     resolve: () => {
                         return findAll();

@@ -5,6 +5,8 @@ import Ajv from "ajv/dist/ajv";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import { Errors } from "io-ts";
+import * as difftool from "json-schema-diff-validator";
+import { Logger } from "tslog";
 import { schemaCodec } from ".";
 import { SchemaInfo } from "..";
 import { SupportedJSONSchema } from "./codecs";
@@ -16,6 +18,8 @@ const ajv = new Ajv({
     validateFormats: true,
     messages: true,
 });
+
+const logger = new Logger({ name: "Schema" });
 
 export type ValidationError = {
     field: string;
@@ -37,8 +41,8 @@ export type BatchPayloadJson = {
  */
 export type SchemaJson = {
     info: SchemaInfo;
-    jsonSchema: Record<string, unknown>
-}
+    jsonSchema: Record<string, unknown>;
+};
 
 /**
  * A Schema contains metadata about a specific type and functions
@@ -59,6 +63,13 @@ export type Schema = {
     validate: (
         data: Record<string, unknown>
     ) => E.Either<ValidationError[], Record<string, unknown>>;
+
+    /**
+     * Tells whether this schema has breaking changes compared to
+     * the other schema.
+     */
+    // TODO: make this return errors
+    isBackwardCompatibleWith: (other: Schema) => boolean;
 };
 
 /**
@@ -91,6 +102,7 @@ export const createSchemaFromObject = (
             E.right(ajv.compile(validSchema.jsonSchema))
         ),
         E.map(({ validSchema, validator }) => {
+            const logger = new Logger();
             return {
                 info: validSchema.info,
                 jsonSchema: validSchema.jsonSchema,
@@ -109,6 +121,23 @@ export const createSchemaFromObject = (
                                 message: e.message ?? "The value is invalid",
                             })) ?? []
                         );
+                    }
+                },
+                isBackwardCompatibleWith: (other) => {
+                    try {
+                        difftool.validateSchemaCompatibility(
+                            other.jsonSchema,
+                            validSchema.jsonSchema,
+                            {
+                                allowNewEnumValue: true,
+                                allowNewOneOf: true,
+                                allowReorder: true,
+                            }
+                        );
+                        return true;
+                    } catch (e) {
+                        logger.warn(`New schema: ${other.info} was incompatible with the old one`, e);
+                        return false;
                     }
                 },
             };

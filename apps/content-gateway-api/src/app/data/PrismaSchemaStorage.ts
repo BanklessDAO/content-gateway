@@ -3,16 +3,17 @@ import { PrismaClient, Schema as PrismaSchema } from "@cga/prisma";
 import {
     RegisteredSchemaIncompatibleError,
     SchemaCreationFailedError,
-    SchemaStorage
+    SchemaStorage,
 } from "@domain/feature-gateway";
 import {
     createSchemaFromObject,
     Schema,
-    SchemaInfo
+    SchemaInfo,
 } from "@shared/util-schema";
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
+import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import { Errors } from "io-ts";
@@ -45,15 +46,21 @@ export const createPrismaSchemaStorage = (
         );
     };
 
-    const storeSchema = (schema: Schema) => () =>
+    const upsertSchema = (schema: Schema) =>
         TE.tryCatch(
-            () =>
-                prisma.schema.create({
-                    data: {
-                        ...schema.info,
-                        jsonSchema: schema.jsonSchema,
+            () => {
+                const data = {
+                    ...schema.info,
+                    jsonSchema: schema.jsonSchema,
+                };
+                return prisma.schema.upsert({
+                    where: {
+                        namespace_name_version: schema.info,
                     },
-                }),
+                    create: data,
+                    update: data,
+                });
+            },
             (e: Error) => SchemaCreationFailedError.create(e.message)
         );
 
@@ -72,14 +79,27 @@ export const createPrismaSchemaStorage = (
     return {
         register: (schema: Schema) => {
             return pipe(
-                findSchema(schema.info),
-                TE.fromTaskOption(() => undefined),
-                TE.swap,
-                TE.mapLeft(() =>
-                    RegisteredSchemaIncompatibleError.create(schema.info)
+                TE.tryCatch(
+                    async () => {
+                        const o = await findSchema(schema.info)();
+                        logger.info("Finding old schema result", o);
+                        return Promise.resolve(O.getOrElse(() => schema)(o));
+                    },
+                    (err: Error) =>
+                        SchemaCreationFailedError.create(err.message)
                 ),
-                TE.chain(() => {
-                    return storeSchema(schema)();
+                TE.chain((oldSchema) => {
+                    logger.info("Checking schema compatibility...");
+                    if (schema.isBackwardCompatibleWith(oldSchema)) {
+                        logger.info("Schema is compatible, saving...");
+                        return upsertSchema(schema);
+                    } else {
+                        return TE.left(
+                            RegisteredSchemaIncompatibleError.create(
+                                schema.info
+                            )
+                        );
+                    }
                 }),
                 TE.map(() => undefined)
             );

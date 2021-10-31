@@ -84,6 +84,7 @@ export type ClientDependencies = {
     adapter: OutboundDataAdapter;
 };
 
+// TODO: extract result here
 export const createRESTAdapter = (url: string): OutboundDataAdapter => {
     return {
         register: (schema: SchemaJson) => {

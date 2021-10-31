@@ -39,7 +39,7 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
                 logger.info("Schema was valid, registering...");
                 return gateway.register(schema);
             }),
-            createResponseTask(res)
+            createResponseTask(res, "Schema registration")
         )();
     });
 
@@ -53,7 +53,7 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
                 logger.info("Payload was valid, receiving...");
                 return gateway.receive(data);
             }),
-            createResponseTask(res)
+            createResponseTask(res, "Payload receiving ")
         )();
     });
 
@@ -67,7 +67,7 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
                 logger.info("Batch payload was valid, receiving...");
                 return gateway.receive(data);
             }),
-            createResponseTask(res)
+            createResponseTask(res, "Batch payload receiving")
         )();
     });
 
@@ -80,13 +80,14 @@ const mapErrors = (msg: string) =>
         return new Error(msg);
     });
 
-const createResponseTask = (res: express.Response) =>
+const createResponseTask = (res: express.Response, operation: string) =>
     TE.fold(
         (e: Error) => {
             res.status(500).json({
                 result: "failure",
                 error: e.message,
             });
+            logger.warn(`${operation} failed`, e);
             return T.of(undefined);
         },
         () => {
