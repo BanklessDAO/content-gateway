@@ -15,7 +15,7 @@ const name = "bounty-board-loader";
 
 const info = {
     namespace: "bounty-board",
-    name: "BountyBoard",
+    name: "Bounty",
     version: "V1",
 };
 
@@ -105,7 +105,7 @@ export const bountyBoardLoader = createSimpleLoader({
         return TE.tryCatch(
             async () => {
                 logger.info("Initializing Bounty Board loader...");
-                await client.register(info, BountyBoard);
+                await client.register(info, Bounty);
                 const result = await jobScheduler.schedule({
                     name: name,
                     scheduledAt: DateTime.now(),
@@ -176,14 +176,14 @@ export const bountyBoardLoader = createSimpleLoader({
                                 };
                             });
 
-                            const result = client.save(info, {
-                                id: uuid(),
-                                bounties: bounties,
-                            });
+                            const result = client.saveBatch(
+                                info, 
+                                bounties
+                            );
                             result.then((res) => {
                                 // TODO: return proper errors
                                 // logger.info("Save result", res);
-                            })
+                            });
                         });
                 },
                 (error: Error) => new Error(error.message)
