@@ -251,6 +251,7 @@ export const createClient = ({
 
 const mapError = () =>
     TE.mapLeft((err: Error | ValidationError[]) => {
+        logger.warn("Mapping error:", err);
         let result: string;
         if (isArray(err)) {
             result = err.map((e) => `field ${e.field} ${e.message}`).join(",");
