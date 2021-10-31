@@ -57,15 +57,14 @@ export const createContentGateway: ContentGatewayFactory = (
 
             return pipe(
                 TE.tryCatch(
-                    () => {
-                        return Promise.all(
-                            data.map((item) => {
-                                dataStorage.store({
-                                    info: info,
-                                    data: item as Record<string, unknown>,
-                                })();
-                            })
-                        );
+                    async () => {
+                        // TODO: test
+                        data.forEach((item) => {
+                            dataStorage.store({
+                                info: info,
+                                data: item as Record<string, unknown>,
+                            })();
+                        });
                     },
                     (err) => {
                         logger.warn(`Failed to store batch of data:`, err);
