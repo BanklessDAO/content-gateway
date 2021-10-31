@@ -4,7 +4,7 @@ import { extractRight } from "@shared/util-fp";
 import {
     createSchemaFromType,
     Schema,
-    schemaInfoToString,
+    schemaInfoToString
 } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
@@ -55,7 +55,7 @@ const createIncompatibleSchema = (version: string) => {
                 ...userInfo,
                 version,
             },
-            User
+            IncompatibleUser
         )
     );
 };
@@ -94,20 +94,18 @@ describe("Given a Prisma schema storage", () => {
             );
         });
 
-        // it("Then it succeeds when it is backward compatible with an existing schema with the same info", async () => {
-        //     const version = uuid();
-        //     const userSchema = createSchema(version);
+        it("Then it succeeds when it is backward compatible with an existing schema with the same info", async () => {
+            const version = uuid();
+            const userSchema = createSchema(version);
 
-        //     await storage.register(userSchema)();
+            await storage.register(userSchema)();
 
-        //     const result = await storage.register(userSchema)();
+            const result = await storage.register(userSchema)();
 
-        //     const info = schemaInfoToString({ ...userInfo, version: version });
-
-        //     expect(result).toEqual(
-        //         E.right(undefined)
-        //     );
-        // });
+            expect(result).toEqual(
+                E.right(undefined)
+            );
+        });
 
         it("Then it returns the proper schema When we try to find it", async () => {
             const version = uuid();

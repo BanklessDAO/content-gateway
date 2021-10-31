@@ -3,7 +3,6 @@ import { PrismaClient } from "@cga/prisma";
 import { extractLeft, extractRight } from "@shared/util-fp";
 import { createSchemaFromType, SchemaInfo } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
-import * as E from "fp-ts/lib/Either";
 import * as O from "fp-ts/lib/Option";
 import { v4 as uuid } from "uuid";
 import { createPrismaDataStorage, createPrismaSchemaStorage } from ".";

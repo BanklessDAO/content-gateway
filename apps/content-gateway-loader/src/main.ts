@@ -7,9 +7,6 @@ import * as express from "express";
 import { Logger } from "tslog";
 import { createJobScheduler, JobScheduler } from "./app";
 import { banklessAcademyLoader } from "./app/loaders/BanklessAcademyLoader";
-import { banklessTokenLoader } from "./app/loaders/banklessToken/BanklessTokenLoader";
-import { exampleTimestampLoader } from "./app/loaders/example/ExampleTimestampLoader";
-import { exampleUUIDLoader } from "./app/loaders/example/ExampleUUIDLoader";
 
 const programError = (msg: string) => {
     throw new Error(msg);
