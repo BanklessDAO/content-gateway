@@ -19,6 +19,8 @@ const ajv = new Ajv({
     messages: true,
 });
 
+const logger = new Logger({ name: "Schema" });
+
 export type ValidationError = {
     field: string;
     message: string;
@@ -134,6 +136,7 @@ export const createSchemaFromObject = (
                         );
                         return true;
                     } catch (e) {
+                        logger.warn(`New schema: ${other.info} was incompatible with the old one`, e);
                         return false;
                     }
                 },

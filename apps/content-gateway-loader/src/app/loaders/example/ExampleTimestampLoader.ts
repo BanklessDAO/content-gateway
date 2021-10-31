@@ -40,7 +40,7 @@ export const exampleTimestampLoader = createSimpleLoader({
                 },
                 (error: Error) => new Error(error.message)
             ),
-            TE.map((result) => {
+            TE.map(() => {
                 logger.info("Scheduled example timestamp loader...");
                 return undefined;
             })

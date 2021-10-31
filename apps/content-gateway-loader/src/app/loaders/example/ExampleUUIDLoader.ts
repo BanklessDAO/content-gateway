@@ -1,4 +1,4 @@
-import { AdditionalProperties, Required } from "@tsed/schema";
+import { AdditionalProperties, Default, Required } from "@tsed/schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
@@ -16,10 +16,13 @@ const info = {
     version: "V1",
 };
 
+// TODO: add support for default values
 @AdditionalProperties(false)
 class RandomUUID {
     @Required(true)
     id: string;
+    @Required(false)
+    likeIt: boolean;
 }
 
 export const exampleUUIDLoader = createSimpleLoader({
@@ -30,11 +33,15 @@ export const exampleUUIDLoader = createSimpleLoader({
                 async () => {
                     logger.info("Initializing example uuid loader...");
                     // TODO: check the result
-                    return await client.register(info, RandomUUID);
+                    await client.register(info, RandomUUID);
+                    return jobScheduler.schedule({
+                        name: name,
+                        scheduledAt: DateTime.now(),
+                    });
                 },
                 (error: Error) => new Error(error.message)
             ),
-            TE.map((result) => {
+            TE.map(() => {
                 logger.info("Scheduled example UUID loader...");
                 return undefined;
             })

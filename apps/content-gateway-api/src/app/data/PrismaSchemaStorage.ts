@@ -3,12 +3,12 @@ import { PrismaClient, Schema as PrismaSchema } from "@cga/prisma";
 import {
     RegisteredSchemaIncompatibleError,
     SchemaCreationFailedError,
-    SchemaStorage
+    SchemaStorage,
 } from "@domain/feature-gateway";
 import {
     createSchemaFromObject,
     Schema,
-    SchemaInfo
+    SchemaInfo,
 } from "@shared/util-schema";
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
@@ -46,18 +46,6 @@ export const createPrismaSchemaStorage = (
         );
     };
 
-    const storeSchema = (schema: Schema) => () =>
-        TE.tryCatch(
-            () =>
-                prisma.schema.create({
-                    data: {
-                        ...schema.info,
-                        jsonSchema: schema.jsonSchema,
-                    },
-                }),
-            (e: Error) => SchemaCreationFailedError.create(e.message)
-        );
-
     const upsertSchema = (schema: Schema) =>
         TE.tryCatch(
             () => {
@@ -94,13 +82,16 @@ export const createPrismaSchemaStorage = (
                 TE.tryCatch(
                     async () => {
                         const o = await findSchema(schema.info)();
+                        logger.info("Finding old schema result", o);
                         return Promise.resolve(O.getOrElse(() => schema)(o));
                     },
                     (err: Error) =>
                         SchemaCreationFailedError.create(err.message)
                 ),
                 TE.chain((oldSchema) => {
-                    if (oldSchema.isBackwardCompatibleWith(schema)) {
+                    logger.info("Checking schema compatibility...");
+                    if (schema.isBackwardCompatibleWith(oldSchema)) {
+                        logger.info("Schema is compatible, saving...");
                         return upsertSchema(schema);
                     } else {
                         return TE.left(

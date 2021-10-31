@@ -3,82 +3,82 @@ import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
 import { createSimpleLoader } from "../..";
-import { typeVersions, BanklessTokenIndex } from "./types";
-import DefaultNetworkProvider from '../../data/network/DefaultNetworkProvider'
+import DefaultNetworkProvider from "../../data/network/DefaultNetworkProvider";
 import { BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS } from "./data/network/graph/queries";
+import { BanklessTokenIndex, info } from "./types";
+import {v4 as uuid} from 'uuid';
 
-const logger = new Logger({ name: "BanklessTokenLoader" });
-const subgraphURI = "https://api.thegraph.com/subgraphs/name/0xnshuman/bank-subgraph"
-const graphAPIClient = (new DefaultNetworkProvider()).graph(subgraphURI)
 const name = "bankless-token-loader";
+const logger = new Logger({ name });
+
+const subgraphURI =
+    "https://api.thegraph.com/subgraphs/name/0xnshuman/bank-subgraph";
+const graphAPIClient = new DefaultNetworkProvider().graph(subgraphURI);
 
 const mapAccounts = (accounts) => {
-    let mappedAccounts = accounts
-        .map(function (account) {
-            var acc = {
-                id: "",
-                address: "",
-                balance: 0.0,
-                transactions: [
-                    {
-                        fromAddress: "",
-                        toAddress: "",
-                        amount: 0.0
-                    }
-                ]
-            }
-            
-            try {
-                acc.id = account.id
-                acc.address = account.id
+    const mappedAccounts = accounts.map(function (account) {
+        const acc = {
+            id: "",
+            address: "",
+            balance: 0.0,
+            transactions: [
+                {
+                    fromAddress: "",
+                    toAddress: "",
+                    amount: 0.0,
+                },
+            ],
+        };
 
-                const balances = account.ERC20balances
-                const balance = balances[0]
-                if (balance.value) acc.balance = parseFloat(balance.value)
+        try {
+            acc.id = account.id;
+            acc.address = account.id;
 
-                const transfersTo = balance.transferToEvent
-                const transfersFrom = balance.transferFromEvent
-                const allTransfers = transfersTo.concat(transfersFrom)
+            const balances = account.ERC20balances;
+            const balance = balances[0];
+            if (balance.value) acc.balance = parseFloat(balance.value);
 
-                acc.transactions = allTransfers
-                    .map(transfer => {
-                        var tr = {
-                            fromAddress: transfer.from.id,
-                            toAddress: transfer.to.id,
-                            amount: 0.0
-                        }
+            const transfersTo = balance.transferToEvent;
+            const transfersFrom = balance.transferFromEvent;
+            const allTransfers = transfersTo.concat(transfersFrom);
 
-                        if (transfer.value) tr.amount = parseFloat(transfer.value)
+            acc.transactions = allTransfers.map((transfer) => {
+                const tr = {
+                    fromAddress: transfer.from.id,
+                    toAddress: transfer.to.id,
+                    amount: 0.0,
+                };
 
-                        return tr
-                    })
+                if (transfer.value) tr.amount = parseFloat(transfer.value);
 
-                return acc
-            } catch {
-                return acc
-            }
-        })
+                return tr;
+            });
 
-    return mappedAccounts
-}
+            return acc;
+        } catch {
+            return acc;
+        }
+    });
 
-var totalCount = 0
+    return mappedAccounts;
+};
+
+let totalCount = 0;
 const pullAccountsSince = (id) => {
-    return graphAPIClient
-        .query(
-            BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS, 
-            { count: 1000, offsetID: id }, 
-            (data) => { 
-                totalCount += 1000
-                logger.info(`Loaded data chunk from the original source:`);
-                logger.info(`Total count: ${ totalCount }; OffsetID: ${ id }`);
+    return graphAPIClient.query(
+        BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS,
+        { count: 1000, offsetID: id },
+        (data) => {
+            totalCount += 1000;
+            logger.info(`Loaded data chunk from the original source:`);
+            logger.info(`Total count: ${totalCount}; OffsetID: ${id}`);
 
-                // logger.info(`Data: ${ JSON.stringify(data) }`)
+            // logger.info(`Data: ${ JSON.stringify(data) }`)
 
-                return mapAccounts(data.accounts)
-            }
-        );
-}
+            return mapAccounts(data.accounts);
+        }
+    );
+};
 
 export const banklessTokenLoader = createSimpleLoader({
     name: name,
@@ -86,12 +86,13 @@ export const banklessTokenLoader = createSimpleLoader({
         return TE.tryCatch(
             async () => {
                 logger.info("Initializing Bankless Token loader...");
-                client.register(typeVersions.banklessTokenIndex, BanklessTokenIndex);
+                // 👇 there was a missing await here
+                await client.register(info, BanklessTokenIndex);
                 const result = await jobScheduler.schedule({
                     name: name,
                     scheduledAt: DateTime.now(),
                 });
-                logger.info(`Scheduled job ${JSON.stringify(result)}`);
+                logger.info(`Scheduled job`, result);
             },
             (error: Error) => new Error(error.message)
         );
@@ -103,30 +104,43 @@ export const banklessTokenLoader = createSimpleLoader({
                     logger.info("Executing Bankless Token loader.");
                     logger.info(`Current job: ${currentJob}`);
 
-                    var accounts = []
-                    var lastAccountID = ""
+                    let accounts = [];
+                    let lastAccountID = "";
 
                     while (lastAccountID != null) {
-                        const accountsSlice = await pullAccountsSince(lastAccountID)
-                        console.log(`Accounts slice total count: ${ accountsSlice.length }`)
+                        const accountsSlice = await pullAccountsSince(
+                            lastAccountID
+                        );
+                        console.log(
+                            `Accounts slice total count: ${accountsSlice.length}`
+                        );
 
                         if (accountsSlice.length == 0) {
-                            lastAccountID = null
-                            totalCount = 0
+                            lastAccountID = null;
+                            totalCount = 0;
                         } else {
-                            lastAccountID = accountsSlice[accountsSlice.length - 1].id
+                            lastAccountID =
+                                accountsSlice[accountsSlice.length - 1].id;
                         }
-                        
-                        accounts = accounts.concat(accountsSlice)
-                        console.log(`Accounts total count: ${ accounts.length }`)
+
+                        accounts = accounts.concat(accountsSlice);
+                        console.log(`Accounts total count: ${accounts.length}`);
                     }
 
-                    console.log(`Sample account: ${ JSON.stringify(accounts[1], null, 2) }`)
+                    console.log(
+                        `Sample account: ${JSON.stringify(
+                            accounts[1],
+                            null,
+                            2
+                        )}`
+                    );
 
-                    client.save(typeVersions.banklessTokenIndex, {
-                        id: "0",
-                        accounts: accounts
+                    const result = await client.save(info, {
+                        // 👇 "0" is not unique
+                        id: uuid(),
+                        accounts: accounts,
                     });
+                    logger.info("Save result", result);
                 },
                 (error: Error) => new Error(error.message)
             ),

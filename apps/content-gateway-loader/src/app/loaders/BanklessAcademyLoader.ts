@@ -5,10 +5,10 @@ import { DateTime } from "luxon";
 import { Logger } from "tslog";
 import { createSimpleLoader } from "..";
 import axios from "axios";
-
-const logger = new Logger({ name: "BanklessAcademyLoader" });
+import { v4 as uuid } from "uuid";
 
 const name = "bankless-academy-loader";
+const logger = new Logger({ name });
 
 /// Types
 
@@ -101,12 +101,18 @@ export const banklessAcademyLoader = createSimpleLoader({
         return TE.tryCatch(
             async () => {
                 logger.info("Initializing Bankless Academy loader...");
-                client.register(typeVersions.courseLibrary, CourseLibrary);
+                // TODO: add the option to modify the state. For example we should save
+                // TODO: it if this fails as a failed job with a note about this hiccup
+                const registrationResult = await client.register(
+                    typeVersions.courseLibrary,
+                    CourseLibrary
+                );
+                logger.info("Registration result:", registrationResult);
                 const result = await jobScheduler.schedule({
                     name: name,
                     scheduledAt: DateTime.now(),
                 });
-                logger.info(`Scheduled job ${JSON.stringify(result)}`);
+                logger.info(`Scheduled job`, result);
             },
             (error: Error) => new Error(error.message)
         );
@@ -116,7 +122,7 @@ export const banklessAcademyLoader = createSimpleLoader({
             TE.tryCatch(
                 async () => {
                     logger.info("Executing Bankless Academy loader.");
-                    logger.info(`Current job: ${currentJob}`);
+                    logger.info(`Current job:`, currentJob);
 
                     await axios
                         .get(
@@ -124,9 +130,9 @@ export const banklessAcademyLoader = createSimpleLoader({
                         )
                         .then((response) => {
                             logger.info(
-                                `Loaded data from the original source:`
+                                `Loaded data from the original source:`,
+                                // response.data
                             );
-                            logger.info(`${JSON.stringify(response.data)}`);
 
                             const courses = response.data.map((item) => {
                                 return {
@@ -155,7 +161,7 @@ export const banklessAcademyLoader = createSimpleLoader({
                             });
 
                             client.save(typeVersions.courseLibrary, {
-                                id: "0",
+                                id: uuid(),
                                 courses: courses,
                             });
                         });

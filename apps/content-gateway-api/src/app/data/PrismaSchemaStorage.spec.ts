@@ -4,8 +4,9 @@ import { extractRight } from "@shared/util-fp";
 import {
     createSchemaFromType,
     Schema,
-    schemaInfoToString
+    schemaInfoToString,
 } from "@shared/util-schema";
+import { Type } from "@tsed/core";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import * as O from "fp-ts/Option";
@@ -21,6 +22,16 @@ class User {
 }
 
 @AdditionalProperties(false)
+class BackwardsCompatibleUser {
+    @Required(true)
+    id: string;
+    @Required(true)
+    name: string;
+    @Required(false)
+    likesRamen: boolean;
+}
+
+@AdditionalProperties(false)
 class IncompatibleUser {
     @Required(true)
     id: string;
@@ -30,32 +41,19 @@ class IncompatibleUser {
     age: number;
 }
 
-
 const userInfo = {
     namespace: "test",
     name: "User",
 };
 
-const createSchema = (version: string) => {
+const createSchema = (type: Type<unknown>, version: string) => {
     return extractRight(
         createSchemaFromType(
             {
                 ...userInfo,
                 version,
             },
-            User
-        )
-    );
-};
-
-const createIncompatibleSchema = (version: string) => {
-    return extractRight(
-        createSchemaFromType(
-            {
-                ...userInfo,
-                version,
-            },
-            IncompatibleUser
+            type
         )
     );
 };
@@ -69,15 +67,17 @@ describe("Given a Prisma schema storage", () => {
         it("Then it is successfully created when valid", async () => {
             const version = uuid();
 
-            const result = await storage.register(createSchema(version))();
+            const result = await storage.register(
+                createSchema(User, version)
+            )();
 
             expect(result).toEqual(E.right(undefined));
         });
 
         it("Then it fails when it is incompatible with an existing schema with the same info", async () => {
             const version = uuid();
-            const oldSchema = createSchema(version);
-            const newSchema = createIncompatibleSchema(version);
+            const oldSchema = createSchema(User, version);
+            const newSchema = createSchema(IncompatibleUser, version);
 
             await storage.register(oldSchema)();
 
@@ -96,20 +96,22 @@ describe("Given a Prisma schema storage", () => {
 
         it("Then it succeeds when it is backward compatible with an existing schema with the same info", async () => {
             const version = uuid();
-            const userSchema = createSchema(version);
+            const userSchema = createSchema(User, version);
+            const compatibleSchema = createSchema(
+                BackwardsCompatibleUser,
+                version
+            );
 
             await storage.register(userSchema)();
 
-            const result = await storage.register(userSchema)();
+            const result = await storage.register(compatibleSchema)();
 
-            expect(result).toEqual(
-                E.right(undefined)
-            );
+            expect(result).toEqual(E.right(undefined));
         });
 
         it("Then it returns the proper schema When we try to find it", async () => {
             const version = uuid();
-            const schema = createSchema(version);
+            const schema = createSchema(User, version);
             await storage.register(schema)();
 
             const result = (
@@ -130,8 +132,8 @@ describe("Given a Prisma schema storage", () => {
             const version0 = uuid();
             const version1 = uuid();
 
-            await storage.register(createSchema(version0))();
-            await storage.register(createSchema(version1))();
+            await storage.register(createSchema(User, version0))();
+            await storage.register(createSchema(User, version1))();
 
             const result = await storage.findAll()();
 
