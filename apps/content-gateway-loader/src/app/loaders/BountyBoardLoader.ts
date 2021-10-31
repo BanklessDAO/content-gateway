@@ -43,11 +43,14 @@ class StatusEvent {
     setAt: number;
 }
 
+@AdditionalProperties(false)
 class Bounty {
-    // @Required(true)
-    // season: string;
-    // @Required(true)
-    // title: string;
+    @Required(true)
+    id: string;
+    @Required(true)
+    season: string;
+    @Required(true)
+    title: string;
     @Required(true)
     description: string;
     // @Required(true)
@@ -131,8 +134,9 @@ export const bountyBoardLoader = createSimpleLoader({
 
                             const bounties = response.data.data.map((item) => {
                                 return {
-                                    // season: item.season,
-                                    // title: item.title,
+                                    id: item.createdBy.discordHandle.toString() + '-' + item.createdAt.toString(),
+                                    season: item.season.toString(),
+                                    title: item.title,
                                     description: item.description,
                                     // criteria: item.criteria,
                                     // reward: {
