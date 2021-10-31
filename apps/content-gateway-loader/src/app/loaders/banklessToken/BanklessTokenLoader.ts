@@ -5,7 +5,7 @@ import { Logger } from "tslog";
 import { createSimpleLoader } from "../..";
 import DefaultNetworkProvider from "../../data/network/DefaultNetworkProvider";
 import { BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS } from "./data/network/graph/queries";
-import { BanklessTokenIndex, info } from "./types";
+import { BANKAccount, BanklessTokenIndex, info } from "./types";
 import {v4 as uuid} from 'uuid';
 
 const name = "bankless-token-loader";
@@ -90,7 +90,7 @@ export const banklessTokenLoader = createSimpleLoader({
             async () => {
                 logger.info("Initializing Bankless Token loader...");
                 // 👇 there was a missing await here
-                await client.register(info, BanklessTokenIndex);
+                await client.register(info, BANKAccount);
                 const result = await jobScheduler.schedule({
                     name: name,
                     scheduledAt: DateTime.now(),
@@ -138,11 +138,10 @@ export const banklessTokenLoader = createSimpleLoader({
                         )}`
                     );
 
-                    const result = await client.save(info, {
-                        // 👇 "0" is not unique
-                        id: uuid(),
-                        accounts: accounts,
-                    });
+                    const result = await client.saveBatch(
+                        info, 
+                        accounts
+                    );
                     logger.info("Save result", result);
                 },
                 (error: Error) => new Error(error.message)

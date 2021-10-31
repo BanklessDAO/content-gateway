@@ -2,7 +2,7 @@ import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 
 export const info = {
     namespace: "bankless-token",
-    name: "BanklessTokenIndex",
+    name: "BANKAccount",
     version: "V1",
 }
 
