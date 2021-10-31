@@ -1,5 +1,7 @@
 import { Schema } from "@shared/util-schema";
+import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
+import { Logger } from "tslog";
 import { DataStorage, SchemaStorage } from "../adapter";
 import { Payload } from "../types";
 
@@ -39,6 +41,7 @@ export const createContentGateway: ContentGatewayFactory = (
     schemaStorage: SchemaStorage,
     dataStorage: DataStorage
 ) => {
+    const logger = new Logger({ name: "ContentGateway" });
     return {
         register: (schema: Schema) => {
             return schemaStorage.register(schema);
@@ -51,13 +54,28 @@ export const createContentGateway: ContentGatewayFactory = (
         },
         receiveBatch: <T>(payload: Payload<Array<T>>) => {
             const { info, data } = payload;
-            data.forEach((item) => {
-                dataStorage.store({
-                    info: info,
-                    data: item as Record<string, unknown>,
-                });
-            });
-            return TE.right("implement this later");
+
+            return pipe(
+                TE.tryCatch(
+                    () => {
+                        return Promise.all(
+                            data.map((item) => {
+                                dataStorage.store({
+                                    info: info,
+                                    data: item as Record<string, unknown>,
+                                })();
+                            })
+                        );
+                    },
+                    (err) => {
+                        logger.warn(`Failed to store batch of data:`, err);
+                        return new Error(
+                            `Failed to store batch of data: ${err}`
+                        );
+                    }
+                ),
+                TE.map(() => "OK")
+            );
         },
     };
 };

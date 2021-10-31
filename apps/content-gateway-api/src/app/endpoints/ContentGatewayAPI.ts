@@ -55,11 +55,13 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
     });
 
     router.post("/receive-batch", async (req, res) => {
+        logger.info("Receiving batch...")
         await pipe(
             batchPayloadCodec.decode(req.body),
             mapErrors("The supplied payload batch was invalid"),
             TE.fromEither,
             TE.chain((data) => {
+                logger.info("Batch was valid, sending to gateway...")
                 return gateway.receiveBatch(data);
             }),
             createResponseTask(res, "Batch payload receiving")
