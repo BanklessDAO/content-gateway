@@ -6,6 +6,7 @@ import { Logger } from "tslog";
 import { createSimpleLoader } from "..";
 import axios from "axios";
 import { v4 as uuid } from "uuid";
+import { type } from "os";
 
 const name = "bankless-academy-loader";
 const logger = new Logger({ name });
@@ -56,7 +57,10 @@ class Section {
     component: string;
 }
 
+@AdditionalProperties(false)
 class Course {
+    @Required(true)
+    id: string;
     @Required(true)
     name: string;
     @Required(true)
@@ -104,8 +108,8 @@ export const banklessAcademyLoader = createSimpleLoader({
                 // TODO: add the option to modify the state. For example we should save
                 // TODO: it if this fails as a failed job with a note about this hiccup
                 const registrationResult = await client.register(
-                    typeVersions.courseLibrary,
-                    CourseLibrary
+                    typeVersions.course,
+                    Course
                 );
                 logger.info("Registration result:", registrationResult);
                 const result = await jobScheduler.schedule({
@@ -131,11 +135,12 @@ export const banklessAcademyLoader = createSimpleLoader({
                         .then((response) => {
                             logger.info(
                                 `Loaded data from the original source:`,
-                                // response.data
+                                response.data
                             );
 
                             const courses = response.data.map((item) => {
                                 return {
+                                    id: item.slug,
                                     name: item.name,
                                     slug: item.slug,
                                     notionId: item.notionId,
@@ -160,10 +165,10 @@ export const banklessAcademyLoader = createSimpleLoader({
                                 };
                             });
 
-                            client.save(typeVersions.courseLibrary, {
-                                id: uuid(),
-                                courses: courses,
-                            });
+                            client.saveBatch(
+                                typeVersions.course,
+                                courses
+                            )
                         });
                 },
                 (error: Error) => new Error(error.message)
