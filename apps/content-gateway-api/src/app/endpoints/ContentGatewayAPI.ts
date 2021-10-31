@@ -66,7 +66,7 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
             TE.fromEither,
             TE.chain((data) => {
                 logger.info("Batch payload was valid, receiving...");
-                return gateway.receive(data);
+                return gateway.receiveBatch(data);
             }),
             createResponseTask(res, "Batch payload receiving")
         )();

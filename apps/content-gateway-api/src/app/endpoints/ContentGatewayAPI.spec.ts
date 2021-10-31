@@ -11,7 +11,6 @@ import { createSchemaFromType } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as express from "express";
 import * as request from "supertest";
-import { Logger } from "tslog";
 import { generateContentGatewayAPI } from "./ContentGatewayAPI";
 
 const userInfo = {
@@ -82,36 +81,34 @@ describe("Given a content gateway api", () => {
         });
     });
 
-    // it("When a valid payload is sent, Then it is saved properly", async () => {
-    //     const result = await request(app)
-    //         .post("/register")
-    //         .send(
-    //             PayloadDTO.fromJSON({
-    //                 info: userInfo,
-    //                 data: {
-    //                     id: "1",
-    //                     name: "John",
-    //                     address: { id: "1", name: "Home" },
-    //                 },
-    //             })
-    //         )
-    //         .accept("text/plain")
-    //         .expect(200);
+    it("When a valid payload is sent, Then it is saved properly", async () => {
+        const result = await request(app)
+            .post("/register")
+            .send({
+                info: userInfo,
+                data: {
+                    id: "1",
+                    name: "John",
+                    address: { id: "1", name: "Home" },
+                },
+            })
+            .accept("text/plain")
+            .expect(200);
 
-    //     expect(result.status).toBe(200);
-    //     expect(result.body).toEqual({ result: "ok" });
-    // });
+        expect(result.status).toBe(200);
+        expect(result.body).toEqual({ result: "ok" });
+    });
 
-    // it("When an invalid payload is sent, Then it fails", async () => {
-    //     const result = await request(app)
-    //         .post("/receive")
-    //         .send({ hey: "ho" })
-    //         .expect(500);
+    it("When an invalid payload is sent, Then it fails", async () => {
+        const result = await request(app)
+            .post("/receive")
+            .send({ hey: "ho" })
+            .expect(500);
 
-    //     expect(result.status).toBe(500);
-    //     expect(result.body).toEqual({
-    //         result: "failure",
-    //         error: "The supplied schema was invalid",
-    //     });
-    // });
+        expect(result.status).toBe(500);
+        expect(result.body).toEqual({
+            result: "failure",
+            error: "The supplied schema was invalid",
+        });
+    });
 });
