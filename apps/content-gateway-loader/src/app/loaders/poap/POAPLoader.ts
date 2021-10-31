@@ -19,7 +19,7 @@ const mapTokens = (tokens) => {
                 return {
                     id: token.id,
                     owner: token.owner.id,
-                    mintedAt: token.created
+                    mintedAt: parseInt(token.created)
                 }
             } catch {
                 console.log(`Spotted token with corrupt data`)
@@ -90,10 +90,8 @@ export const poapLoader = createSimpleLoader({
 
                     console.log(`Sample token: ${ JSON.stringify(tokens[1], null, 2) }`)
 
-                    client.saveBatch(
-                        typeVersions.poapToken,
-                        tokens
-                    );
+                    const result = await client.saveBatch(typeVersions.poapToken, tokens);
+                    logger.info("Batch saving result:", result);
                 },
                 (error: Error) => new Error(error.message)
             ),
