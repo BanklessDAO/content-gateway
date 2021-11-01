@@ -55,6 +55,8 @@ class Bounty {
     description: string;
     // @Required(true)
     // criteria: string;
+    @Required(true)
+    rewardAmount: number;
     // @Required(true)
     // reward: Reward;
     // @Required(true)
@@ -132,49 +134,56 @@ export const bountyBoardLoader = createSimpleLoader({
                                 // response.data
                             );
 
-                            const bounties = response.data.data.map((item) => {
-                                return {
-                                    id: item.createdBy.discordHandle.toString() + '-' + item.createdAt.toString(),
-                                    season: item.season.toString(),
-                                    title: item.title,
-                                    description: item.description,
-                                    // criteria: item.criteria,
-                                    // reward: {
-                                    //     currency: item.reward.currency,
-                                    //     amount: item.reward.amount,
-                                    //     scale: item.reward.scale
-                                    // },
-                                    // createdBy: item.createdBy,
-                                    // createdAt: item.createdAt,
-                                    // dueAt: item.dueAt,
-                                    // discordMessageId: item.discordMessageId,
-                                    // status: item.status,
-                                    // statusHistory: item.statusHistory
-                                    //     .map(event => {
-                                    //         return {
-                                    //             status: event.status,
-                                    //             setAt: event.setAt
-                                    //         }
-                                    //     }),
-                                    // claimedBy: {
-                                    //     discordHandle: item.claimedBy.discordHandle,
-                                    //     discordId: item.claimedBy.discordId
-                                    // },
-                                    // claimedAt: item.claimedAt,
-                                    // submissionNotes: item.submissionNotes,
-                                    // submissionUrl: item.submissionUrl,
-                                    // submittedAt: item.submittedAt,
-                                    // submittedBy: {
-                                    //     discordHandle: item.submittedBy.discordHandle,
-                                    //     discordId: item.submittedBy.discordId
-                                    // },
-                                    // reviewedAt: item.reviewedAt,
-                                    // reviewedBy: {
-                                    //     discordHandle: item.reviewedBy.discordHandle,
-                                    //     discordId: item.reviewedBy.discordId
-                                    // }
-                                };
-                            });
+                            const bounties = response.data.data
+                                .map((item) => {
+                                    try {
+                                        return {
+                                            id: item.createdBy.discordHandle.toString() + '-' + item.createdAt.toString(),
+                                            season: item.season.toString(),
+                                            title: item.title,
+                                            description: item.description,
+                                            // criteria: item.criteria,
+                                            rewardAmount: item.reward.amount,
+                                            // reward: {
+                                            //     currency: item.reward.currency,
+                                            //     amount: item.reward.amount,
+                                            //     scale: item.reward.scale
+                                            // },
+                                            // createdBy: item.createdBy,
+                                            // createdAt: item.createdAt,
+                                            // dueAt: item.dueAt,
+                                            // discordMessageId: item.discordMessageId,
+                                            // status: item.status,
+                                            // statusHistory: item.statusHistory
+                                            //     .map(event => {
+                                            //         return {
+                                            //             status: event.status,
+                                            //             setAt: event.setAt
+                                            //         }
+                                            //     }),
+                                            // claimedBy: {
+                                            //     discordHandle: item.claimedBy.discordHandle,
+                                            //     discordId: item.claimedBy.discordId
+                                            // },
+                                            // claimedAt: item.claimedAt,
+                                            // submissionNotes: item.submissionNotes,
+                                            // submissionUrl: item.submissionUrl,
+                                            // submittedAt: item.submittedAt,
+                                            // submittedBy: {
+                                            //     discordHandle: item.submittedBy.discordHandle,
+                                            //     discordId: item.submittedBy.discordId
+                                            // },
+                                            // reviewedAt: item.reviewedAt,
+                                            // reviewedBy: {
+                                            //     discordHandle: item.reviewedBy.discordHandle,
+                                            //     discordId: item.reviewedBy.discordId
+                                            // }
+                                        };
+                                    } catch { 
+                                        return null
+                                    }
+                                })
+                                .filter(b => b);
 
                             const result = client.saveBatch(
                                 info, 
