@@ -11,7 +11,7 @@ import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
-import * as pluralize from "pluralize";
+import pluralize from "pluralize";
 import { Logger } from "tslog";
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
 
