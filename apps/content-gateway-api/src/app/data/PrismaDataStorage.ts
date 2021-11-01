@@ -131,5 +131,47 @@ export const createPrismaDataStorage = (
                 })
             )
         },
+        filterByFieldComparedToValue: (field: string, value: number, comparison: string): TO.TaskOption<Array<Data>> => {
+            return pipe(
+                TO.tryCatch(() => {
+                    // TODO: Obviously need to add a proper mapper for these comparison codes
+                    // TODO: Obviously the operands need to be checked for conformance to comparable interface
+                    let operation;
+                    switch (comparison) {
+                        case 'lessThan':
+                            operation = {
+                                path: [field],
+                                lte: value,
+                            };
+                        case 'greaterThan':
+                            operation = {
+                                path: [field],
+                                gte: value,
+                            };
+                        default:
+                            operation = {
+                                path: [field],
+                                gte: value,
+                            };
+                    }
+
+                    return prisma.data.findMany({
+                        where: {
+                            data: operation
+                        },
+                    });
+                }),
+                TO.map((items) => {
+                    return items.map((i) => ({
+                        info: {
+                            namespace: i.namespace,
+                            name: i.name,
+                            version: i.version,
+                        },
+                        data: i.data as Record<string, unknown>,
+                    }))
+                })
+            )
+        },
     };
 };

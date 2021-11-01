@@ -94,6 +94,13 @@ const createGraphQLMiddleware = async ({
                     TO.getOrElse(() => T.of([]))
                 )();
             };
+            const compareNumberOperator = async (field: string, value: number, comparison: string) => {
+                return pipe(
+                    dataStorage.filterByFieldComparedToValue(field, value, comparison),
+                    TO.map((data) => data.map((entity) => entity.data)),
+                    TO.getOrElse(() => T.of([]))
+                )();
+            };
             const findAll = async () => {
                 return pipe(
                     dataStorage.findBySchema(schema.info),
@@ -111,14 +118,29 @@ const createGraphQLMiddleware = async ({
                         return findById(id);
                     },
                 },
-                [`${pluralize.plural(name)}Search`]: {
+                [`${pluralize.plural(name)}`]: {
                     type: g.GraphQLList(type),
                     args: {
                         field: { type: g.GraphQLString },
                         equals: { type: g.GraphQLString },
-                        contains: { type: g.GraphQLString }
+                        contains: { type: g.GraphQLString },
+                        lessThan: { type: g.GraphQLInt },
+                        greaterThan: { type: g.GraphQLInt }
                     },
-                    resolve: (_, { field, equals, contains }) => {
+                    resolve: (
+                        _, 
+                        { 
+                            field, 
+                            equals, 
+                            contains,
+                            lessThan,
+                            greaterThan
+                        }
+                    ) => {
+                        if (!field) {
+                            return findAll();
+                        }
+
                         if (equals) {
                             return equalsStringOperator(field, equals);
                         }
@@ -126,11 +148,15 @@ const createGraphQLMiddleware = async ({
                         if (contains) {
                             return containsStringOperator(field, contains);
                         }
-                    },
-                },
-                [`${pluralize.plural(name)}`]: {
-                    type: g.GraphQLList(type),
-                    resolve: async () => {
+
+                        if (lessThan) {
+                            return compareNumberOperator(field, lessThan, 'lessThan')
+                        }
+
+                        if (greaterThan) {
+                            return compareNumberOperator(field, greaterThan, 'greaterThan')
+                        }
+
                         return findAll();
                     },
                 },
