@@ -80,6 +80,20 @@ const createGraphQLMiddleware = async ({
                     TO.getOrElse(() => T.of(undefined))
                 )();
             };
+            const equalsStringOperator = async (field: string, value: any) => {
+                return pipe(
+                    dataStorage.filterByFieldValue(field, value),
+                    TO.map((data) => data.map((entity) => entity.data)),
+                    TO.getOrElse(() => T.of([]))
+                )();
+            };
+            const containsStringOperator = async (field: string, value: any) => {
+                return pipe(
+                    dataStorage.filterByFieldContainingValue(field, value),
+                    TO.map((data) => data.map((entity) => entity.data)),
+                    TO.getOrElse(() => T.of([]))
+                )();
+            };
             const findAll = async () => {
                 return pipe(
                     dataStorage.findBySchema(schema.info),
@@ -95,6 +109,23 @@ const createGraphQLMiddleware = async ({
                     },
                     resolve: async (_, { id }) => {
                         return findById(id);
+                    },
+                },
+                [`${pluralize.plural(name)}Search`]: {
+                    type: g.GraphQLList(type),
+                    args: {
+                        field: { type: g.GraphQLString },
+                        equals: { type: g.GraphQLString },
+                        contains: { type: g.GraphQLString }
+                    },
+                    resolve: (_, { field, equals, contains }) => {
+                        if (equals) {
+                            return equalsStringOperator(field, equals);
+                        }
+
+                        if (contains) {
+                            return containsStringOperator(field, contains);
+                        }
                     },
                 },
                 [`${pluralize.plural(name)}`]: {
