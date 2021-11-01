@@ -13,6 +13,8 @@ export type DataStorage = {
     store: (payload: Data) => TE.TaskEither<Error, string>;
     findBySchema: (key: SchemaInfo) => TO.TaskOption<Array<Data>>;
     findById: (id: string) => TO.TaskOption<Data>;
+    filterByFieldValue: (field: string, value: any) => TO.TaskOption<Array<Data>>;
+    filterByFieldContainingValue: (field: string, value: any) => TO.TaskOption<Array<Data>>;
 };
 
 export type DataStorageStub = {
@@ -49,6 +51,25 @@ export const createDataStorageStub = (
         },
         findById: function (id: string): TO.TaskOption<Data> {
             return TO.fromNullable(lookup.get(id));
+        },
+        filterByFieldValue: function (field: string, value: any): TO.TaskOption<Array<Data>> {
+            let filtered = Array.from(lookup.values())
+                .filter(item => {
+                    if (item.data[field] === null) { return false }
+                    if (item.data[field] != value) { return false }
+                    return true
+                })
+
+            return TO.fromNullable(filtered);
+        },
+        filterByFieldContainingValue: function (field: string, value: any): TO.TaskOption<Array<Data>> {
+            let filtered = Array.from(lookup.values())
+                .filter(item => {
+                    if (item.data[field] === null) { return false }
+                    return (item.data[field] as string).includes(value)
+                })
+
+            return TO.fromNullable(filtered);
         },
     };
 };

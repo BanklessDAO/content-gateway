@@ -58,7 +58,7 @@ export const createPrismaDataStorage = (
                 )
             );
         },
-        findById: (id: string): TO.TaskOption<Data> =>
+        findById: (id: string): TO.TaskOption<Data> => 
             pipe(
                 TO.tryCatch(() =>
                     prisma.data.findUnique({
@@ -83,5 +83,53 @@ export const createPrismaDataStorage = (
                     }
                 })
             ),
+        filterByFieldValue: (field: string, value: any): TO.TaskOption<Array<Data>> => {
+            return pipe(
+                TO.tryCatch(() => {
+                    return prisma.data.findMany({
+                        where: {
+                            data: {
+                                path: [field],
+                                equals: value,
+                            }
+                        },
+                    });
+                }),
+                TO.map((items) => {
+                    return items.map((i) => ({
+                        info: {
+                            namespace: i.namespace,
+                            name: i.name,
+                            version: i.version,
+                        },
+                        data: i.data as Record<string, unknown>,
+                    }))
+                })
+            )
+        },
+        filterByFieldContainingValue: (field: string, value: any): TO.TaskOption<Array<Data>> => {
+            return pipe(
+                TO.tryCatch(() => {
+                    return prisma.data.findMany({
+                        where: {
+                            data: {
+                                path: [field],
+                                string_contains: value,
+                            }
+                        },
+                    });
+                }),
+                TO.map((items) => {
+                    return items.map((i) => ({
+                        info: {
+                            namespace: i.namespace,
+                            name: i.name,
+                            version: i.version,
+                        },
+                        data: i.data as Record<string, unknown>,
+                    }))
+                })
+            )
+        },
     };
 };
