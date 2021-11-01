@@ -15,6 +15,7 @@ export type DataStorage = {
     findById: (id: string) => TO.TaskOption<Data>;
     filterByFieldValue: (field: string, value: any) => TO.TaskOption<Array<Data>>;
     filterByFieldContainingValue: (field: string, value: any) => TO.TaskOption<Array<Data>>;
+    filterByFieldComparedToValue: (field: string, value: number, comparison: string) => TO.TaskOption<Array<Data>>;
 };
 
 export type DataStorageStub = {
@@ -67,6 +68,25 @@ export const createDataStorageStub = (
                 .filter(item => {
                     if (item.data[field] === null) { return false }
                     return (item.data[field] as string).includes(value)
+                })
+
+            return TO.fromNullable(filtered);
+        },
+        filterByFieldComparedToValue: function (field: string, value: number, comparison: string): TO.TaskOption<Array<Data>> {
+            let filtered = Array.from(lookup.values())
+                .filter(item => {
+                    if (item.data[field] === null) { return false }
+
+                    // TODO: Obviously need to add a proper mapper for these comparison codes
+                    // TODO: Obviously the operands need to be checked for conformance to comparable interface
+                    switch (comparison) {
+                        case 'lessThan':
+                            return (item.data[field] as number) < value
+                        case 'greatedThan':
+                            return (item.data[field] as number) > value
+                        default:
+                            return true
+                    }
                 })
 
             return TO.fromNullable(filtered);
