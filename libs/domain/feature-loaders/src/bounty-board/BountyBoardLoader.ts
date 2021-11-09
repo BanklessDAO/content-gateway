@@ -109,12 +109,19 @@ export const bountyBoardLoader = createSimpleLoader({
             TE.chainW(() =>
                 jobScheduler.schedule({
                     name: name,
-                    scheduledAt: DateTime.now(),
+                    scheduledAt: new Date(),
                 })
             ),
             TE.map((result) => {
                 logger.info(`Scheduled job`, result);
                 return undefined;
+            }),
+            TE.mapLeft((error) => {
+                logger.error(
+                    "Bounty Board Loader initialization failed:",
+                    error
+                );
+                return error;
             })
         );
     },
@@ -123,7 +130,7 @@ export const bountyBoardLoader = createSimpleLoader({
             TE.tryCatch(
                 async () => {
                     logger.info("Executing Bounty Board loader.");
-                    logger.info(`Current job: ${currentJob}`);
+                    logger.info("Current job:", currentJob);
 
                     const response = await axios.get(
                         `https://bountyboard.bankless.community/api/bounties`
@@ -195,9 +202,13 @@ export const bountyBoardLoader = createSimpleLoader({
                 TE.right({
                     name: name,
                     // runs every minute
-                    scheduledAt: DateTime.now().plus({ minutes: 1 }),
+                    scheduledAt: DateTime.now().plus({ minutes: 1 }).toJSDate(),
                 })
-            )
+            ),
+            TE.mapLeft((error) => {
+                logger.error("Bounty Board Loader data loading failed:", error);
+                return error;
+            })
         );
     },
 });

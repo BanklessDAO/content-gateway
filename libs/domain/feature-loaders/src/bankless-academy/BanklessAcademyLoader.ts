@@ -11,27 +11,10 @@ const logger = new Logger({ name });
 
 /// Types
 
-const typeVersions = {
-    quiz: {
-        namespace: "bankless-academy",
-        name: "Quiz",
-        version: "V1",
-    },
-    section: {
-        namespace: "bankless-academy",
-        name: "Section",
-        version: "V1",
-    },
-    course: {
-        namespace: "bankless-academy",
-        name: "Course",
-        version: "V1",
-    },
-    courseLibrary: {
-        namespace: "bankless-academy",
-        name: "CourseLibrary",
-        version: "V1",
-    },
+const courseInfo = {
+    namespace: "bankless-academy",
+    name: "Course",
+    version: "V1",
 };
 
 class Quiz {
@@ -86,15 +69,6 @@ class Course {
     sections: Section[];
 }
 
-@AdditionalProperties(false)
-class CourseLibrary {
-    @Required(true)
-    id: string;
-    @Required(true)
-    @CollectionOf(Course)
-    courses: Course[];
-}
-
 /// Loader
 
 export const banklessAcademyLoader = createSimpleLoader({
@@ -102,19 +76,22 @@ export const banklessAcademyLoader = createSimpleLoader({
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing Bankless Academy loader...");
         return pipe(
-            client.register(typeVersions.course, Course),
-            TE.map((result) => {
-                logger.info("Registration result:", result);
-                return result;
-            }),
+            client.register(courseInfo, Course),
             TE.chainW(() =>
                 jobScheduler.schedule({
                     name: name,
-                    scheduledAt: DateTime.now(),
+                    scheduledAt: new Date(),
                 })
             ),
             TE.map((result) => {
-                logger.info(`Scheduled job`, result);
+                logger.info("Scheduled job", result);
+            }),
+            TE.mapLeft((error) => {
+                logger.error(
+                    "Error while initializing Bankless Academy loader:",
+                    error
+                );
+                return error;
             })
         );
     },
@@ -124,7 +101,7 @@ export const banklessAcademyLoader = createSimpleLoader({
             TE.tryCatch(
                 async () => {
                     logger.info("Executing Bankless Academy loader.");
-                    logger.info(`Current job:`, currentJob);
+                    logger.info("Current job:", currentJob);
 
                     const response = await axios.get(
                         `https://bankless-academy-cg-lab.vercel.app/api/courses`
@@ -157,16 +134,17 @@ export const banklessAcademyLoader = createSimpleLoader({
                 },
                 (err: unknown) => new Error(String(err))
             ),
-            TE.chain((courses) =>
-                client.saveBatch(typeVersions.course, courses)
-            ),
+            TE.chain((courses) => client.saveBatch(courseInfo, courses)),
             TE.chain(() =>
                 TE.right({
                     name: name,
-                    // runs every minute
-                    scheduledAt: DateTime.now().plus({ minutes: 1 }),
+                    scheduledAt: DateTime.now().plus({ minutes: 1 }).toJSDate(),
                 })
-            )
+            ),
+            TE.mapLeft((error) => {
+                logger.error("Bankless Academy data loading failed:", error);
+                return error;
+            })
         );
     },
 });

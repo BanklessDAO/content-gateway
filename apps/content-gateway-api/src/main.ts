@@ -1,6 +1,6 @@
 import { PrismaClient } from "@cga/prisma";
 import { Logger } from "tslog";
-import { createApp } from "./app/app";
+import { createAPI } from "./app/";
 
 const logger = new Logger({ name: "main" });
 
@@ -12,7 +12,7 @@ async function main() {
         process.env.CGA_PORT ||
         programError("You must specify either PORT or CGA_PORT");
 
-    const app = await createApp(prisma);
+    const app = await createAPI(prisma);
 
     const server = app.listen(port, () => {
         console.log(`Listening at http://localhost:${port}`);
@@ -25,8 +25,8 @@ async function main() {
 
 main()
     .catch((err) => logger.error(err))
-    .finally(async () => {
-        await prisma.$disconnect();
+    .finally(() => {
+        prisma.$disconnect();
     });
 
 const programError = (message: string) => {

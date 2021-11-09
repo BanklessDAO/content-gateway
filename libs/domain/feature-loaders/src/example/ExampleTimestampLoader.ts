@@ -32,7 +32,7 @@ export const exampleTimestampLoader = createSimpleLoader({
             TE.chainW(() =>
                 jobScheduler.schedule({
                     name: name,
-                    scheduledAt: DateTime.now(),
+                    scheduledAt: new Date(),
                 })
             ),
             TE.map(() => {
@@ -50,7 +50,7 @@ export const exampleTimestampLoader = createSimpleLoader({
             TE.chain(() =>
                 TE.right({
                     name: name,
-                    scheduledAt: DateTime.now().plus({ seconds: 5 }),
+                    scheduledAt: DateTime.now().plus({ seconds: 5 }).toJSDate(),
                 })
             )
         );

@@ -3,7 +3,7 @@ import { PrismaClient } from "@cga/prisma";
 import { ContentGateway, DataStorage } from "@domain/feature-gateway";
 import { Application } from "express";
 import { Logger } from "tslog";
-import { SchemaStorageDecorator } from "./app/endpoints";
+import { SchemaStorageDecorator } from "./endpoints";
 
 export type AppContext = {
     logger: Logger;

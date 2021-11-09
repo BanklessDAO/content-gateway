@@ -1,6 +1,5 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
 import { JobSchedule, JobState, PrismaClient } from "@cgl/prisma";
-import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
@@ -20,7 +19,7 @@ import {
     SchedulerStartupError,
     SchedulerStoppedError,
     SchedulingError,
-    StartError,
+    StartError
 } from "./Errors";
 import { JobDescriptor } from "./JobDescriptor";
 
@@ -52,39 +51,6 @@ export type JobScheduler = {
      */
     stop: () => TE.TaskEither<Error, void>;
 };
-
-export class JobSchedulerStub implements JobScheduler {
-    starts = [] as boolean[];
-    stops = [] as boolean[];
-    loaders = [] as Loader[];
-    removedLoaders = [] as string[];
-    scheduledJobs = [] as JobDescriptor[];
-
-    start(): TE.TaskEither<StartError, void> {
-        this.starts.push(true);
-        return TE.right(undefined);
-    }
-    register(loader: Loader): TE.TaskEither<RegistrationError, void> {
-        this.loaders.push(loader);
-        return TE.right(undefined);
-    }
-    remove(name: string): TE.TaskEither<NoLoaderFoundError, void> {
-        this.removedLoaders.push(name);
-        return TE.right(undefined);
-    }
-    schedule(
-        job: JobDescriptor
-    ): TE.TaskEither<SchedulingError, JobDescriptor> {
-        this.scheduledJobs.push(job);
-        return TE.right(job);
-    }
-    stop(): TE.TaskEither<Error, void> {
-        this.stops.push(true);
-        return TE.of(undefined);
-    }
-}
-
-export const createJobSchedulerStub = () => new JobSchedulerStub();
 
 export const createJobScheduler = (
     prisma: PrismaClient,
@@ -337,7 +303,7 @@ class DefaultJobScheduler implements JobScheduler {
                     name: job.name,
                     cursor: job.cursor,
                     state: state,
-                    scheduledAt: job.scheduledAt.toJSDate(),
+                    scheduledAt: job.scheduledAt,
                     updatedAt: new Date(),
                     log: {
                         create: {
@@ -370,9 +336,9 @@ class DefaultJobScheduler implements JobScheduler {
     ): Job {
         return {
             name: jobSchedule.name,
-            scheduledAt: DateTime.fromJSDate(jobSchedule.scheduledAt),
+            scheduledAt: jobSchedule.scheduledAt,
             cursor: jobSchedule.cursor,
-            execututionStartedAt: startedAt,
+            execututionStartedAt: startedAt.toJSDate(),
         };
     }
 
@@ -381,8 +347,41 @@ class DefaultJobScheduler implements JobScheduler {
             name: job.name,
             cursor: job.cursor,
             state: state,
-            scheduledAt: job.scheduledAt.toJSDate(),
+            scheduledAt: job.scheduledAt,
             updatedAt: new Date(),
         };
     }
 }
+
+export class JobSchedulerStub implements JobScheduler {
+    starts = [] as boolean[];
+    stops = [] as boolean[];
+    loaders = [] as Loader[];
+    removedLoaders = [] as string[];
+    scheduledJobs = [] as JobDescriptor[];
+
+    start(): TE.TaskEither<StartError, void> {
+        this.starts.push(true);
+        return TE.right(undefined);
+    }
+    register(loader: Loader): TE.TaskEither<RegistrationError, void> {
+        this.loaders.push(loader);
+        return TE.right(undefined);
+    }
+    remove(name: string): TE.TaskEither<NoLoaderFoundError, void> {
+        this.removedLoaders.push(name);
+        return TE.right(undefined);
+    }
+    schedule(
+        job: JobDescriptor
+    ): TE.TaskEither<SchedulingError, JobDescriptor> {
+        this.scheduledJobs.push(job);
+        return TE.right(job);
+    }
+    stop(): TE.TaskEither<Error, void> {
+        this.stops.push(true);
+        return TE.of(undefined);
+    }
+}
+
+export const createJobSchedulerStub = () => new JobSchedulerStub();

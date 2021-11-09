@@ -1,10 +1,10 @@
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 
-export const info = {
+export const bankAccountInfo = {
     namespace: "bankless-token",
     name: "BANKAccount",
     version: "V1",
-}
+};
 
 export class Transaction {
     @Required(true)
@@ -26,13 +26,4 @@ export class BANKAccount {
     @Required(true)
     @CollectionOf(Transaction)
     transactions: Transaction[];
-}
-
-@AdditionalProperties(false)
-export class BanklessTokenIndex {
-    @Required(true)
-    id: string;
-    @Required(true)
-    @CollectionOf(BANKAccount)
-    accounts: BANKAccount[];
 }

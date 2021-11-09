@@ -1,4 +1,3 @@
-import { DateTime } from "luxon";
 import { JobDescriptor } from "./JobDescriptor";
 
 /**
@@ -7,5 +6,5 @@ import { JobDescriptor } from "./JobDescriptor";
  * it is implicitly {@link JobState.RUNNING}.
  */
 export type Job = {
-    execututionStartedAt: DateTime;
+    execututionStartedAt: Date;
 } & JobDescriptor;

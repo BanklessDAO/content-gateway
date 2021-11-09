@@ -1,12 +1,10 @@
 import { createClient } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cga/prisma";
-import {
-    createContentGateway
-} from "@domain/feature-gateway";
+import { createContentGateway } from "@domain/feature-gateway";
 import {
     batchPayloadCodec,
     createSchemaFromObject,
-    payloadCodec
+    payloadCodec,
 } from "@shared/util-schema";
 import * as express from "express";
 import * as E from "fp-ts/Either";
@@ -17,11 +15,15 @@ import { formatValidationErrors } from "io-ts-reporters";
 import { failure } from "io-ts/lib/PathReporter";
 import { join } from "path";
 import { Logger } from "tslog";
-import { AppContext } from "../";
-import { createPrismaDataStorage, createPrismaSchemaStorage } from "./";
+import {
+    createPrismaDataStorage,
+    createPrismaSchemaStorage,
+    AppContext,
+} from "./";
 import { generateContentGatewayAPI } from "./endpoints/ContentGatewayAPI";
 import {
-    decorateSchemaStorage, createGraphQLAPI
+    createGraphQLAPI,
+    decorateSchemaStorage,
 } from "./endpoints/GraphQLAPI";
 
 const env = process.env.NODE_ENV;
@@ -29,7 +31,7 @@ const isDev = env === "development";
 const isProd = env === "production";
 const logger = new Logger({ name: "main" });
 
-export const createApp = async (prisma: PrismaClient) => {
+export const createAPI = async (prisma: PrismaClient) => {
     logger.info(`Running in ${env} mode`);
 
     const app = express();
@@ -99,7 +101,7 @@ export const createApp = async (prisma: PrismaClient) => {
 
     if (isProd) {
         app.use(express.static(clientBuildPath));
-        app.get("*", (request, response) => {
+        app.get("*", (_, response) => {
             response.sendFile(join(clientBuildPath, "index.html"));
         });
     }

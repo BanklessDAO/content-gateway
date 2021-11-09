@@ -7,7 +7,7 @@ import {
     createSimpleLoader,
 } from "@shared/util-loaders";
 import { BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS } from "./queries";
-import { BANKAccount, info } from "./types";
+import { BANKAccount, bankAccountInfo } from "./types";
 
 const name = "bankless-token-loader";
 const logger = new Logger({ name });
@@ -87,16 +87,23 @@ export const banklessTokenLoader = createSimpleLoader({
     name: name,
     initialize: ({ client, jobScheduler }) => {
         return pipe(
-            client.register(info, BANKAccount),
+            client.register(bankAccountInfo, BANKAccount),
             TE.chainW(() =>
                 jobScheduler.schedule({
                     name: name,
-                    scheduledAt: DateTime.now(),
+                    scheduledAt: new Date(),
                 })
             ),
             TE.map((result) => {
-                logger.info(`Scheduled job`, result);
+                logger.info("Scheduled job", result);
                 return undefined;
+            }),
+            TE.mapLeft((error) => {
+                logger.error(
+                    "Bankless Token Loader initialization failed:",
+                    error
+                );
+                return error;
             })
         );
     },
@@ -105,7 +112,7 @@ export const banklessTokenLoader = createSimpleLoader({
             TE.tryCatch(
                 async () => {
                     logger.info("Executing Bankless Token loader.");
-                    logger.info(`Current job: ${currentJob}`);
+                    logger.info("Current job:", currentJob);
 
                     let accounts = [];
                     let lastAccountID = "";
@@ -141,13 +148,20 @@ export const banklessTokenLoader = createSimpleLoader({
                 },
                 (err: unknown) => new Error(String(err))
             ),
-            TE.chain((accounts) => client.saveBatch(info, accounts)),
+            TE.chain((accounts) => client.saveBatch(bankAccountInfo, accounts)),
             TE.chain(() =>
                 TE.right({
                     name: name,
-                    scheduledAt: DateTime.now().plus({ minutes: 1 }),
+                    scheduledAt: DateTime.now().plus({ minutes: 1 }).toJSDate(),
                 })
-            )
+            ),
+            TE.mapLeft((error) => {
+                logger.error(
+                    "Bankless Token Loader data loading failed:",
+                    error
+                );
+                return error;
+            })
         );
     },
 });

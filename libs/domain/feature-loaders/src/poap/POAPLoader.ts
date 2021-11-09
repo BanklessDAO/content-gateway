@@ -52,14 +52,20 @@ export const poapLoader = createSimpleLoader({
     name: name,
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing POAP loader...");
-        client.register(info, POAPToken);
         return pipe(
-            jobScheduler.schedule({
-                name: name,
-                scheduledAt: DateTime.now(),
-            }),
+            client.register(info, POAPToken),
+            TE.chainW(() =>
+                jobScheduler.schedule({
+                    name: name,
+                    scheduledAt: new Date(),
+                })
+            ),
             TE.map((result) => {
-                logger.info(`Scheduled job ${JSON.stringify(result)}`);
+                logger.info("Scheduled job", result);
+            }),
+            TE.mapLeft((error) => {
+                logger.error("POAP Loader initialization failed:", error);
+                return error;
             })
         );
     },
@@ -68,7 +74,7 @@ export const poapLoader = createSimpleLoader({
             TE.tryCatch(
                 async () => {
                     logger.info("Executing POAP loader.");
-                    logger.info(`Current job: ${currentJob}`);
+                    logger.info("Current job:", currentJob);
 
                     let tokens = [];
                     let lastTokenID = "";
@@ -93,21 +99,24 @@ export const poapLoader = createSimpleLoader({
                         lastTokenID = null; // Limit this to a single slice for now
                     }
 
-                    console.log(
-                        `Sample token: ${JSON.stringify(tokens[1], null, 2)}`
-                    );
-
-                    const result = await client.saveBatch(info, tokens);
-                    logger.info("Batch saving result:", result);
+                    if (tokens.length > 0) {
+                        logger.info("Sample token:", tokens[0]);
+                    }
+                    return tokens;
                 },
                 (error: unknown) => new Error(String(error))
             ),
+            TE.chain((tokens) => client.saveBatch(info, tokens)),
             TE.chain(() =>
                 TE.right({
                     name: name,
-                    scheduledAt: DateTime.now().plus({ minutes: 1 }),
+                    scheduledAt: DateTime.now().plus({ minutes: 1 }).toJSDate(),
                 })
-            )
+            ),
+            TE.mapLeft((error) => {
+                logger.error("POAP Loader data loading failed:", error);
+                return error;
+            })
         );
     },
 });
