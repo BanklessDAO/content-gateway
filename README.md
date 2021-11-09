@@ -147,24 +147,3 @@ We're using fp-ts, io-ts in this project. These libraries implement strictly typ
 -   [fp-ts and Beautiful API Calls](https://dev.to/gnomff_65/fp-ts-and-beautiful-api-calls-1f55)
 
 You can also take a look around the author's [website](https://paulgray.net/)
-
-
-## Roadmap
-
-These the things we're planning to finish in *S2*:
-
-- [ ] Add support for all primitive types
-- [ ] Hide *Prisma* behind a repository completely so that we can change data sources easily
-- [ ] Use batch upserts instead of individual save operations
-- [ ] Optimize queries both in the database and in the API
-- [ ] Add support for `@Default` to enable schema evolution with non-nullable fields
-- [ ] Add tooling for creating `Loader`s easily
-- [ ] Improve the docs WRT `Loader`s and using the API/Client
-- [ ] Deploy the *Client* to *npm*
-- [ ] Propagate all failures to the client in a DX-friendly way
-- [ ] Add a CI/CD workflow
-- [ ] Add support for proper pagination of data
-- [ ] Offload `Loader` executions and massive database writes to workers
-- [ ] Keep an in-memory version of job schedules in the *loader* to make sure operations are consistent (or use Prisma $transaction)
-- [ ] Incorporate `namespace` and `version` into the GraphQL schema to avoid name collisions with different integrations
-- [ ] Integrate DEGEN bot data
