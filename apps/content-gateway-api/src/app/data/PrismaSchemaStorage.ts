@@ -82,16 +82,13 @@ export const createPrismaSchemaStorage = (
                 TE.tryCatch(
                     async () => {
                         const o = await findSchema(schema.info)();
-                        logger.info("Finding old schema result", o);
                         return Promise.resolve(O.getOrElse(() => schema)(o));
                     },
                     (err: Error) =>
                         SchemaCreationFailedError.create(err.message)
                 ),
                 TE.chain((oldSchema) => {
-                    logger.info("Checking schema compatibility...");
                     if (schema.isBackwardCompatibleWith(oldSchema)) {
-                        logger.info("Schema is compatible, saving...");
                         return upsertSchema(schema);
                     } else {
                         return TE.left(

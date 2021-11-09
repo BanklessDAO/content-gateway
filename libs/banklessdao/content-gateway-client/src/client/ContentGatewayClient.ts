@@ -50,20 +50,20 @@ export type ContentGatewayClient = {
     register: <T>(
         info: SchemaInfo,
         type: Type<T>
-    ) => Promise<E.Either<Error, void>>;
+    ) => TE.TaskEither<Error, void>;
     /**
      * Saves the [[data]] to the Content Gateway using the scema's metadata to
      * identify it. This will return an error if the type of [[data]] is not
      *  {@link ContentGatewayClient#register | register}ed.
      */
-    save: <T>(info: SchemaInfo, data: T) => Promise<E.Either<Error, void>>;
+    save: <T>(info: SchemaInfo, data: T) => TE.TaskEither<Error, void>;
     /**
      * Same as {@link ContentGatewayClient#save} but sends a batch
      */
     saveBatch: <T>(
         info: SchemaInfo,
         data: Array<T>
-    ) => Promise<E.Either<Error, void>>;
+    ) => TE.TaskEither<Error, void>;
 };
 
 /**
@@ -107,10 +107,12 @@ export const createRESTAdapter = (url: string): OutboundDataAdapter => {
                         payload
                     );
 
-                    logger.info(`status: ${result.status}, text: ${result.statusText}`)
-
+                    logger.info(
+                        `status: ${result.status}, text: ${result.statusText}`
+                    );
                 },
                 (err: unknown) => {
+                    // TODO: code paths
                     if (axios.isAxiosError(err)) {
                         return new Error(`Error sending payload.`);
                     } else {
@@ -137,21 +139,15 @@ export const createOutboundAdapterStub = (): OutboundDataAdapterStub => {
         schemas,
         payloads,
         register: (schema) => {
-            logger.info(`Registering schema:`, schema);
             schemas.push(schema);
-            logger.debug(`Registered schemas:`, schemas);
             return TE.right(undefined);
         },
         send: (payload) => {
-            logger.info(`Sending payload:`, payload);
             payloads.push(payload);
-            logger.debug(`Sent payloads:`, payloads);
             return TE.right(undefined);
         },
         sendBatch: (payload) => {
-            logger.info(`Sending payload:`, payload);
             payloads.push(payload);
-            logger.debug(`Sent payloads:`, payloads);
             return TE.right(undefined);
         },
     };
@@ -183,7 +179,7 @@ export const createClient = ({
         register: <T>(
             info: SchemaInfo,
             type: Type<T>
-        ): Promise<E.Either<Error, void>> => {
+        ): TE.TaskEither<Error, void> => {
             return pipe(
                 createSchemaFromType(info, type),
                 TE.fromEither,
@@ -196,18 +192,14 @@ export const createClient = ({
                         schemas.set(schemaInfoToString(info), schema)
                 ),
                 TE.chain((schema) => {
-                    logger.info(`Registering schema`, schema.info);
                     return adapter.register({
                         info: info,
                         jsonSchema: schema.jsonSchema,
                     });
                 })
-            )();
+            );
         },
-        save: <T>(
-            info: SchemaInfo,
-            data: T
-        ): Promise<E.Either<Error, void>> => {
+        save: <T>(info: SchemaInfo, data: T): TE.TaskEither<Error, void> => {
             const mapKey = schemaInfoToString(info);
             const maybeSchema = O.fromNullable(schemas.get(mapKey));
             return pipe(
@@ -228,12 +220,12 @@ export const createClient = ({
                         data: dataRecord,
                     })
                 )
-            )();
+            );
         },
         saveBatch: <T>(
             info: SchemaInfo,
             data: Array<T>
-        ): Promise<E.Either<Error, void>> => {
+        ): TE.TaskEither<Error, void> => {
             const mapKey = schemaInfoToString(info);
             const maybeSchema = O.fromNullable(schemas.get(mapKey));
             return pipe(
@@ -258,7 +250,7 @@ export const createClient = ({
                         data: dataArray as Array<Record<string, unknown>>,
                     })
                 )
-            )();
+            );
         },
     };
 };

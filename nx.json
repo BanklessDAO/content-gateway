@@ -48,10 +48,16 @@
         "domain-feature-gateway": {
             "tags": ["lib:feature"]
         },
+        "domain-feature-loaders": {
+            "tags": []
+        },
         "shared-util-fp": {
             "tags": []
         },
         "shared-util-graphql": {
+            "tags": []
+        },
+        "shared-util-loaders": {
             "tags": []
         },
         "shared-util-schema": {

@@ -6,7 +6,7 @@
         "start": "node dist/apps/content-gateway-api/main.js",
         "build": "nx run-many --target build --all --parallel",
         "heroku-postbuild": "script/heroku-build.sh $PROJECT_NAME",
-        "test": "nx test"
+        "test": "nx run-many --target test --all --parallel"
     },
     "private": true,
     "dependencies": {

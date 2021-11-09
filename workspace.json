@@ -284,6 +284,30 @@
                 }
             }
         },
+        "domain-feature-loaders": {
+            "root": "libs/domain/feature-loaders",
+            "sourceRoot": "libs/domain/feature-loaders/src",
+            "projectType": "library",
+            "targets": {
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": [
+                            "libs/domain/feature-loaders/**/*.ts"
+                        ]
+                    }
+                },
+                "test": {
+                    "executor": "@nrwl/jest:jest",
+                    "outputs": ["coverage/libs/domain/feature-loaders"],
+                    "options": {
+                        "jestConfig": "libs/domain/feature-loaders/jest.config.js",
+                        "passWithNoTests": true
+                    }
+                }
+            }
+        },
         "shared-util-fp": {
             "root": "libs/shared/util-fp",
             "sourceRoot": "libs/shared/util-fp/src",
@@ -343,6 +367,38 @@
                     "outputs": ["coverage/libs/shared/util-graphql"],
                     "options": {
                         "jestConfig": "libs/shared/util-graphql/jest.config.js",
+                        "passWithNoTests": true
+                    }
+                }
+            }
+        },
+        "shared-util-loaders": {
+            "root": "libs/shared/util-loaders",
+            "sourceRoot": "libs/shared/util-loaders/src",
+            "projectType": "library",
+            "targets": {
+                "build": {
+                    "executor": "@nrwl/workspace:tsc",
+                    "outputs": ["{options.outputPath}"],
+                    "options": {
+                        "outputPath": "dist/libs/shared/util-loaders",
+                        "main": "libs/shared/util-loaders/src/index.ts",
+                        "tsConfig": "libs/shared/util-loaders/tsconfig.lib.json",
+                        "assets": ["libs/shared/util-loaders/*.md"]
+                    }
+                },
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": ["libs/shared/util-loaders/**/*.ts"]
+                    }
+                },
+                "test": {
+                    "executor": "@nrwl/jest:jest",
+                    "outputs": ["coverage/libs/shared/util-loaders"],
+                    "options": {
+                        "jestConfig": "libs/shared/util-loaders/jest.config.js",
                         "passWithNoTests": true
                     }
                 }

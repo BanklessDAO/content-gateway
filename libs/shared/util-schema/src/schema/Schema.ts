@@ -102,7 +102,6 @@ export const createSchemaFromObject = (
             E.right(ajv.compile(validSchema.jsonSchema))
         ),
         E.map(({ validSchema, validator }) => {
-            const logger = new Logger();
             return {
                 info: validSchema.info,
                 jsonSchema: validSchema.jsonSchema,
@@ -136,7 +135,6 @@ export const createSchemaFromObject = (
                         );
                         return true;
                     } catch (e) {
-                        logger.warn(`New schema: ${other.info} was incompatible with the old one`, e);
                         return false;
                     }
                 },

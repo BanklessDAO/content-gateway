@@ -138,7 +138,7 @@ export const exampleLoader = createSimpleLoader({
             // 6. This only runs if the tryCatch succeeds
             // in that case we log the result
             TE.map((result) => {
-                logger.info(`Scheduled job ${JSON.stringify(result)}`);
+                logger.info(`Scheduled job`, result);
                 // 7. and return nothing (void)
                 return undefined;
             })
