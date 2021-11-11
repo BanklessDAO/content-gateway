@@ -1,4 +1,4 @@
-import { createSimpleLoader } from "@shared/util-loaders";
+import { DataLoader } from "@shared/util-loaders";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
@@ -24,7 +24,7 @@ class RandomUUID {
     likeIt: boolean;
 }
 
-export const exampleUUIDLoader = createSimpleLoader({
+export const exampleUUIDLoader: DataLoader = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         return pipe(
@@ -41,7 +41,7 @@ export const exampleUUIDLoader = createSimpleLoader({
             })
         );
     },
-    load: ({ client }) => {
+    save: ({ client }) => {
         return pipe(
             client.save(info, {
                 id: uuid(),
@@ -54,4 +54,4 @@ export const exampleUUIDLoader = createSimpleLoader({
             )
         );
     },
-});
+};

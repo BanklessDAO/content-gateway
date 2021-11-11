@@ -6,7 +6,7 @@ import { DateTime } from "luxon";
 import { AsyncTask, SimpleIntervalJob, ToadScheduler } from "toad-scheduler";
 import { Logger } from "tslog";
 import { Job } from ".";
-import { Loader } from "../Loader";
+import { DataLoader } from "../Loader";
 import {
     JobCreationFailedError,
     LoaderAlreadyRegisteredError,
@@ -19,7 +19,7 @@ import {
     SchedulerStartupError,
     SchedulerStoppedError,
     SchedulingError,
-    StartError
+    StartError,
 } from "./Errors";
 import { JobDescriptor } from "./JobDescriptor";
 
@@ -35,7 +35,7 @@ export type JobScheduler = {
     /**
      * Registers the given loader with the given name.
      */
-    register: (loader: Loader) => TE.TaskEither<RegistrationError, void>;
+    register: (loader: DataLoader) => TE.TaskEither<RegistrationError, void>;
     remove: (name: string) => TE.TaskEither<NoLoaderFoundError, void>;
     /**
      * Schedules a new job. The given job must have a corresponding loader
@@ -63,7 +63,7 @@ class DefaultJobScheduler implements JobScheduler {
     // TODO: read and write the database
     // TODO: store an in-memory representation of the state too, to avoid
     // TODO: being suspended because of async/await
-    private loaders = new Map<string, Loader>();
+    private loaders = new Map<string, DataLoader>();
     private started = false;
     private stopped = false;
     private prisma: PrismaClient;
@@ -117,7 +117,7 @@ class DefaultJobScheduler implements JobScheduler {
         return TE.of(undefined);
     }
 
-    register(loader: Loader): TE.TaskEither<RegistrationError, void> {
+    register(loader: DataLoader): TE.TaskEither<RegistrationError, void> {
         if (!this.started) {
             return TE.left(SchedulerNotStartedError.create());
         }
@@ -242,7 +242,7 @@ class DefaultJobScheduler implements JobScheduler {
                     `Job execution started.`
                 )();
                 pipe(
-                    loader.load({
+                    loader.save({
                         client: this.client,
                         currentJob: job,
                         jobScheduler: this,
@@ -337,7 +337,7 @@ class DefaultJobScheduler implements JobScheduler {
         return {
             name: jobSchedule.name,
             scheduledAt: jobSchedule.scheduledAt,
-            cursor: jobSchedule.cursor,
+            cursor: jobSchedule.cursor ? jobSchedule.cursor : undefined,
             execututionStartedAt: startedAt.toJSDate(),
         };
     }
@@ -345,7 +345,7 @@ class DefaultJobScheduler implements JobScheduler {
     private jobToJobSchedule(job: Job, state: JobState): JobSchedule {
         return {
             name: job.name,
-            cursor: job.cursor,
+            cursor: job.cursor ? job.cursor : null,
             state: state,
             scheduledAt: job.scheduledAt,
             updatedAt: new Date(),
@@ -356,7 +356,7 @@ class DefaultJobScheduler implements JobScheduler {
 export class JobSchedulerStub implements JobScheduler {
     starts = [] as boolean[];
     stops = [] as boolean[];
-    loaders = [] as Loader[];
+    loaders = [] as DataLoader[];
     removedLoaders = [] as string[];
     scheduledJobs = [] as JobDescriptor[];
 
@@ -364,7 +364,7 @@ export class JobSchedulerStub implements JobScheduler {
         this.starts.push(true);
         return TE.right(undefined);
     }
-    register(loader: Loader): TE.TaskEither<RegistrationError, void> {
+    register(loader: DataLoader): TE.TaskEither<RegistrationError, void> {
         this.loaders.push(loader);
         return TE.right(undefined);
     }

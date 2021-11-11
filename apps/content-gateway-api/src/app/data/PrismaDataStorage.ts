@@ -1,11 +1,24 @@
-// eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { Prisma, PrismaClient } from "@cga/prisma";
-import { Data, DataStorage, SchemaStorage } from "@domain/feature-gateway";
-import { SchemaInfo } from "@shared/util-schema";
+import {
+    Data,
+    DataStorage,
+    Filters,
+    SchemaFilter,
+    SchemaStorage,
+} from "@domain/feature-gateway";
+import { OperatorType } from "@shared/util-loaders";
 import { pipe } from "fp-ts/lib/function";
+import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import { Logger } from "tslog";
+
+const operatorLookup = {
+    [OperatorType.EQUALS]: "equals",
+    [OperatorType.CONTAINS]: "string_contains",
+    [OperatorType.GREATER_THAN_OR_EQUAL]: "gte",
+    [OperatorType.LESS_THAN_OR_EQUAL]: "lte",
+} as const;
 
 export const createPrismaDataStorage = (
     prisma: PrismaClient,
@@ -13,8 +26,8 @@ export const createPrismaDataStorage = (
 ): DataStorage => {
     const logger = new Logger({ name: "PrismaDataStorage" });
     return {
-        store: (payload: Data): TE.TaskEither<Error, string> =>
-            pipe(
+        store: (payload: Data): TE.TaskEither<Error, Data> => {
+            return pipe(
                 schemaStorage.find(payload.info),
                 TE.fromTaskOption(() => new Error("Schema not found")),
                 TE.chainW((schema) => {
@@ -25,9 +38,7 @@ export const createPrismaDataStorage = (
                         async () =>
                             prisma.data.create({
                                 data: {
-                                    id: record.id as string,
-                                    createdAt: new Date(),
-                                    updatedAt: new Date(),
+                                    upstreamId: record.id as string,
                                     data: record as Prisma.JsonObject,
                                     ...payload.info,
                                 },
@@ -39,31 +50,52 @@ export const createPrismaDataStorage = (
                         }
                     );
                 }),
-                TE.map((data) => data.id)
-            ),
-        findBySchema: (info: SchemaInfo): TO.TaskOption<Array<Data>> => {
+                TE.map((data) => ({
+                    ...payload,
+                    id: data.id,
+                }))
+            );
+        },
+        findBySchema: (filter: SchemaFilter): T.Task<Array<Data>> => {
+            let params;
+            if (filter.cursor) {
+                params = {
+                    skip: 1, // this is because we skip the cursor
+                    take: filter.limit,
+                    where: {
+                        ...filter.info,
+                    },
+                    cursor: {
+                        id: filter.cursor,
+                    },
+                    orderBy: {
+                        id: "asc",
+                    },
+                };
+            } else {
+                params = {
+                    take: filter.limit,
+                    where: {
+                        ...filter.info,
+                    },
+                };
+            }
             return pipe(
-                TO.tryCatch(() => {
-                    return prisma.data.findMany({
-                        where: {
-                            ...info,
-                        },
-                    });
-                }),
-                TO.map((data) =>
+                () => prisma.data.findMany(params),
+                T.map((data) =>
                     data.map((d) => ({
-                        info: info,
+                        id: d.id,
+                        info: filter.info,
                         data: d.data as Record<string, unknown>,
                     }))
                 )
             );
         },
-        findById: (id: string): TO.TaskOption<Data> => 
+        findById: (id: bigint): TO.TaskOption<Data> =>
             pipe(
                 TO.tryCatch(() =>
                     prisma.data.findUnique({
                         where: {
-                            // TODO: ❗ change this because id might not be globally unique!
                             id: id,
                         },
                     })
@@ -73,6 +105,7 @@ export const createPrismaDataStorage = (
                         return TO.none;
                     } else {
                         return TO.of({
+                            id: record.id,
                             info: {
                                 namespace: record.namespace,
                                 name: record.name,
@@ -83,95 +116,65 @@ export const createPrismaDataStorage = (
                     }
                 })
             ),
-        filterByFieldValue: (field: string, value: any): TO.TaskOption<Array<Data>> => {
+        findByFilters: (filters: Filters): T.Task<Array<Data>> => {
+            let where = filters.operators.map((op) => {
+                const operator = operatorLookup[op.type];
+                return {
+                    data: {
+                        path: [op.field],
+                        [operator]: op.value,
+                    },
+                };
+            }) as unknown[];
+            where = [
+                ...where,
+                {
+                    namespace: filters.info.namespace,
+                },
+                {
+                    name: filters.info.name,
+                },
+                {
+                    version: filters.info.version,
+                },
+            ];
+            let params;
+            if (filters.cursor) {
+                params = {
+                    skip: 1, // this is because we skip the cursor
+                    take: filters.limit,
+                    where: {
+                        AND: where,
+                    },
+                    cursor: {
+                        id: filters.cursor,
+                    },
+                    orderBy: {
+                        id: "asc",
+                    },
+                };
+            } else {
+                params = {
+                    take: filters.limit,
+                    where: {
+                        AND: where,
+                    },
+                };
+            }
             return pipe(
-                TO.tryCatch(() => {
-                    return prisma.data.findMany({
-                        where: {
-                            data: {
-                                path: [field],
-                                equals: value,
-                            }
-                        },
-                    });
-                }),
-                TO.map((items) => {
-                    return items.map((i) => ({
+                () => prisma.data.findMany(params),
+                T.map((items) => {
+                    return items.map((item) => ({
+                        id: item.id,
                         info: {
-                            namespace: i.namespace,
-                            name: i.name,
-                            version: i.version,
+                            namespace: item.namespace,
+                            name: item.name,
+                            version: item.version,
                         },
-                        data: i.data as Record<string, unknown>,
-                    }))
+                        data: item.data as Record<string, unknown>,
+                    }));
                 })
-            )
-        },
-        filterByFieldContainingValue: (field: string, value: any): TO.TaskOption<Array<Data>> => {
-            return pipe(
-                TO.tryCatch(() => {
-                    return prisma.data.findMany({
-                        where: {
-                            data: {
-                                path: [field],
-                                string_contains: value,
-                            }
-                        },
-                    });
-                }),
-                TO.map((items) => {
-                    return items.map((i) => ({
-                        info: {
-                            namespace: i.namespace,
-                            name: i.name,
-                            version: i.version,
-                        },
-                        data: i.data as Record<string, unknown>,
-                    }))
-                })
-            )
-        },
-        filterByFieldComparedToValue: (field: string, value: number, comparison: string): TO.TaskOption<Array<Data>> => {
-            return pipe(
-                TO.tryCatch(() => {
-                    // TODO: Obviously need to add a proper mapper for these comparison codes
-                    // TODO: Obviously the operands need to be checked for conformance to comparable interface
-                    let operation;
-                    switch (comparison) {
-                        case 'lessThan':
-                            operation = {
-                                path: [field],
-                                lte: value,
-                            };
-                        case 'greaterThan':
-                            operation = {
-                                path: [field],
-                                gte: value,
-                            };
-                        default:
-                            operation = {
-                                path: [field],
-                                gte: value,
-                            };
-                    }
-
-                    return prisma.data.findMany({
-                        where: {
-                            data: operation
-                        },
-                    });
-                }),
-                TO.map((items) => {
-                    return items.map((i) => ({
-                        info: {
-                            namespace: i.namespace,
-                            name: i.name,
-                            version: i.version,
-                        },
-                        data: i.data as Record<string, unknown>,
-                    }))
-                })
-            )
+            );
         },
     };
 };

@@ -1,5 +1,4 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
-import { Tagged, tagged } from "@shared/util-fp";
 import * as TE from "fp-ts/TaskEither";
 import { Job, JobDescriptor, JobScheduler } from ".";
 
@@ -14,13 +13,32 @@ export type InitContext = {
 /**
  * Contains the necessary information for loading.
  */
-export type LoadContext = {
+export type SaveContext = {
     client: ContentGatewayClient;
     currentJob: Job;
     jobScheduler: JobScheduler;
 };
 
-type LoaderBase = {
+export enum OperatorType {
+    EQUALS,
+    CONTAINS,
+    LESS_THAN_OR_EQUAL,
+    GREATER_THAN_OR_EQUAL,
+}
+
+export type Operator = {
+    type: OperatorType;
+    field: string;
+    value: unknown;
+};
+
+export type LoadContext = {
+    cursor?: bigint;
+    limit: number;
+    operators: Operator[];
+};
+
+export type DataLoader = {
     name: string;
     /**
      * Initializes this loader. This will be called once each time
@@ -32,20 +50,7 @@ type LoaderBase = {
      * called according to the schedule defined by the job.
      * @returns an optional job to be scheduled next.
      */
-    load: (
-        deps: LoadContext
+    save: (
+        deps: SaveContext
     ) => TE.TaskEither<Error, JobDescriptor | undefined>;
-};
-
-export type SimpleLoader = LoaderBase & Tagged<"SimpleLoader">;
-
-export type Loader = SimpleLoader;
-
-export const createSimpleLoader = (
-    base: Omit<SimpleLoader, "__tag">
-): SimpleLoader => {
-    return {
-        ...base,
-        ...tagged("SimpleLoader"),
-    };
 };

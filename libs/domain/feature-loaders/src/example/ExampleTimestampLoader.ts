@@ -4,7 +4,7 @@ import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
 import { v4 as uuid } from "uuid";
-import { createSimpleLoader } from "@shared/util-loaders";
+import { DataLoader } from "@shared/util-loaders";
 
 const name = "example-timestamp-loader";
 
@@ -24,7 +24,7 @@ class CurrentTimestamp {
     value: number;
 }
 
-export const exampleTimestampLoader = createSimpleLoader({
+export const exampleTimestampLoader: DataLoader = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         return pipe(
@@ -41,7 +41,7 @@ export const exampleTimestampLoader = createSimpleLoader({
             })
         );
     },
-    load: ({ client }) => {
+    save: ({ client }) => {
         return pipe(
             client.save(info, {
                 id: uuid(),
@@ -55,4 +55,4 @@ export const exampleTimestampLoader = createSimpleLoader({
             )
         );
     },
-});
+};

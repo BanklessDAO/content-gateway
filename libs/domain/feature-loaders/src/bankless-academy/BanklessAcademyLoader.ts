@@ -1,4 +1,4 @@
-import { createSimpleLoader } from "@shared/util-loaders";
+import { DataLoader } from "@shared/util-loaders";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import axios from "axios";
 import { pipe } from "fp-ts/lib/function";
@@ -71,7 +71,7 @@ class Course {
 
 /// Loader
 
-export const banklessAcademyLoader = createSimpleLoader({
+export const banklessAcademyLoader: DataLoader = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing Bankless Academy loader...");
@@ -95,7 +95,7 @@ export const banklessAcademyLoader = createSimpleLoader({
             })
         );
     },
-    load: ({ client, currentJob }) => {
+    save: ({ client, currentJob }) => {
         // TODO: use types and type guards for item + slide
         return pipe(
             TE.tryCatch(
@@ -147,4 +147,4 @@ export const banklessAcademyLoader = createSimpleLoader({
             })
         );
     },
-});
+};

@@ -47,10 +47,13 @@ export const createContentGateway: ContentGatewayFactory = (
             return schemaStorage.register(schema);
         },
         receive: <T>(payload: Payload<T>) => {
-            return dataStorage.store({
-                info: payload.info,
-                data: payload.data as Record<string, unknown>,
-            });
+            return pipe(
+                dataStorage.store({
+                    info: payload.info,
+                    data: payload.data as Record<string, unknown>,
+                }),
+                TE.map(() => "OK")
+            );
         },
         receiveBatch: <T>(payload: Payload<Array<T>>) => {
             const { info, data } = payload;
@@ -58,8 +61,8 @@ export const createContentGateway: ContentGatewayFactory = (
             return pipe(
                 TE.tryCatch(
                     async () => {
-                        // TODO: test
-                        data.forEach((item) => {
+                        // TODO: use batch upsert instead
+                        data.map((item) => {
                             dataStorage.store({
                                 info: info,
                                 data: item as Record<string, unknown>,

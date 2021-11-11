@@ -13,7 +13,8 @@ CREATE TABLE "Schema" (
 
 -- CreateTable
 CREATE TABLE "Data" (
-    "id" VARCHAR(50) NOT NULL,
+    "id" BIGSERIAL NOT NULL,
+    "upstreamId" VARCHAR(255) NOT NULL,
     "data" JSONB NOT NULL,
     "createdAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -42,6 +43,9 @@ CREATE INDEX "Data_updatedAt_idx" ON "Data"("updatedAt");
 
 -- CreateIndex
 CREATE INDEX "Data_deletedAt_idx" ON "Data"("deletedAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Data_namespace_name_version_upstreamId_key" ON "Data"("namespace", "name", "version", "upstreamId");
 
 -- AddForeignKey
 ALTER TABLE "Data" ADD CONSTRAINT "Data_namespace_name_version_fkey" FOREIGN KEY ("namespace", "name", "version") REFERENCES "Schema"("namespace", "name", "version") ON DELETE RESTRICT ON UPDATE CASCADE;

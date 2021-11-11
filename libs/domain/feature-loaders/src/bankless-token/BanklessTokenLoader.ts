@@ -2,10 +2,7 @@ import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
-import {
-    createGraphQLAPIClient,
-    createSimpleLoader,
-} from "@shared/util-loaders";
+import { createGraphQLAPIClient, DataLoader } from "@shared/util-loaders";
 import { BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS } from "./queries";
 import { BANKAccount, bankAccountInfo } from "./types";
 
@@ -83,7 +80,7 @@ const pullAccountsSince = (id) => {
     );
 };
 
-export const banklessTokenLoader = createSimpleLoader({
+export const banklessTokenLoader: DataLoader = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         return pipe(
@@ -107,7 +104,7 @@ export const banklessTokenLoader = createSimpleLoader({
             })
         );
     },
-    load: ({ client, currentJob }) => {
+    save: ({ client, currentJob }) => {
         return pipe(
             TE.tryCatch(
                 async () => {
@@ -164,4 +161,4 @@ export const banklessTokenLoader = createSimpleLoader({
             })
         );
     },
-});
+};

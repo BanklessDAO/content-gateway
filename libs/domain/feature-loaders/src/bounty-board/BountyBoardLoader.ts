@@ -1,4 +1,4 @@
-import { createSimpleLoader } from "@shared/util-loaders";
+import { DataLoader } from "@shared/util-loaders";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import axios from "axios";
 import { pipe } from "fp-ts/lib/function";
@@ -100,7 +100,7 @@ class BountyBoard {
 
 /// Loader
 
-export const bountyBoardLoader = createSimpleLoader({
+export const bountyBoardLoader: DataLoader = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing Bounty Board loader...");
@@ -125,7 +125,7 @@ export const bountyBoardLoader = createSimpleLoader({
             })
         );
     },
-    load: ({ client, currentJob }) => {
+    save: ({ client, currentJob }) => {
         return pipe(
             TE.tryCatch(
                 async () => {
@@ -211,4 +211,4 @@ export const bountyBoardLoader = createSimpleLoader({
             })
         );
     },
-});
+};

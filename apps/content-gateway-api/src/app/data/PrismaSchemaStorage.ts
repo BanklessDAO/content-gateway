@@ -17,9 +17,6 @@ import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import { Errors } from "io-ts";
-import { Logger } from "tslog";
-
-const logger = new Logger({ name: "PrismaSchemaStorage" });
 
 export const createPrismaSchemaStorage = (
     prisma: PrismaClient

@@ -1,5 +1,6 @@
 import { DataStorage, SchemaStorage } from "@domain/feature-gateway";
 import { toGraphQLType } from "@shared/util-graphql";
+import { Operator } from "@shared/util-loaders";
 import { Schema, schemaInfoToString } from "@shared/util-schema";
 import { Request, Response } from "express";
 import { graphqlHTTP } from "express-graphql";
@@ -13,8 +14,12 @@ import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
 import * as pluralize from "pluralize";
 import { Logger } from "tslog";
+import { operators } from "./types/Operators";
+import { createResultsType, Results } from "./types/Results";
+
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
 
+const maxItems = 1000;
 const logger = new Logger({ name: "GraphQLAPI" });
 
 export type Middleware = (
@@ -73,91 +78,88 @@ const createGraphQLMiddleware = async ({
         ),
         A.map(([schema, type]) => {
             const name = schema.info.name;
-            const findById = async (id: string) => {
+
+            const findById = async (id: bigint) => {
                 return pipe(
                     dataStorage.findById(id),
                     TO.map((data) => data.data),
                     TO.getOrElse(() => T.of(undefined))
                 )();
             };
-            const equalsStringOperator = async (field: string, value: any) => {
+
+            const findByFilters = async (
+                first?: number,
+                after?: string,
+                operators?: Operator[]
+            ): Promise<Results> => {
+                const notes = [] as string[];
+                // 👇 This +1 is to be able to determine if we have a next page
+                const limit = (first ?? maxItems) + 1;
+                if (first > 1000) {
+                    first = 1000;
+                    notes.push(
+                        `The requested amount of items (${first}) is greater than the allowed maximum (${maxItems}). Setting after to ${maxItems}.`
+                    );
+                }
+                if (typeof first === "undefined") {
+                    first = maxItems;
+                    notes.push(
+                        `First was undefined, returning ${maxItems} items.`
+                    );
+                }
                 return pipe(
-                    dataStorage.filterByFieldValue(field, value),
-                    TO.map((data) => data.map((entity) => entity.data)),
-                    TO.getOrElse(() => T.of([]))
+                    dataStorage.findByFilters({
+                        info: schema.info,
+                        cursor: after ? BigInt(after) : undefined,
+                        limit: limit,
+                        operators: operators ?? [],
+                    }),
+                    T.map((dbData) => {
+                        const hasNextPage = dbData.length === limit;
+                        let startCursor: string;
+                        let endCursor: string;
+                        if (dbData.length > 1) {
+                            const last = dbData.pop();
+                            startCursor = dbData[0].id.toString();
+                            endCursor = last.id.toString();
+                        } else {
+                            startCursor = after;
+                            endCursor = startCursor;
+                        }
+
+                        return {
+                            pageInfo: {
+                                hasNextPage,
+                                startCursor,
+                                endCursor,
+                            },
+                            errors: [],
+                            notes: notes,
+                            data: dbData.map((data) => data.data),
+                        };
+                    })
                 )();
             };
-            const containsStringOperator = async (field: string, value: any) => {
-                return pipe(
-                    dataStorage.filterByFieldContainingValue(field, value),
-                    TO.map((data) => data.map((entity) => entity.data)),
-                    TO.getOrElse(() => T.of([]))
-                )();
-            };
-            const compareNumberOperator = async (field: string, value: number, comparison: string) => {
-                return pipe(
-                    dataStorage.filterByFieldComparedToValue(field, value, comparison),
-                    TO.map((data) => data.map((entity) => entity.data)),
-                    TO.getOrElse(() => T.of([]))
-                )();
-            };
-            const findAll = async () => {
-                return pipe(
-                    dataStorage.findBySchema(schema.info),
-                    TO.map((data) => data.map((entity) => entity.data)),
-                    TO.getOrElse(() => T.of([]))
-                )();
-            };
+
             return {
                 [name]: {
                     type: type,
                     args: {
-                        id: { type: g.GraphQLString },
+                        id: { type: g.GraphQLInt },
                     },
                     resolve: async (_, { id }) => {
                         return findById(id);
                     },
                 },
                 [`${pluralize.plural(name)}`]: {
-                    type: g.GraphQLList(type),
+                    type: createResultsType(type),
                     args: {
-                        field: { type: g.GraphQLString },
-                        equals: { type: g.GraphQLString },
-                        contains: { type: g.GraphQLString },
-                        lessThan: { type: g.GraphQLInt },
-                        greaterThan: { type: g.GraphQLInt }
+                        after: { type: g.GraphQLString },
+                        first: { type: g.GraphQLInt },
+                        operators: operators,
                     },
-                    resolve: (
-                        _, 
-                        { 
-                            field, 
-                            equals, 
-                            contains,
-                            lessThan,
-                            greaterThan
-                        }
-                    ) => {
-                        if (!field) {
-                            return findAll();
-                        }
-
-                        if (equals) {
-                            return equalsStringOperator(field, equals);
-                        }
-
-                        if (contains) {
-                            return containsStringOperator(field, contains);
-                        }
-
-                        if (lessThan) {
-                            return compareNumberOperator(field, lessThan, 'lessThan')
-                        }
-
-                        if (greaterThan) {
-                            return compareNumberOperator(field, greaterThan, 'greaterThan')
-                        }
-
-                        return findAll();
+                    resolve: (_, { first, after, operators }) => {
+                        return findByFilters(first, after, operators);
                     },
                 },
             };

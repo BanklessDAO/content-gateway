@@ -29,21 +29,22 @@ model Schema {
 }
 
 model Data {
-  // primary key
-  id        String    @id @db.VarChar(50)
-  data      Json      @db.JsonB
-  // dates
-  createdAt DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt DateTime  @default(now()) @db.Timestamp(6)
-  deletedAt DateTime? @db.Timestamp(6)
-  // relations
-  namespace String    @db.VarChar(50)
-  name      String    @db.VarChar(50)
-  version   String    @db.VarChar(50)
-  schema    Schema    @relation(fields: [namespace, name, version], references: [namespace, name, version])
 
-  // indexes
-  // @@id([id, namespace, name, version])
+  id         BigInt    @id @default(autoincrement()) @db.BigInt
+  upstreamId String    @db.VarChar(255)
+  data       Json      @db.JsonB
+  // dates
+  createdAt  DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime  @default(now()) @db.Timestamp(6)
+  deletedAt  DateTime? @db.Timestamp(6)
+  // relations
+  namespace  String    @db.VarChar(50)
+  name       String    @db.VarChar(50)
+  version    String    @db.VarChar(50)
+  schema     Schema    @relation(fields: [namespace, name, version], references: [namespace, name, version])
+
+  // upstreamId needs to be unique only within a specific version of a model
+  @@unique([namespace, name, version, upstreamId])
   @@index([createdAt])
   @@index([updatedAt])
   @@index([deletedAt])

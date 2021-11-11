@@ -37,6 +37,7 @@ export type SchemaStorageError =
 export type SchemaStorage = {
     register: (schema: Schema) => TE.TaskEither<SchemaStorageError, void>;
     find: (key: SchemaInfo) => TO.TaskOption<Schema>;
+    // TODO: make this a Task instead
     findAll(): TO.TaskOption<Array<Schema>>;
 };
 

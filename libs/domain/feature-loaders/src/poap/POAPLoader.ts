@@ -1,7 +1,4 @@
-import {
-    createGraphQLAPIClient,
-    createSimpleLoader,
-} from "@shared/util-loaders";
+import { createGraphQLAPIClient, DataLoader } from "@shared/util-loaders";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
@@ -48,7 +45,7 @@ const pullTokensSince = (id: string) => {
     );
 };
 
-export const poapLoader = createSimpleLoader({
+export const poapLoader: DataLoader = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing POAP loader...");
@@ -69,7 +66,7 @@ export const poapLoader = createSimpleLoader({
             })
         );
     },
-    load: ({ client, currentJob }) => {
+    save: ({ client, currentJob }) => {
         return pipe(
             TE.tryCatch(
                 async () => {
@@ -119,4 +116,4 @@ export const poapLoader = createSimpleLoader({
             })
         );
     },
-});
+};

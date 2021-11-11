@@ -20,11 +20,11 @@ import {
     createPrismaSchemaStorage,
     AppContext,
 } from "./";
-import { generateContentGatewayAPI } from "./endpoints/ContentGatewayAPI";
+import { generateContentGatewayAPI } from "./endpoints";
 import {
     createGraphQLAPI,
     decorateSchemaStorage,
-} from "./endpoints/GraphQLAPI";
+} from "./endpoints/graphql/GraphQLAPI";
 
 const env = process.env.NODE_ENV;
 const isDev = env === "development";
