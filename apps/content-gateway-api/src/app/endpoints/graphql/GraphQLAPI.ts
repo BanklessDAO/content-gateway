@@ -136,7 +136,10 @@ const createGraphQLMiddleware = async ({
                             },
                             errors: [],
                             notes: notes,
-                            data: dbData,
+                            data: dbData.map((entry) => ({
+                                ...entry,
+                                id: entry.id.toString(),
+                            })),
                         };
                     })
                 )();

@@ -29,7 +29,6 @@ model Schema {
 }
 
 model Data {
-
   id         BigInt    @id @default(autoincrement()) @db.BigInt
   upstreamId String    @db.VarChar(255)
   data       Json      @db.JsonB

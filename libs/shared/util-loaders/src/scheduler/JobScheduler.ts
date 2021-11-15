@@ -6,7 +6,7 @@ import { DateTime } from "luxon";
 import { AsyncTask, SimpleIntervalJob, ToadScheduler } from "toad-scheduler";
 import { Logger } from "tslog";
 import { Job } from ".";
-import { DataLoader } from "../Loader";
+import { DataLoader } from "../DataLoader";
 import {
     JobCreationFailedError,
     LoaderAlreadyRegisteredError,

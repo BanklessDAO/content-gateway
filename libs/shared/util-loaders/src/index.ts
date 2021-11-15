@@ -1,3 +1,3 @@
 export * from "./scheduler";
-export * from "./Loader"
+export * from "./DataLoader"
 export * from "./graphql"
