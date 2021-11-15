@@ -24,25 +24,18 @@ export type InitContext = {
 };
 
 export type LoadContext = {
-    /**
-     * An opaque string that can be used as a cursor. In our
-     * case it will be a timestamp.
-     */
     cursor?: Date;
     limit: number;
-    operators: Operator[];
 };
 
-/**
- * Contains the necessary information for loading.
- */
-export type SaveContext = {
+export type SaveContext<T> = {
     client: ContentGatewayClient;
     currentJob: Job;
     jobScheduler: JobScheduler;
+    data: T[];
 };
 
-export type DataLoader = {
+export type DataLoader<T> = {
     name: string;
     /**
      * Initializes this loader. This will be called once each time
@@ -50,11 +43,13 @@ export type DataLoader = {
      */
     initialize: (deps: InitContext) => TE.TaskEither<Error, void>;
     /**
-     * Loads data from the data source asynchronously. This will be
-     * called according to the schedule defined by the job.
-     * @returns an optional job to be scheduled next.
+     * Loads data from the data source asynchronously.
      */
-    store: (
-        deps: SaveContext
+    load: (deps: LoadContext) => TE.TaskEither<Error, T[]>;
+    /**
+     * Sends the data to the Content Gateway API asynchronously.
+     */
+    save: (
+        deps: SaveContext<T>
     ) => TE.TaskEither<Error, JobDescriptor | undefined>;
 };

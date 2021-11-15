@@ -100,7 +100,7 @@ class BountyBoard {
 
 /// Loader
 
-export const bountyBoardLoader: DataLoader = {
+export const bountyBoardLoader: DataLoader<Bounty> = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing Bounty Board loader...");
@@ -125,7 +125,10 @@ export const bountyBoardLoader: DataLoader = {
             })
         );
     },
-    store: ({ client, currentJob }) => {
+    load: ({ cursor, limit }) => {
+        return TE.of([]);
+    },
+    save: ({ client, currentJob }) => {
         return pipe(
             TE.tryCatch(
                 async () => {

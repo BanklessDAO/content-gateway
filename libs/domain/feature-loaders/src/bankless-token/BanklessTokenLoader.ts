@@ -80,7 +80,7 @@ const pullAccountsSince = (id) => {
     );
 };
 
-export const banklessTokenLoader: DataLoader = {
+export const banklessTokenLoader: DataLoader<BANKAccount> = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         return pipe(
@@ -104,7 +104,10 @@ export const banklessTokenLoader: DataLoader = {
             })
         );
     },
-    store: ({ client, currentJob }) => {
+    load: ({ cursor, limit }) => {
+        return TE.of([]);
+    },
+    save: ({ client, currentJob }) => {
         return pipe(
             TE.tryCatch(
                 async () => {

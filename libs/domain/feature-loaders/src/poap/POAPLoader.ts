@@ -45,7 +45,7 @@ const pullTokensSince = (id: string) => {
     );
 };
 
-export const poapLoader: DataLoader = {
+export const poapLoader: DataLoader<POAPToken> = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing POAP loader...");
@@ -66,7 +66,10 @@ export const poapLoader: DataLoader = {
             })
         );
     },
-    store: ({ client, currentJob }) => {
+    load: ({ cursor, limit }) => {
+        return TE.of([]);
+    },
+    save: ({ client, currentJob }) => {
         return pipe(
             TE.tryCatch(
                 async () => {

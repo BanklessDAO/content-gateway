@@ -71,7 +71,7 @@ class Course {
 
 /// Loader
 
-export const banklessAcademyLoader: DataLoader = {
+export const banklessAcademyLoader: DataLoader<Course> = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing Bankless Academy loader...");
@@ -95,7 +95,10 @@ export const banklessAcademyLoader: DataLoader = {
             })
         );
     },
-    store: ({ client, currentJob }) => {
+    load: ({ cursor, limit }) => {
+        return TE.of([]);
+    },
+    save: ({ client, currentJob }) => {
         // TODO: use types and type guards for item + slide
         return pipe(
             TE.tryCatch(

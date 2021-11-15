@@ -24,7 +24,7 @@ class RandomUUID {
     likeIt: boolean;
 }
 
-export const exampleUUIDLoader: DataLoader = {
+export const exampleUUIDLoader: DataLoader<RandomUUID> = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         return pipe(
@@ -41,7 +41,10 @@ export const exampleUUIDLoader: DataLoader = {
             })
         );
     },
-    store: ({ client }) => {
+    load: ({ cursor, limit }) => {
+        return TE.of([]);
+    },
+    save: ({ client }) => {
         return pipe(
             client.save(info, {
                 id: uuid(),
