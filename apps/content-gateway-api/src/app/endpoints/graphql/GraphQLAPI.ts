@@ -82,7 +82,7 @@ const createGraphQLMiddleware = async ({
             const findById = async (id: bigint) => {
                 return pipe(
                     dataStorage.findById(id),
-                    TO.map((data) => data.data),
+                    TO.map((data) => data.record),
                     TO.getOrElse(() => T.of(undefined))
                 )();
             };
@@ -135,7 +135,7 @@ const createGraphQLMiddleware = async ({
                             },
                             errors: [],
                             notes: notes,
-                            data: dbData.map((data) => data.data),
+                            data: dbData.map((data) => data.record),
                         };
                     })
                 )();

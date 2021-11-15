@@ -1,12 +1,21 @@
 import { Prisma, PrismaClient } from "@cga/prisma";
 import {
+    BulkData,
     Data,
+    DatabaseStorageError,
     DataStorage,
+    DataValidationError,
     Filters,
+    MissingSchemaError,
     SchemaFilter,
     SchemaStorage,
+    StorageError,
+    StoredBulkData,
+    StoredData
 } from "@domain/feature-gateway";
 import { OperatorType } from "@shared/util-loaders";
+import { Schema, ValidationError } from "@shared/util-schema";
+import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
@@ -20,35 +29,81 @@ const operatorLookup = {
     [OperatorType.LESS_THAN_OR_EQUAL]: "lte",
 } as const;
 
+type PrismaErrors =
+    | Prisma.PrismaClientKnownRequestError
+    | Prisma.PrismaClientUnknownRequestError
+    | Prisma.PrismaClientValidationError;
+
 export const createPrismaDataStorage = (
     prisma: PrismaClient,
     schemaStorage: SchemaStorage
 ): DataStorage => {
     const logger = new Logger({ name: "PrismaDataStorage" });
+
+    const wrapPrismaOperation = <T>(op: () => Promise<T>) => {
+        return TE.tryCatch(
+            async () => {
+                return op();
+            },
+            (e: PrismaErrors) => {
+                return new DatabaseStorageError(e);
+            }
+        );
+    };
+
+    const upsertData = (data: Data) => {
+        const { info, record } = data;
+        const toSave = {
+            upstreamId: record.id as string,
+            data: record as Prisma.JsonObject,
+            ...info,
+        };
+        return prisma.data.upsert({
+            where: {
+                namespace_name_version_upstreamId: {
+                    ...info,
+                    upstreamId: record.id as string,
+                },
+            },
+            create: toSave,
+            update: toSave,
+        });
+    };
+
+    const validateRecords = (
+        schema: Schema,
+        records: Record<string, unknown>[]
+    ) => {
+        return pipe(
+            records.map((record) => {
+                return schema.validate(record);
+            }),
+            E.sequenceArray,
+            E.mapLeft((e: ValidationError[]) => {
+                return new DataValidationError(e);
+            }),
+            TE.fromEither
+        );
+    };
+
     return {
-        store: (payload: Data): TE.TaskEither<Error, Data> => {
+        store: (payload: Data): TE.TaskEither<StorageError, StoredData> => {
+            const { info, record } = payload;
             return pipe(
-                schemaStorage.find(payload.info),
-                TE.fromTaskOption(() => new Error("Schema not found")),
+                schemaStorage.find(info),
+                TE.fromTaskOption(
+                    () => new MissingSchemaError(info) as StorageError
+                ),
                 TE.chainW((schema) => {
-                    return TE.fromEither(schema.validate(payload.data));
-                }),
-                TE.chain((record) => {
-                    return TE.tryCatch(
-                        async () =>
-                            prisma.data.create({
-                                data: {
-                                    upstreamId: record.id as string,
-                                    data: record as Prisma.JsonObject,
-                                    ...payload.info,
-                                },
-                            }),
-                        (e: Error) => {
-                            const msg = `Failed to store data: ${e.message}`;
-                            logger.warn(msg);
-                            return new Error(msg);
-                        }
+                    return pipe(
+                        TE.fromEither(schema.validate(record)),
+                        TE.mapLeft((e: ValidationError[]) => {
+                            return new DataValidationError(e);
+                        })
                     );
+                }),
+                TE.chain(() => {
+                    return wrapPrismaOperation(() => upsertData(payload));
                 }),
                 TE.map((data) => ({
                     ...payload,
@@ -56,17 +111,48 @@ export const createPrismaDataStorage = (
                 }))
             );
         },
-        findBySchema: (filter: SchemaFilter): T.Task<Array<Data>> => {
+        storeBulk: (
+            bulkData: BulkData
+        ): TE.TaskEither<StorageError, StoredBulkData> => {
+            const { info, records } = bulkData;
+            return pipe(
+                schemaStorage.find(info),
+                TE.fromTaskOption(() => new Error("Schema not found")),
+                TE.chainW((schema) => {
+                    return validateRecords(schema, records);
+                }),
+                TE.chain((records) => {
+                    return wrapPrismaOperation(() => {
+                        return prisma.$transaction(
+                            records.map((record) =>
+                                upsertData({ info, record })
+                            )
+                        );
+                    });
+                }),
+                TE.map((data) => {
+                    return {
+                        info: info,
+                        entries: data.map((d) => ({
+                            id: d.id,
+                            record: d.data as Record<string, unknown>,
+                        })),
+                    };
+                })
+            );
+        },
+        findBySchema: (filter: SchemaFilter): T.Task<Array<StoredData>> => {
             let params;
-            if (filter.cursor) {
+            const { cursor, limit, info } = filter;
+            if (cursor) {
                 params = {
                     skip: 1, // this is because we skip the cursor
-                    take: filter.limit,
+                    take: limit,
                     where: {
-                        ...filter.info,
+                        ...info,
                     },
                     cursor: {
-                        id: filter.cursor,
+                        id: cursor,
                     },
                     orderBy: {
                         id: "asc",
@@ -74,9 +160,9 @@ export const createPrismaDataStorage = (
                 };
             } else {
                 params = {
-                    take: filter.limit,
+                    take: limit,
                     where: {
-                        ...filter.info,
+                        ...info,
                     },
                 };
             }
@@ -86,12 +172,12 @@ export const createPrismaDataStorage = (
                     data.map((d) => ({
                         id: d.id,
                         info: filter.info,
-                        data: d.data as Record<string, unknown>,
+                        record: d.data as Record<string, unknown>,
                     }))
                 )
             );
         },
-        findById: (id: bigint): TO.TaskOption<Data> =>
+        findById: (id: bigint): TO.TaskOption<StoredData> =>
             pipe(
                 TO.tryCatch(() =>
                     prisma.data.findUnique({
@@ -111,12 +197,12 @@ export const createPrismaDataStorage = (
                                 name: record.name,
                                 version: record.version,
                             },
-                            data: record.data as Record<string, unknown>,
+                            record: record.data as Record<string, unknown>,
                         });
                     }
                 })
             ),
-        findByFilters: (filters: Filters): T.Task<Array<Data>> => {
+        findByFilters: (filters: Filters): T.Task<Array<StoredData>> => {
             let where = filters.operators.map((op) => {
                 const operator = operatorLookup[op.type];
                 return {
@@ -171,7 +257,7 @@ export const createPrismaDataStorage = (
                             name: item.name,
                             version: item.version,
                         },
-                        data: item.data as Record<string, unknown>,
+                        record: item.data as Record<string, unknown>,
                     }));
                 })
             );

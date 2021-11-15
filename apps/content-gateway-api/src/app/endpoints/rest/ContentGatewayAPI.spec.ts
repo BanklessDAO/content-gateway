@@ -38,10 +38,6 @@ class User {
     address: Address;
 }
 
-const logger = new Logger({
-    name: "ContentGatewayAPI.spec",
-});
-
 const generateUser = () => ({
     id: uuid(),
     name: "John",
@@ -117,8 +113,6 @@ describe("Given a content gateway api", () => {
             .post("/receive")
             .send({ hey: "ho" })
             .expect(500);
-
-        logger.info(result.body);
 
         expect(result.status).toBe(500);
         expect(result.body).toEqual({

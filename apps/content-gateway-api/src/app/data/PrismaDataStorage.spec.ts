@@ -1,7 +1,8 @@
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { PrismaClient } from "@cga/prisma";
-import { OperatorType } from "@shared/util-loaders";
+import { DataValidationError } from "@domain/feature-gateway";
 import { extractLeft, extractRight } from "@shared/util-fp";
+import { OperatorType } from "@shared/util-loaders";
 import { createSchemaFromType, SchemaInfo } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as O from "fp-ts/lib/Option";
@@ -55,7 +56,7 @@ describe("Given a Prisma data storage", () => {
         for (let i = 0; i < count; i++) {
             const address = {
                 info: info,
-                data: {
+                record: {
                     id: uuid(),
                     name: `Some Street ${i}`,
                     num: i,
@@ -73,7 +74,7 @@ describe("Given a Prisma data storage", () => {
             const tempSchema = await prepareTempSchema(version);
             const item = {
                 info: tempSchema.info,
-                data: {
+                record: {
                     id: uuid(),
                     name: "Some Street 2",
                     num: 1,
@@ -97,14 +98,14 @@ describe("Given a Prisma data storage", () => {
             const result = extractLeft(
                 await storage.store({
                     info: tempSchema.info,
-                    data: {
+                    record: {
                         name: "Some Street 2",
                         num: 1,
                     },
                 })()
-            );
+            ) as DataValidationError;
 
-            expect(result).toEqual([
+            expect(result.errors).toEqual([
                 {
                     field: "",
                     message: "must have required property 'id'",
@@ -119,19 +120,102 @@ describe("Given a Prisma data storage", () => {
             const result = extractLeft(
                 await storage.store({
                     info: tempSchema.info,
-                    data: {
+                    record: {
                         id: uuid(),
                         num: 1,
                     },
                 })()
-            );
+            ) as DataValidationError;
 
-            expect(result).toEqual([
+            expect(result.errors).toEqual([
                 {
                     field: "",
                     message: "must have required property 'name'",
                 },
             ]);
+        });
+    });
+
+    describe("When creating multiple data entries", () => {
+        it("Then it is successfully created when valid", async () => {
+            const version = uuid();
+            const tempSchema = await prepareTempSchema(version);
+            const info = tempSchema.info;
+            const records = [
+                {
+                    id: uuid(),
+                    name: "Some Street 2",
+                    num: 1,
+                },
+                {
+                    id: uuid(),
+                    name: "Some Street 2",
+                    num: 3,
+                },
+            ];
+
+            const storedData = extractRight(
+                await storage.storeBulk({
+                    info: tempSchema.info,
+                    records: records,
+                })()
+            );
+
+            const result = await storage.findBySchema({
+                limit: 10,
+                info: tempSchema.info,
+            })();
+
+            expect(result).toEqual(
+                storedData.entries.map((entry) => ({
+                    info: info,
+                    id: entry.id,
+                    record: entry.record,
+                }))
+            );
+        });
+
+        it("Then it overwrites old entries", async () => {
+            const version = uuid();
+            const tempSchema = await prepareTempSchema(version);
+            const info = tempSchema.info;
+            const duplicate = {
+                info: info,
+                record: {
+                    id: uuid(),
+                    name: "Some Street 2",
+                    num: 1,
+                },
+            };
+            await storage.store(duplicate)();
+
+            const records = [
+                {
+                    ...duplicate.record,
+                    name: "New Street 2",
+                },
+                {
+                    id: uuid(),
+                    name: "Some Street 2",
+                    num: 3,
+                },
+            ];
+
+            await storage.storeBulk({
+                info: info,
+                records: records,
+            })();
+
+            const result = await storage.findBySchema({
+                limit: 10,
+                info: tempSchema.info,
+            })();
+
+            expect(
+                result.map((item) => ({
+                    ...item.record,
+                }))
+            ).toEqual(records);
         });
     });
 
@@ -141,7 +225,7 @@ describe("Given a Prisma data storage", () => {
             const tempSchema = await prepareTempSchema(version);
             const address = {
                 info: tempSchema.info,
-                data: {
+                record: {
                     id: uuid(),
                     name: `Some Street`,
                     num: 1,
@@ -222,7 +306,7 @@ describe("Given a Prisma data storage", () => {
             const data0 = extractRight(
                 await storage.store({
                     info: tempSchema.info,
-                    data: {
+                    record: {
                         id: uuid(),
                         name: "Hello World A",
                         num: 1,
@@ -232,7 +316,7 @@ describe("Given a Prisma data storage", () => {
             const data1 = extractRight(
                 await storage.store({
                     info: tempSchema.info,
-                    data: {
+                    record: {
                         id: uuid(),
                         name: "Hello World B",
                         num: 1,
@@ -261,7 +345,7 @@ describe("Given a Prisma data storage", () => {
             const data0 = extractRight(
                 await storage.store({
                     info: tempSchema.info,
-                    data: {
+                    record: {
                         id: uuid(),
                         name: "Hello World A",
                         num: 3,
@@ -270,7 +354,7 @@ describe("Given a Prisma data storage", () => {
             );
             await storage.store({
                 info: tempSchema.info,
-                data: {
+                record: {
                     id: uuid(),
                     name: "Hello World B",
                     num: 1,
@@ -298,7 +382,7 @@ describe("Given a Prisma data storage", () => {
             const data0 = extractRight(
                 await storage.store({
                     info: tempSchema.info,
-                    data: {
+                    record: {
                         id: uuid(),
                         name: "Hello World A",
                         num: 1,
@@ -307,7 +391,7 @@ describe("Given a Prisma data storage", () => {
             );
             await storage.store({
                 info: tempSchema.info,
-                data: {
+                record: {
                     id: uuid(),
                     name: "Hello World B",
                     num: 3,
@@ -338,7 +422,7 @@ describe("Given a Prisma data storage", () => {
             const data0 = extractRight(
                 await storage.store({
                     info: tempSchema.info,
-                    data: {
+                    record: {
                         id: id0,
                         name: "Hello World A",
                         num: 1,
@@ -348,7 +432,7 @@ describe("Given a Prisma data storage", () => {
 
             await storage.store({
                 info: tempSchema.info,
-                data: {
+                record: {
                     id: id1,
                     name: "Hello World B",
                     num: 1,
@@ -379,7 +463,7 @@ describe("Given a Prisma data storage", () => {
             const data0 = extractRight(
                 await storage.store({
                     info: tempSchema.info,
-                    data: {
+                    record: {
                         id: id0,
                         name: "Hello World A",
                         num: 1,
@@ -388,7 +472,7 @@ describe("Given a Prisma data storage", () => {
             );
             await storage.store({
                 info: tempSchema.info,
-                data: {
+                record: {
                     id: id1,
                     name: "Hello World B",
                     num: 1,
@@ -423,7 +507,7 @@ describe("Given a Prisma data storage", () => {
 
             await storage.store({
                 info: tempSchema.info,
-                data: {
+                record: {
                     id: id0,
                     name: "Hello World A",
                     num: 1,
@@ -432,7 +516,7 @@ describe("Given a Prisma data storage", () => {
 
             await storage.store({
                 info: tempSchema.info,
-                data: {
+                record: {
                     id: id1,
                     name: "Hello World B",
                     num: 1,
@@ -465,7 +549,7 @@ describe("Given a Prisma data storage", () => {
             const data0 = extractRight(
                 await storage.store({
                     info: tempSchema.info,
-                    data: {
+                    record: {
                         id: uuid(),
                         name: "Hello World A",
                         num: 1,
@@ -475,7 +559,7 @@ describe("Given a Prisma data storage", () => {
             const data1 = extractRight(
                 await storage.store({
                     info: tempSchema.info,
-                    data: {
+                    record: {
                         id: uuid(),
                         name: "Hello World B",
                         num: 1,

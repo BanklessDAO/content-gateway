@@ -50,7 +50,11 @@ export const createContentGateway: ContentGatewayFactory = (
             return pipe(
                 dataStorage.store({
                     info: payload.info,
-                    data: payload.data as Record<string, unknown>,
+                    record: payload.data as Record<string, unknown>,
+                }),
+                TE.mapLeft((err) => {
+                    logger.warn(`Failed to store batch of data:`, err);
+                    return new Error(`Failed to store batch of data: ${err}`);
                 }),
                 TE.map(() => "OK")
             );
@@ -59,23 +63,14 @@ export const createContentGateway: ContentGatewayFactory = (
             const { info, data } = payload;
 
             return pipe(
-                TE.tryCatch(
-                    async () => {
-                        // TODO: use batch upsert instead
-                        data.map((item) => {
-                            dataStorage.store({
-                                info: info,
-                                data: item as Record<string, unknown>,
-                            })();
-                        });
-                    },
-                    (err) => {
-                        logger.warn(`Failed to store batch of data:`, err);
-                        return new Error(
-                            `Failed to store batch of data: ${err}`
-                        );
-                    }
-                ),
+                dataStorage.storeBulk({
+                    info: info,
+                    records: data as Record<string, unknown>[],
+                }),
+                TE.mapLeft((err) => {
+                    logger.warn(`Failed to store batch of data:`, err);
+                    return new Error(`Failed to store batch of data: ${err}`);
+                }),
                 TE.map(() => "OK")
             );
         },

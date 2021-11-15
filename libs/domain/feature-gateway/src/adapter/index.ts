@@ -1,3 +1,2 @@
 export * from "./DataStorage";
-export * from "./SchemaStorage"
-export * from "./Data";
+export * from "./SchemaStorage";
