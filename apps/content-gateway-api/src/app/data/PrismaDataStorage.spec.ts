@@ -1,13 +1,13 @@
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { PrismaClient } from "@cga/prisma";
-import { DataValidationError } from "@domain/feature-gateway";
+import { DataValidationError, Entry } from "@domain/feature-gateway";
 import { extractLeft, extractRight } from "@shared/util-fp";
 import { OperatorType } from "@shared/util-loaders";
 import { createSchemaFromType, SchemaInfo } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
-import * as O from "fp-ts/lib/Option";
 import { v4 as uuid } from "uuid";
 import { createPrismaDataStorage, createPrismaSchemaStorage } from ".";
+import * as O from "fp-ts/lib/Option";
 
 @AdditionalProperties(false)
 class Address {
@@ -52,7 +52,7 @@ describe("Given a Prisma data storage", () => {
     };
 
     const prepareAddresses = async (info: SchemaInfo, count: number) => {
-        const result = [];
+        const result = [] as Entry[];
         for (let i = 0; i < count; i++) {
             const address = {
                 info: info,
@@ -67,6 +67,31 @@ describe("Given a Prisma data storage", () => {
         }
         return result;
     };
+
+    describe("When querying a data entry by its id", () => {
+        it("Then it is found when there is an entry with the given id", async () => {
+            const version = uuid();
+            const tempSchema = await prepareTempSchema(version);
+            const address = {
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: `Some Street`,
+                    num: 1,
+                },
+            };
+            const data = extractRight(await storage.store(address)());
+
+            const result = await storage.findById(data.id)();
+
+            expect(result).toEqual(O.some(data));
+        });
+
+        it("Then it is not found when there isn't an entry with the given id", async () => {
+            const result = await storage.findById(BigInt(2))();
+            expect(result).toEqual(O.none);
+        });
+    });
 
     describe("When creating a new data entry", () => {
         it("Then it is successfully created when valid", async () => {
@@ -88,7 +113,12 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual([data]);
+            expect(result.entries).toEqual([
+                {
+                    id: data.id,
+                    record: data.record,
+                },
+            ]);
         });
 
         it("Then it fails when id is missing", async () => {
@@ -140,7 +170,6 @@ describe("Given a Prisma data storage", () => {
         it("Then it is successfully created when valid", async () => {
             const version = uuid();
             const tempSchema = await prepareTempSchema(version);
-            const info = tempSchema.info;
             const records = [
                 {
                     id: uuid(),
@@ -154,25 +183,17 @@ describe("Given a Prisma data storage", () => {
                 },
             ];
 
-            const storedData = extractRight(
-                await storage.storeBulk({
-                    info: tempSchema.info,
-                    records: records,
-                })()
-            );
+            await storage.storeBulk({
+                info: tempSchema.info,
+                records: records,
+            })();
 
             const result = await storage.findBySchema({
                 limit: 10,
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual(
-                storedData.entries.map((entry) => ({
-                    info: info,
-                    id: entry.id,
-                    record: entry.record,
-                }))
-            );
+            expect(result.entries.map((e) => e.record)).toEqual(records);
         });
 
         it("Then it overwrites old entries", async () => {
@@ -211,36 +232,7 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(
-                result.map((item) => ({
-                    ...item.record,
-                }))
-            ).toEqual(records);
-        });
-    });
-
-    describe("When querying a data entry by its id", () => {
-        it("Then it is found when there is an entry with the given id", async () => {
-            const version = uuid();
-            const tempSchema = await prepareTempSchema(version);
-            const address = {
-                info: tempSchema.info,
-                record: {
-                    id: uuid(),
-                    name: `Some Street`,
-                    num: 1,
-                },
-            };
-            const data = extractRight(await storage.store(address)());
-
-            const result = await storage.findById(data.id)();
-
-            expect(result).toEqual(O.some(data));
-        });
-
-        it("Then it is not found when there isn't an entry with the given id", async () => {
-            const result = await storage.findById(BigInt(2))();
-            expect(result).toEqual(O.none);
+            expect(result.entries.map((e) => e.record)).toEqual(records);
         });
     });
 
@@ -256,7 +248,12 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual([addresses[1]]);
+            expect(result.entries).toEqual([
+                {
+                    id: addresses[1].id,
+                    record: addresses[1].record,
+                },
+            ]);
         });
 
         it("Then when there is data it is returned without cursor", async () => {
@@ -269,17 +266,22 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual(addresses);
+            expect(result.entries).toEqual(
+                addresses.map((a) => ({
+                    id: a.id,
+                    record: a.record,
+                }))
+            );
         });
 
         it("Then when there is no data, an empty array is returned", async () => {
+            const tempSchema = await prepareTempSchema(uuid());
             const result = await storage.findBySchema({
-                cursor: BigInt(1),
                 limit: 10,
-                info: addressInfo,
+                info: tempSchema.info,
             })();
 
-            expect(result).toEqual([]);
+            expect(result.entries).toEqual([]);
         });
     });
 
@@ -297,7 +299,10 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual(addresses);
+            expect(result.entries).toEqual(addresses.map((a) => ({
+                id: a.id,
+                record: a.record,
+            })));
         });
 
         it("Then it works with the contains operator", async () => {
@@ -336,7 +341,12 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual([data0, data1]);
+            const expected = [data0, data1].map(d => ({
+                id: d.id,
+                record: d.record,
+            }))
+
+            expect(result.entries).toEqual(expected);
         });
 
         it("Then it works with the greater than or equal operator", async () => {
@@ -373,7 +383,10 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual([data0]);
+            expect(result.entries).toEqual([{
+                id: data0.id,
+                record: data0.record,
+            }]);
         });
 
         it("Then it works with the less than or equal operator", async () => {
@@ -410,7 +423,10 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual([data0]);
+            expect(result.entries).toEqual([{
+                id: data0.id,
+                record: data0.record,
+            }]);
         });
 
         it("Then it works with the equals operator", async () => {
@@ -451,7 +467,10 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual([data0]);
+            expect(result.entries).toEqual([{
+                id: data0.id,
+                record: data0.record,
+            }]);
         });
 
         it("Then it works with two operators when there is a result", async () => {
@@ -496,7 +515,10 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual([data0]);
+            expect(result.entries).toEqual([{
+                id: data0.id,
+                record: data0.record,
+            }]);
         });
 
         it("Then it works with two operators when there is no match", async () => {
@@ -540,7 +562,7 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual([]);
+            expect(result.entries).toEqual([]);
         });
 
         it("Then it works with both cursor and operator", async () => {
@@ -580,7 +602,10 @@ describe("Given a Prisma data storage", () => {
                 info: tempSchema.info,
             })();
 
-            expect(result).toEqual([data1]);
+            expect(result.entries).toEqual([{
+                id: data1.id,
+                record: data1.record,
+            }]);
         });
     });
 

@@ -95,7 +95,7 @@ export const banklessAcademyLoader: DataLoader = {
             })
         );
     },
-    save: ({ client, currentJob }) => {
+    store: ({ client, currentJob }) => {
         // TODO: use types and type guards for item + slide
         return pipe(
             TE.tryCatch(

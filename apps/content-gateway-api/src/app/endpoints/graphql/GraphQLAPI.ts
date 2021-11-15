@@ -114,7 +114,8 @@ const createGraphQLMiddleware = async ({
                         limit: limit,
                         operators: operators ?? [],
                     }),
-                    T.map((dbData) => {
+                    T.map((entryList) => {
+                        const dbData = entryList.entries;
                         const hasNextPage = dbData.length === limit;
                         let startCursor: string;
                         let endCursor: string;
@@ -130,12 +131,12 @@ const createGraphQLMiddleware = async ({
                         return {
                             pageInfo: {
                                 hasNextPage,
-                                startCursor,
-                                endCursor,
+                                startCursor: startCursor,
+                                endCursor: endCursor,
                             },
                             errors: [],
                             notes: notes,
-                            data: dbData.map((data) => data.record),
+                            data: dbData,
                         };
                     })
                 )();

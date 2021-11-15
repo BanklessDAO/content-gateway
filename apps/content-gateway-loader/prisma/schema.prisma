@@ -11,11 +11,11 @@ generator client {
 
 // Contains scheduling metadata for a job
 model JobSchedule {
-  name        String   @id @db.VarChar(50)
-  cursor      BigInt?  @db.BigInt
-  state       JobState @default(SCHEDULED)
-  scheduledAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime @db.Timestamp(6)
+  name        String    @id @db.VarChar(50)
+  state       JobState  @default(SCHEDULED)
+  cursor      DateTime? @db.Timestamp(6)
+  scheduledAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime  @db.Timestamp(6)
   log         JobLog[]
 
   @@index([scheduledAt])

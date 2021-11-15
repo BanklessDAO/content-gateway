@@ -104,7 +104,7 @@ export const banklessTokenLoader: DataLoader = {
             })
         );
     },
-    save: ({ client, currentJob }) => {
+    store: ({ client, currentJob }) => {
         return pipe(
             TE.tryCatch(
                 async () => {

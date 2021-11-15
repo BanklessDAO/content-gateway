@@ -242,7 +242,7 @@ class DefaultJobScheduler implements JobScheduler {
                     `Job execution started.`
                 )();
                 pipe(
-                    loader.save({
+                    loader.store({
                         client: this.client,
                         currentJob: job,
                         jobScheduler: this,
@@ -337,7 +337,7 @@ class DefaultJobScheduler implements JobScheduler {
         return {
             name: jobSchedule.name,
             scheduledAt: jobSchedule.scheduledAt,
-            cursor: jobSchedule.cursor ? jobSchedule.cursor : undefined,
+            cursor: jobSchedule.cursor || undefined,
             execututionStartedAt: startedAt.toJSDate(),
         };
     }
@@ -345,7 +345,7 @@ class DefaultJobScheduler implements JobScheduler {
     private jobToJobSchedule(job: Job, state: JobState): JobSchedule {
         return {
             name: job.name,
-            cursor: job.cursor ? job.cursor : null,
+            cursor: job.cursor || null,
             state: state,
             scheduledAt: job.scheduledAt,
             updatedAt: new Date(),

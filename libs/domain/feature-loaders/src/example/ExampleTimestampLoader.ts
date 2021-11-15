@@ -41,7 +41,7 @@ export const exampleTimestampLoader: DataLoader = {
             })
         );
     },
-    save: ({ client }) => {
+    store: ({ client }) => {
         return pipe(
             client.save(info, {
                 id: uuid(),

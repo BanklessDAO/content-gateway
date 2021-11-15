@@ -4,8 +4,8 @@ CREATE TYPE "JobState" AS ENUM ('SCHEDULED', 'CANCELED', 'RUNNING', 'COMPLETED',
 -- CreateTable
 CREATE TABLE "JobSchedule" (
     "name" VARCHAR(50) NOT NULL,
-    "cursor" BIGINT,
     "state" "JobState" NOT NULL DEFAULT E'SCHEDULED',
+    "cursor" TIMESTAMP(6),
     "scheduledAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(6) NOT NULL,
 
