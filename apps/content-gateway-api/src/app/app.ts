@@ -32,6 +32,10 @@ const isProd = env === "production";
 const logger = new Logger({ name: "main" });
 
 export const createAPI = async (prisma: PrismaClient) => {
+    if (isDev) {
+        await prisma.data.deleteMany({});
+        await prisma.schema.deleteMany({});
+    }
     logger.info(`Running in ${env} mode`);
 
     const app = express();

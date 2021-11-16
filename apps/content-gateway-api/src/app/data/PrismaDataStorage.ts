@@ -2,7 +2,8 @@ import { Data, Prisma, PrismaClient } from "@cga/prisma";
 import {
     DatabaseStorageError,
     DataStorage,
-    DataValidationError, EntryList,
+    DataValidationError,
+    EntryList,
     EntryWithInfo,
     ListPayload,
     MissingSchemaError,
@@ -10,7 +11,7 @@ import {
     SchemaFilter,
     SchemaStorage,
     SinglePayload,
-    StorageError
+    StorageError,
 } from "@domain/feature-gateway";
 import { OperatorType } from "@shared/util-loaders";
 import { Schema, SchemaInfo, ValidationError } from "@shared/util-schema";
@@ -19,6 +20,7 @@ import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
+import { Logger } from "tslog";
 
 const operatorLookup = {
     [OperatorType.EQUALS]: "equals",
@@ -35,6 +37,8 @@ type PrismaErrors =
 type PrismaCursor = {
     id: bigint;
 };
+
+const logger = new Logger({ name: "PrismaDataStorage" });
 
 export const createPrismaDataStorage = (
     prisma: PrismaClient,
@@ -88,7 +92,9 @@ export const createPrismaDataStorage = (
     };
 
     return {
-        store: (payload: SinglePayload): TE.TaskEither<StorageError, EntryWithInfo> => {
+        store: (
+            payload: SinglePayload
+        ): TE.TaskEither<StorageError, EntryWithInfo> => {
             const { info, record } = payload;
             return pipe(
                 schemaStorage.find(info),
@@ -128,19 +134,19 @@ export const createPrismaDataStorage = (
                 TE.chainW((schema) => {
                     return TE.fromEither(validateRecords(schema, records));
                 }),
-                TE.map((records) => {
-                    return records.map((record) => {
+                TE.map((data) => {
+                    return data.map((record) => {
                         return {
                             info,
                             record,
                         };
                     });
                 }),
-                TE.chain((records) => {
+                TE.chain((data) => {
                     return TE.tryCatch(
                         () =>
                             prisma.$transaction(
-                                records.map((record) => upsertData(record))
+                                data.map((record) => upsertData(record))
                             ),
                         (e: PrismaErrors) => new DatabaseStorageError(e)
                     );
@@ -206,9 +212,10 @@ export const createPrismaDataStorage = (
             );
         },
         findByFilters: (filters: OperatorFilter): T.Task<EntryList> => {
-            const { cursor, limit, info } = filters;
+            const { cursor, limit, info, operators } = filters;
             const { namespace, name, version } = info;
-            let where = filters.operators.map((op) => {
+            logger.info("Finding by filters:", filters);
+            let where = operators.map((op) => {
                 const operator = operatorLookup[op.type];
                 return {
                     data: {
@@ -219,7 +226,7 @@ export const createPrismaDataStorage = (
             }) as unknown[];
             where = [...where, { namespace }, { name }, { version }];
             let cursorToUse: PrismaCursor | undefined = undefined;
-            let skip = 0;
+            let skip: undefined | number = undefined;
             if (cursor) {
                 skip = 1;
                 cursorToUse = {

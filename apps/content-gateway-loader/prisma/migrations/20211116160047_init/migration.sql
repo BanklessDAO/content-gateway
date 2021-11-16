@@ -3,9 +3,10 @@ CREATE TYPE "JobState" AS ENUM ('SCHEDULED', 'CANCELED', 'RUNNING', 'COMPLETED',
 
 -- CreateTable
 CREATE TABLE "JobSchedule" (
-    "name" VARCHAR(50) NOT NULL,
+    "name" VARCHAR(255) NOT NULL,
     "state" "JobState" NOT NULL DEFAULT E'SCHEDULED',
-    "cursor" TIMESTAMP(6),
+    "cursor" INTEGER NOT NULL,
+    "limit" INTEGER NOT NULL,
     "scheduledAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(6) NOT NULL,
 
@@ -15,7 +16,7 @@ CREATE TABLE "JobSchedule" (
 -- CreateTable
 CREATE TABLE "JobLog" (
     "id" TEXT NOT NULL,
-    "name" VARCHAR(50) NOT NULL,
+    "name" VARCHAR(255) NOT NULL,
     "log" TEXT NOT NULL,
     "state" "JobState" NOT NULL,
     "createdAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,

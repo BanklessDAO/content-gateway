@@ -1,12 +1,12 @@
 import {
     createClient,
-    createRESTAdapter,
+    createRESTAdapter
 } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
 import { createJobScheduler } from "@shared/util-loaders";
 import * as express from "express";
 import { Logger } from "tslog";
-import { loaders } from "./loaders";
+import { loaders } from "@domain/feature-loaders";
 
 const programError = (msg: string) => {
     throw new Error(msg);
@@ -19,13 +19,18 @@ const PORT =
 
 const CGA_URL = process.env.CGA_URL || programError("You must specify CGA_URL");
 
-const logger = new Logger({
-    name: "main",
-});
+const env = process.env.NODE_ENV;
+const isDev = env === "development";
+const logger = new Logger({ name: "main" });
 
 const prisma = new PrismaClient();
 
 const main = async () => {
+    if (isDev) {
+        await prisma.jobLog.deleteMany({});
+        await prisma.jobSchedule.deleteMany({});
+    }
+
     const app = express();
 
     const clientStub = createClient({

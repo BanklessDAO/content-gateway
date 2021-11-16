@@ -1,8 +1,9 @@
+import { notEmpty } from "@shared/util-fp";
+import { createGraphQLAPIClient, DataLoader } from "@shared/util-loaders";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
-import { createGraphQLAPIClient, DataLoader } from "@shared/util-loaders";
 import { BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS } from "./queries";
 import { BANKAccount, bankAccountInfo } from "./types";
 
@@ -13,72 +14,59 @@ const subgraphURI =
     "https://api.thegraph.com/subgraphs/name/0xnshuman/bank-subgraph";
 const graphAPIClient = createGraphQLAPIClient(subgraphURI);
 
-// TODO: create a type for `accounts`
-const mapAccounts = (accounts) => {
-    return accounts
-        .map(function (account) {
-            const acc = {
-                id: "",
-                address: "",
+type Event = {
+    value: string;
+    from: {
+        id: string;
+    };
+    to: {
+        id: string;
+    };
+};
+
+type Balance = {
+    value: string;
+    transferToEvent: Event[];
+    transferFromEvent: Event[];
+};
+
+type Account = {
+    id: string;
+    ERC20balances: Balance[];
+};
+
+const mapAccounts = (accounts: Account[]): BANKAccount[] =>
+    accounts
+        .map((account) => {
+            const acc: BANKAccount = {
+                id: account.id,
+                address: account.id,
                 balance: 0.0,
-                transactions: [
-                    {
-                        fromAddress: "",
-                        toAddress: "",
-                        amount: 0.0,
-                    },
-                ],
+                transactions: [],
             };
-
-            acc.id = account.id;
-            acc.address = account.id;
-
             try {
                 const balances = account.ERC20balances;
                 const balance = balances[0];
-                if (balance.value) acc.balance = parseFloat(balance.value);
-
                 const transfersTo = balance.transferToEvent;
                 const transfersFrom = balance.transferFromEvent;
                 const allTransfers = transfersTo.concat(transfersFrom);
-
-                acc.transactions = allTransfers.map((transfer) => {
-                    const tr = {
-                        fromAddress: transfer.from.id,
-                        toAddress: transfer.to.id,
-                        amount: 0.0,
-                    };
-
-                    if (transfer.value) tr.amount = parseFloat(transfer.value);
-
-                    return tr;
-                });
-
+                acc.balance = balance.value ? parseFloat(balance.value) : 0.0;
+                acc.transactions = allTransfers.map((transfer) => ({
+                    fromAddress: transfer.from.id,
+                    toAddress: transfer.to.id,
+                    amount: transfer.value ? parseFloat(transfer.value) : 0.0,
+                }));
                 return acc;
-            } catch {
-                console.log(`Spotted account with missing data: ${acc.id}`);
+            } catch (err) {
+                logger.warn(
+                    `There was an error parsing bank account:`,
+                    account,
+                    err
+                );
                 return null;
             }
         })
-        .filter((account) => account);
-};
-
-let totalCount = 0;
-const pullAccountsSince = (id) => {
-    return graphAPIClient.query(
-        BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS,
-        { count: 1000, offsetID: id },
-        (data) => {
-            totalCount += 1000;
-            logger.info(`Loaded data chunk from the original source:`);
-            logger.info(`Total count: ${totalCount}; OffsetID: ${id}`);
-
-            // logger.info(`Data: ${ JSON.stringify(data) }`)
-
-            return mapAccounts(data.accounts);
-        }
-    );
-};
+        .filter(notEmpty);
 
 export const banklessTokenLoader: DataLoader<BANKAccount> = {
     name: name,
@@ -86,9 +74,12 @@ export const banklessTokenLoader: DataLoader<BANKAccount> = {
         return pipe(
             client.register(bankAccountInfo, BANKAccount),
             TE.chainW(() =>
+                // TODO: we don't want to restart everything when the loader is restarted 👇
                 jobScheduler.schedule({
                     name: name,
                     scheduledAt: new Date(),
+                    cursor: 0,
+                    limit: 1000,
                 })
             ),
             TE.map((result) => {
@@ -105,56 +96,41 @@ export const banklessTokenLoader: DataLoader<BANKAccount> = {
         );
     },
     load: ({ cursor, limit }) => {
-        return TE.of([]);
-    },
-    save: ({ client, currentJob }) => {
-        return pipe(
-            TE.tryCatch(
-                async () => {
-                    logger.info("Executing Bankless Token loader.");
-                    logger.info("Current job:", currentJob);
+        // TODO: start using loadFrom / limit once we have the dates in place
+        return TE.tryCatch(
+            () => {
+                logger.info("Loading Bankless Token data:", {
+                    cursor,
+                    limit,
+                });
 
-                    let accounts = [];
-                    let lastAccountID = "";
-
-                    while (lastAccountID != null) {
-                        const accountsSlice = await pullAccountsSince(
-                            lastAccountID
+                return graphAPIClient.query(
+                    BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS,
+                    { count: limit, offsetID: "" }, // TODO: 👈 use cursor here
+                    (data) => {
+                        logger.info(
+                            `Loaded data chunk from the original source:`
                         );
-                        console.log(
-                            `Accounts slice total count: ${accountsSlice.length}`
+                        logger.info(
+                            `Total count: ${data.accounts}; OffsetID: ${cursor} `
                         );
-
-                        if (accountsSlice.length == 0) {
-                            lastAccountID = null;
-                            totalCount = 0;
-                        } else {
-                            lastAccountID =
-                                accountsSlice[accountsSlice.length - 1].id;
-                        }
-
-                        accounts = accounts.concat(accountsSlice);
-                        console.log(`Accounts total count: ${accounts.length}`);
+                        return mapAccounts(data.accounts);
                     }
-
-                    console.log(
-                        `Sample account: ${JSON.stringify(
-                            accounts[1],
-                            null,
-                            2
-                        )}`
-                    );
-                    return accounts;
-                },
-                (err: unknown) => new Error(String(err))
-            ),
-            TE.chain((accounts) => client.saveBatch(bankAccountInfo, accounts)),
-            TE.chain(() =>
-                TE.right({
-                    name: name,
-                    scheduledAt: DateTime.now().plus({ minutes: 1 }).toJSDate(),
-                })
-            ),
+                );
+            },
+            (err: unknown) => new Error(String(err))
+        );
+    },
+    save: ({ client, data }) => {
+        const nextJob = {
+            name: name,
+            scheduledAt: DateTime.now().plus({ minutes: 30 }).toJSDate(),
+            cursor: 0, // TODO: use proper timestamps
+            limit: 1000,
+        };
+        return pipe(
+            client.saveBatch(bankAccountInfo, data),
+            TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {
                 logger.error(
                     "Bankless Token Loader data loading failed:",

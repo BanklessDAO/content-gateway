@@ -14,14 +14,13 @@ model Schema {
   name       String    @db.VarChar(50)
   version    String    @db.VarChar(50)
   jsonSchema Json      @db.JsonB
-  // dates
   createdAt  DateTime  @default(now()) @db.Timestamp(6)
   updatedAt  DateTime  @default(now()) @db.Timestamp(6)
   deletedAt  DateTime? @db.Timestamp(6)
-  // relations
+  /// The cursor that points to the last Data entry that was saved.
+  cursor     Int?      @db.Integer
   data       Data[]
 
-  // indexes
   @@id([namespace, name, version])
   @@index([createdAt])
   @@index([updatedAt])

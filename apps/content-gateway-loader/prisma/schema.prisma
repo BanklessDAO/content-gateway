@@ -9,13 +9,19 @@ generator client {
   output          = "../../../node_modules/@cgl/prisma"
 }
 
-// Contains scheduling metadata for a job
+/// Contains scheduling metadata for a job
 model JobSchedule {
-  name        String    @id @db.VarChar(50)
-  state       JobState  @default(SCHEDULED)
-  cursor      DateTime? @db.Timestamp(6)
-  scheduledAt DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime  @db.Timestamp(6)
+  name        String   @id @db.VarChar(255)
+  state       JobState @default(SCHEDULED)
+  /// The cursor that points to the last data entry that was saved.
+  /// This can be a timestamp or a block number too.
+  cursor      Int      @db.Integer
+  /// The amount of items to load in the next run
+  limit       Int      @db.Integer
+  /// The next time this job should run
+  scheduledAt DateTime @default(now()) @db.Timestamp(6)
+  /// The last time this job ran
+  updatedAt   DateTime @db.Timestamp(6)
   log         JobLog[]
 
   @@index([scheduledAt])
@@ -23,10 +29,11 @@ model JobSchedule {
   @@index([state])
 }
 
-// Represents a change in the state of a job
+/// Represents a change in the state of a job
 model JobLog {
   id        String      @id @default(uuid())
-  name      String      @db.VarChar(50)
+  name      String      @db.VarChar(255)
+  /// Free form log message
   log       String      @db.Text
   state     JobState
   job       JobSchedule @relation(fields: [name], references: [name])

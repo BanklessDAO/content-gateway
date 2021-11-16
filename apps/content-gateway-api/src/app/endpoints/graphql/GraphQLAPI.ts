@@ -14,7 +14,7 @@ import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
 import * as pluralize from "pluralize";
 import { Logger } from "tslog";
-import { operators } from "./types/Operators";
+import { operators as operatorsType } from "./types/Operators";
 import { createResultsType, Results } from "./types/Results";
 
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
@@ -93,20 +93,22 @@ const createGraphQLMiddleware = async ({
                 operators?: Operator[]
             ): Promise<Results> => {
                 const notes = [] as string[];
-                // 👇 This +1 is to be able to determine if we have a next page
-                const limit = (first ?? maxItems) + 1;
-                if (first > 1000) {
-                    first = 1000;
+                let limit = first ?? maxItems;
+                if (limit > maxItems) {
+                    limit = maxItems;
                     notes.push(
                         `The requested amount of items (${first}) is greater than the allowed maximum (${maxItems}). Setting after to ${maxItems}.`
                     );
                 }
                 if (typeof first === "undefined") {
-                    first = maxItems;
                     notes.push(
                         `First was undefined, returning ${maxItems} items.`
                     );
                 }
+
+                // 👇 We do this to determine whether there is a next page or not.
+                limit++;
+
                 return pipe(
                     dataStorage.findByFilters({
                         info: schema.info,
@@ -115,18 +117,31 @@ const createGraphQLMiddleware = async ({
                         operators: operators ?? [],
                     }),
                     T.map((entryList) => {
-                        const dbData = entryList.entries;
-                        const hasNextPage = dbData.length === limit;
+                        // TODO: write tests for this paging stuff
+                        const entries = entryList.entries;
+                        const hasNextPage = entries.length === limit;
+                        const hasEntries = entries.length > 0;
                         let startCursor: string;
                         let endCursor: string;
-                        if (dbData.length > 1) {
-                            const last = dbData.pop();
-                            startCursor = dbData[0].id.toString();
-                            endCursor = last.id.toString();
+                        if (hasNextPage) {
+                            // 👇 We only needed this for hasNextPage.
+                            entries.pop();
+                        }
+                        if (hasEntries) {
+                            startCursor = entries[0].id.toString();
+                            endCursor =
+                                entries[entries.length - 1].id.toString();
+                            logger.info("Has entries");
                         } else {
                             startCursor = after;
                             endCursor = startCursor;
+                            logger.info("Has no entries");
                         }
+
+                        logger.info("Cursors: ", {
+                            startCursor,
+                            endCursor,
+                        });
 
                         return {
                             pageInfo: {
@@ -136,7 +151,7 @@ const createGraphQLMiddleware = async ({
                             },
                             errors: [],
                             notes: notes,
-                            data: dbData.map((entry) => ({
+                            data: entries.map((entry) => ({
                                 ...entry,
                                 id: entry.id.toString(),
                             })),
@@ -160,7 +175,7 @@ const createGraphQLMiddleware = async ({
                     args: {
                         after: { type: g.GraphQLString },
                         first: { type: g.GraphQLInt },
-                        operators: operators,
+                        operators: operatorsType,
                     },
                     resolve: (_, { first, after, operators }) => {
                         return findByFilters(first, after, operators);

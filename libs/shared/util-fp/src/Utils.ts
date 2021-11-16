@@ -1,9 +1,5 @@
 import * as E from "fp-ts/Either";
-import { Logger } from "tslog";
 
-const logger = new Logger({
-    name: "shared-util-fp-Utils",
-});
 
 export const extractRight = <T>(either: E.Either<unknown, T>): T => {
     if (E.isLeft(either)) {
@@ -20,3 +16,7 @@ export const extractLeft = <E>(either: E.Either<E, unknown>): E => {
         throw new Error("The supplied either was a Right");
     }
 };
+
+export function notEmpty<T>(value: T | null | undefined): value is T {
+    return value !== null && value !== undefined;
+}

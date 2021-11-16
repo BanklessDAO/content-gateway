@@ -35,7 +35,9 @@ export type JobScheduler = {
     /**
      * Registers the given loader with the given name.
      */
-    register: (loader: DataLoader) => TE.TaskEither<RegistrationError, void>;
+    register: (
+        loader: DataLoader<unknown>
+    ) => TE.TaskEither<RegistrationError, void>;
     remove: (name: string) => TE.TaskEither<NoLoaderFoundError, void>;
     /**
      * Schedules a new job. The given job must have a corresponding loader
@@ -63,7 +65,7 @@ class DefaultJobScheduler implements JobScheduler {
     // TODO: read and write the database
     // TODO: store an in-memory representation of the state too, to avoid
     // TODO: being suspended because of async/await
-    private loaders = new Map<string, DataLoader>();
+    private loaders = new Map<string, DataLoader<unknown>>();
     private started = false;
     private stopped = false;
     private prisma: PrismaClient;
@@ -117,7 +119,9 @@ class DefaultJobScheduler implements JobScheduler {
         return TE.of(undefined);
     }
 
-    register(loader: DataLoader): TE.TaskEither<RegistrationError, void> {
+    register(
+        loader: DataLoader<unknown>
+    ): TE.TaskEither<RegistrationError, void> {
         if (!this.started) {
             return TE.left(SchedulerNotStartedError.create());
         }
@@ -233,6 +237,7 @@ class DefaultJobScheduler implements JobScheduler {
     }
 
     private async executeJob(job: Job) {
+        // TODO: maybe run this in a transaction for consistency?
         const loader = this.loaders.get(job.name);
         if (loader) {
             try {
@@ -242,11 +247,18 @@ class DefaultJobScheduler implements JobScheduler {
                     `Job execution started.`
                 )();
                 pipe(
-                    loader.store({
-                        client: this.client,
-                        currentJob: job,
-                        jobScheduler: this,
+                    loader.load({
+                        limit: job.limit,
+                        cursor: job.cursor,
                     }),
+                    TE.chain((data) =>
+                        loader.save({
+                            currentJob: job,
+                            client: this.client,
+                            jobScheduler: this,
+                            data: data,
+                        })
+                    ),
                     TE.mapLeft((e) => {
                         this.logger.info(`Loader ${job.name} failed`, e);
                         this.upsertJob(
@@ -302,6 +314,7 @@ class DefaultJobScheduler implements JobScheduler {
                 const jobSchedule = {
                     name: job.name,
                     cursor: job.cursor,
+                    limit: job.limit,
                     state: state,
                     scheduledAt: job.scheduledAt,
                     updatedAt: new Date(),
@@ -337,7 +350,8 @@ class DefaultJobScheduler implements JobScheduler {
         return {
             name: jobSchedule.name,
             scheduledAt: jobSchedule.scheduledAt,
-            cursor: jobSchedule.cursor || undefined,
+            cursor: jobSchedule.cursor,
+            limit: jobSchedule.limit,
             execututionStartedAt: startedAt.toJSDate(),
         };
     }
@@ -345,7 +359,8 @@ class DefaultJobScheduler implements JobScheduler {
     private jobToJobSchedule(job: Job, state: JobState): JobSchedule {
         return {
             name: job.name,
-            cursor: job.cursor || null,
+            cursor: job.cursor,
+            limit: job.limit,
             state: state,
             scheduledAt: job.scheduledAt,
             updatedAt: new Date(),
@@ -356,7 +371,7 @@ class DefaultJobScheduler implements JobScheduler {
 export class JobSchedulerStub implements JobScheduler {
     starts = [] as boolean[];
     stops = [] as boolean[];
-    loaders = [] as DataLoader[];
+    loaders = [] as DataLoader<unknown>[];
     removedLoaders = [] as string[];
     scheduledJobs = [] as JobDescriptor[];
 
@@ -364,7 +379,9 @@ export class JobSchedulerStub implements JobScheduler {
         this.starts.push(true);
         return TE.right(undefined);
     }
-    register(loader: DataLoader): TE.TaskEither<RegistrationError, void> {
+    register(
+        loader: DataLoader<unknown>
+    ): TE.TaskEither<RegistrationError, void> {
         this.loaders.push(loader);
         return TE.right(undefined);
     }

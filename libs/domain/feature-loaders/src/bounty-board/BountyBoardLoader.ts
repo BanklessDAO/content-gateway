@@ -1,115 +1,73 @@
+import { notEmpty } from "@shared/util-fp";
 import { DataLoader } from "@shared/util-loaders";
-import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import axios from "axios";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Logger } from "tslog";
+import { Bounty, bountyBoardInfo } from "./types";
 
 const logger = new Logger({ name: "BountyBoardLoader" });
 
 const name = "bounty-board-loader";
 
-/// Types
-
-const info = {
-    namespace: "bounty-board",
-    name: "Bounty",
-    version: "V1",
+type StatusHistoryItem = {
+    status: string;
+    setAt: string;
 };
 
-// Will be extracted into a global scope later
-class Member {
-    @Required(true)
-    discordHandle: string;
-    @Required(true)
-    discordId: string;
-}
-
-class Reward {
-    @Required(true)
+type Reward = {
     currency: string;
-    @Required(true)
     amount: number;
-    @Required(true)
     scale: number;
-}
+};
 
-class StatusEvent {
-    @Required(true)
-    status: string;
-    @Required(true)
-    setAt: number;
-}
+type DiscordUser = {
+    discordHandle: string;
+    discordId: string;
+};
 
-@AdditionalProperties(false)
-class Bounty {
-    @Required(true)
-    id: string;
-    @Required(true)
-    season: string;
-    @Required(true)
+type ServerResponse = {
+    data: ResponseItem[];
+};
+
+type ResponseItem = {
+    statusHistory: StatusHistoryItem[];
+    _id: string;
+    season: number;
     title: string;
-    @Required(true)
     description: string;
-    // @Required(true)
-    // criteria: string;
-    @Required(true)
-    rewardAmount: number;
-    // @Required(true)
-    // reward: Reward;
-    // @Required(true)
-    // createdBy: Member;
-    // @Required(true)
-    // createdAt: number;
-    // @Required(true)
-    // dueAt: number;
-    // @Required(false)
-    // discordMessageId: string;
-    // @Required(true)
-    // status: string;
-    // @Required(true)
-    // @CollectionOf(StatusEvent)
-    // statusHistory: StatusEvent[];
-    // @Required(false)
-    // claimedBy: Member;
-    // @Required(false)
-    // claimedAt: number;
-    // @Required(false)
-    // submissionNotes: string;
-    // @Required(false)
-    // submissionUrl: string;
-    // @Required(false)
-    // submittedAt: number;
-    // @Required(false)
-    // submittedBy: Member;
-    // @Required(false)
-    // reviewedAt: number;
-    // @Required(false)
-    // reviewedBy: Member;
-}
-
-@AdditionalProperties(false)
-class BountyBoard {
-    @Required(true)
-    id: string;
-    @Required(true)
-    @CollectionOf(Bounty)
-    bounties: Bounty[];
-}
-
-/// Loader
+    criteria: string;
+    status: string;
+    discordMessageId: string;
+    submissionNotes?: string;
+    submissionUrl?: string;
+    reward: Reward;
+    createdBy: DiscordUser;
+    claimedBy: DiscordUser;
+    submittedBy: DiscordUser;
+    reviewedBy: DiscordUser;
+    // timestamps 👇
+    createdAt: string;
+    dueAt: string;
+    claimedAt: string;
+    submittedAt: string;
+    reviewedAt: string;
+};
 
 export const bountyBoardLoader: DataLoader<Bounty> = {
     name: name,
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing Bounty Board loader...");
         return pipe(
-            client.register(info, Bounty),
+            client.register(bountyBoardInfo, Bounty),
             TE.chainW(() =>
+                // TODO: we don't want to restart everything when the loader is restarted 👇
                 jobScheduler.schedule({
                     name: name,
                     scheduledAt: new Date(),
+                    cursor: 0,
+                    limit: 1000,
                 })
             ),
             TE.map((result) => {
@@ -126,88 +84,89 @@ export const bountyBoardLoader: DataLoader<Bounty> = {
         );
     },
     load: ({ cursor, limit }) => {
-        return TE.of([]);
+        // TODO: start using loadFrom / limit once we have the dates in place
+        return TE.tryCatch(
+            async () => {
+                logger.info("Loading Bounty Board data:", {
+                    cursor,
+                    limit,
+                });
+
+                const response = await axios.request<ServerResponse>({
+                    url: "https://bountyboard.bankless.community/api/bounties",
+                });
+
+                return response.data.data
+                    .map((item) => {
+                        try {
+                            return {
+                                id:
+                                    item.createdBy.discordHandle.toString() +
+                                    "-" +
+                                    item.createdAt.toString(),
+                                season: item.season.toString(),
+                                title: item.title,
+                                description: item.description,
+                                // criteria: item.criteria,
+                                rewardAmount: item.reward.amount,
+                                // reward: {
+                                //     currency: item.reward.currency,
+                                //     amount: item.reward.amount,
+                                //     scale: item.reward.scale
+                                // },
+                                // createdBy: item.createdBy,
+                                // createdAt: item.createdAt,
+                                // dueAt: item.dueAt,
+                                // discordMessageId: item.discordMessageId,
+                                // status: item.status,
+                                // statusHistory: item.statusHistory
+                                //     .map(event => {
+                                //         return {
+                                //             status: event.status,
+                                //             setAt: event.setAt
+                                //         }
+                                //     }),
+                                // claimedBy: {
+                                //     discordHandle: item.claimedBy.discordHandle,
+                                //     discordId: item.claimedBy.discordId
+                                // },
+                                // claimedAt: item.claimedAt,
+                                // submissionNotes: item.submissionNotes,
+                                // submissionUrl: item.submissionUrl,
+                                // submittedAt: item.submittedAt,
+                                // submittedBy: {
+                                //     discordHandle: item.submittedBy.discordHandle,
+                                //     discordId: item.submittedBy.discordId
+                                // },
+                                // reviewedAt: item.reviewedAt,
+                                // reviewedBy: {
+                                //     discordHandle: item.reviewedBy.discordHandle,
+                                //     discordId: item.reviewedBy.discordId
+                                // }
+                            };
+                        } catch (err) {
+                            logger.warn(
+                                `There was an error parsing bounty item ${item._id}`,
+                                err
+                            );
+                            return null;
+                        }
+                    })
+                    .filter(notEmpty);
+            },
+            (err: unknown) => new Error(String(err))
+        );
     },
-    save: ({ client, currentJob }) => {
+    save: ({ client, data }) => {
+        const nextJob = {
+            name: name,
+            scheduledAt: DateTime.now().plus({ minutes: 30 }).toJSDate(),
+            cursor: 0, // TODO: use proper timestamps
+            limit: 1000,
+        };
         return pipe(
-            TE.tryCatch(
-                async () => {
-                    logger.info("Executing Bounty Board loader.");
-                    logger.info("Current job:", currentJob);
-
-                    const response = await axios.get(
-                        `https://bountyboard.bankless.community/api/bounties`
-                    );
-
-                    logger.info(
-                        `Loaded data from the original source:`
-                        // response.data
-                    );
-
-                    return response.data.data
-                        .map((item) => {
-                            try {
-                                return {
-                                    id:
-                                        item.createdBy.discordHandle.toString() +
-                                        "-" +
-                                        item.createdAt.toString(),
-                                    season: item.season.toString(),
-                                    title: item.title,
-                                    description: item.description,
-                                    // criteria: item.criteria,
-                                    rewardAmount: item.reward.amount,
-                                    // reward: {
-                                    //     currency: item.reward.currency,
-                                    //     amount: item.reward.amount,
-                                    //     scale: item.reward.scale
-                                    // },
-                                    // createdBy: item.createdBy,
-                                    // createdAt: item.createdAt,
-                                    // dueAt: item.dueAt,
-                                    // discordMessageId: item.discordMessageId,
-                                    // status: item.status,
-                                    // statusHistory: item.statusHistory
-                                    //     .map(event => {
-                                    //         return {
-                                    //             status: event.status,
-                                    //             setAt: event.setAt
-                                    //         }
-                                    //     }),
-                                    // claimedBy: {
-                                    //     discordHandle: item.claimedBy.discordHandle,
-                                    //     discordId: item.claimedBy.discordId
-                                    // },
-                                    // claimedAt: item.claimedAt,
-                                    // submissionNotes: item.submissionNotes,
-                                    // submissionUrl: item.submissionUrl,
-                                    // submittedAt: item.submittedAt,
-                                    // submittedBy: {
-                                    //     discordHandle: item.submittedBy.discordHandle,
-                                    //     discordId: item.submittedBy.discordId
-                                    // },
-                                    // reviewedAt: item.reviewedAt,
-                                    // reviewedBy: {
-                                    //     discordHandle: item.reviewedBy.discordHandle,
-                                    //     discordId: item.reviewedBy.discordId
-                                    // }
-                                };
-                            } catch {
-                                return null;
-                            }
-                        })
-                        .filter((b) => b);
-                },
-                (err: unknown) => new Error(String(err))
-            ),
-            TE.chain((bounties) => client.saveBatch(info, bounties)),
-            TE.chain(() =>
-                TE.right({
-                    name: name,
-                    // runs every minute
-                    scheduledAt: DateTime.now().plus({ minutes: 1 }).toJSDate(),
-                })
-            ),
+            client.saveBatch(bountyBoardInfo, data),
+            TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {
                 logger.error("Bounty Board Loader data loading failed:", error);
                 return error;

@@ -24,13 +24,13 @@ export type InitContext = {
 };
 
 export type LoadContext = {
-    cursor?: Date;
+    cursor?: number;
     limit: number;
 };
 
 export type SaveContext<T> = {
-    client: ContentGatewayClient;
     currentJob: Job;
+    client: ContentGatewayClient;
     jobScheduler: JobScheduler;
     data: T[];
 };

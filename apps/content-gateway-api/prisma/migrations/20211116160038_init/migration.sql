@@ -7,6 +7,7 @@ CREATE TABLE "Schema" (
     "createdAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deletedAt" TIMESTAMP(6),
+    "cursor" INTEGER,
 
     CONSTRAINT "Schema_pkey" PRIMARY KEY ("namespace","name","version")
 );

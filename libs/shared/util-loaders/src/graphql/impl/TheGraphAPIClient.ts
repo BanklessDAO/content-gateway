@@ -4,7 +4,7 @@ import {
     HttpLink,
     InMemoryCache,
     NormalizedCacheObject,
-    OperationVariables
+    OperationVariables,
 } from "@apollo/client/core";
 import fetch from "cross-fetch";
 import { GraphQLAPIClient } from "..";
@@ -20,7 +20,7 @@ class TheGraphAPIClient implements GraphQLAPIClient {
             uri: uri,
             link: new HttpLink({ uri: uri, fetch }),
             cache: new InMemoryCache({
-                addTypename: false
+                addTypename: false,
             }),
         });
     }
@@ -35,16 +35,25 @@ class TheGraphAPIClient implements GraphQLAPIClient {
                 .query({
                     query: query,
                     variables: vars,
-                    fetchPolicy: "no-cache"
+                    fetchPolicy: "no-cache",
                 })
                 .then((response) => {
-                    if (response.loading == true || response.partial || response.data === undefined) { return }
-                    console.log(`Is loading: ${ response.loading }`)
+                    if (
+                        response.loading ||
+                        response.partial ||
+                        response.data === undefined
+                    ) {
+                        return;
+                    }
+                    console.log(`Is loading: ${response.loading}`);
                     const mappedResult = mappingCallback(response.data);
                     resolve(mappedResult);
                 })
                 .catch((err) => {
-                    throw new Error("Couldn't complete subgraph data fetch and/or mapping: " + err);
+                    throw new Error(
+                        "Couldn't complete subgraph data fetch and/or mapping: " +
+                            err
+                    );
                 });
         });
     }
