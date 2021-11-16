@@ -9,8 +9,8 @@ import {
  * 📗 Note for developers: this is where you should add your loader(s).
  */
 export const loaders = [
-    // banklessAcademyLoader,
-    // banklessTokenLoader,
-    // bountyBoardLoader,
+    banklessAcademyLoader,
+    banklessTokenLoader,
+    bountyBoardLoader,
     poapLoader,
 ];
