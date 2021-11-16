@@ -3,10 +3,11 @@ import {
     createRESTAdapter
 } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
+import { loaders } from "@domain/feature-loaders";
 import { createJobScheduler } from "@shared/util-loaders";
 import * as express from "express";
 import { Logger } from "tslog";
-import { loaders } from "@domain/feature-loaders";
+import { createJobRepository } from "./repository/PrismaJobRepository";
 
 const programError = (msg: string) => {
     throw new Error(msg);
@@ -63,7 +64,10 @@ const main = async () => {
         logger.error(err);
     });
 
-    const scheduler = createJobScheduler(prisma, clientStub);
+    const scheduler = createJobScheduler(
+        createJobRepository(prisma),
+        clientStub
+    );
     await scheduler.start()();
 
     for (const loader of loaders) {

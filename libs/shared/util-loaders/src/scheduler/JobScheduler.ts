@@ -1,11 +1,9 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
-import { JobSchedule, JobState, PrismaClient } from "@cgl/prisma";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
-import { DateTime } from "luxon";
 import { AsyncTask, SimpleIntervalJob, ToadScheduler } from "toad-scheduler";
 import { Logger } from "tslog";
-import { Job } from ".";
+import { JobDescriptor } from ".";
 import { DataLoader } from "../DataLoader";
 import {
     JobCreationFailedError,
@@ -21,7 +19,9 @@ import {
     SchedulingError,
     StartError,
 } from "./Errors";
-import { JobDescriptor } from "./JobDescriptor";
+import { Job } from "./Job";
+import { JobRepository } from "./JobRepository";
+import { JobState } from "./JobState";
 
 /**
  * A job scheduler can be used to schedule loader {@link Job}s
@@ -44,9 +44,7 @@ export type JobScheduler = {
      * registered with the scheduler.
      * If a job with the same name is already scheduled, it will be overwritten.
      */
-    schedule: (
-        job: JobDescriptor
-    ) => TE.TaskEither<SchedulingError, JobDescriptor>;
+    schedule: (job: JobDescriptor) => TE.TaskEither<SchedulingError, Job>;
 
     /**
      * Stops this scheduler. It can't be used after this.
@@ -55,9 +53,9 @@ export type JobScheduler = {
 };
 
 export const createJobScheduler = (
-    prisma: PrismaClient,
+    jobRepository: JobRepository,
     client: ContentGatewayClient
-): JobScheduler => new DefaultJobScheduler(prisma, client);
+): JobScheduler => new DefaultJobScheduler(jobRepository, client);
 
 class DefaultJobScheduler implements JobScheduler {
     // TODO: this implementation does way too much and it is also
@@ -68,13 +66,13 @@ class DefaultJobScheduler implements JobScheduler {
     private loaders = new Map<string, DataLoader<unknown>>();
     private started = false;
     private stopped = false;
-    private prisma: PrismaClient;
     private client: ContentGatewayClient;
     private logger: Logger = new Logger({ name: "JobScheduler" });
     private scheduler = new ToadScheduler();
+    private jobRepository: JobRepository;
 
-    constructor(prisma: PrismaClient, client: ContentGatewayClient) {
-        this.prisma = prisma;
+    constructor(jobRepository: JobRepository, client: ContentGatewayClient) {
+        this.jobRepository = jobRepository;
         this.client = client;
     }
 
@@ -88,7 +86,7 @@ class DefaultJobScheduler implements JobScheduler {
         this.stopped = false;
         return TE.tryCatch(
             async () => {
-                await this.cleanStaleJobs();
+                await this.jobRepository.cleanStaleJobs()();
                 const task = new AsyncTask(
                     "Execute Jobs",
                     () => {
@@ -158,14 +156,15 @@ class DefaultJobScheduler implements JobScheduler {
     }
 
     schedule(
-        job: JobDescriptor
-    ): TE.TaskEither<SchedulingError, JobDescriptor> {
+        jobDescriptor: JobDescriptor
+    ): TE.TaskEither<SchedulingError, Job> {
         if (!this.started) {
             return TE.left(SchedulerNotStartedError.create());
         }
         if (this.stopped) {
             return TE.left(SchedulerStoppedError.create());
         }
+        const job = { ...jobDescriptor, state: JobState.SCHEDULED };
         if (!this.loaders.has(job.name)) {
             this.logger.warn(`There is no loader with name ${job.name}`);
             // TODO: save it as failed?
@@ -173,9 +172,8 @@ class DefaultJobScheduler implements JobScheduler {
         }
         // TODO: check if job is already scheduled
         return pipe(
-            this.upsertJob(
+            this.jobRepository.upsertJob(
                 job,
-                JobState.SCHEDULED,
                 "Scheduling new job for execution."
             ),
             TE.mapLeft((e) => {
@@ -186,47 +184,17 @@ class DefaultJobScheduler implements JobScheduler {
         );
     }
 
-    private async cleanStaleJobs() {
-        const staleJobs = await this.prisma.jobSchedule.findMany({
-            where: {
-                state: JobState.RUNNING,
-            },
-        });
-        await Promise.all(
-            staleJobs.map((job) => {
-                return this.upsertJob(
-                    this.jobScheduleToJob(job, DateTime.now()),
-                    JobState.FAILED,
-                    `Job ${job.name} was in RUNNING state after application started. Setting state to FAILED.`
-                )();
-            })
-        );
-    }
-
-    private async loadNextJobs() {
-        return this.prisma.jobSchedule.findMany({
-            where: {
-                state: JobState.SCHEDULED,
-                scheduledAt: {
-                    lte: DateTime.local().toJSDate(),
-                },
-            },
-        });
-    }
-
     private async executeScheduledJobs() {
         try {
             this.logger.info(`Scanning for jobs. Current time: ${new Date()}`);
-            const jobs = await this.loadNextJobs();
+            const jobs = await this.jobRepository.loadNextJobs()();
             this.logger.info(`Found ${jobs.length} jobs.`);
             for (const job of jobs) {
                 try {
                     this.logger.info(`Executing job ${job.name}.`);
                     // TODO: Consider using Bree later down the road
                     // TODO: for offloading jobs => https://github.com/breejs/bree
-                    await this.executeJob(
-                        this.jobScheduleToJob(job, DateTime.now())
-                    );
+                    await this.executeJob(job);
                 } catch (e) {
                     this.logger.warn("Failed to start job:", e);
                 }
@@ -239,11 +207,11 @@ class DefaultJobScheduler implements JobScheduler {
     private async executeJob(job: Job) {
         // TODO: maybe run this in a transaction for consistency?
         const loader = this.loaders.get(job.name);
+        job.state = JobState.RUNNING;
         if (loader) {
             try {
-                await this.upsertJob(
+                await this.jobRepository.upsertJob(
                     job,
-                    JobState.RUNNING,
                     `Job execution started.`
                 )();
                 pipe(
@@ -261,9 +229,8 @@ class DefaultJobScheduler implements JobScheduler {
                     ),
                     TE.mapLeft((e) => {
                         this.logger.info(`Loader ${job.name} failed`, e);
-                        this.upsertJob(
-                            job,
-                            JobState.FAILED,
+                        this.jobRepository.upsertJob(
+                            { ...job, state: JobState.FAILED },
                             `Loader ${job.name} failed: ${e.message}`
                         )();
                         return e;
@@ -275,9 +242,8 @@ class DefaultJobScheduler implements JobScheduler {
                             );
                             this.schedule(nextJob);
                         } else {
-                            this.upsertJob(
-                                job,
-                                JobState.COMPLETED,
+                            this.jobRepository.upsertJob(
+                                { ...job, state: JobState.COMPLETED },
                                 `Job ${job.name} completed successfully.`
                             )();
                         }
@@ -290,81 +256,17 @@ class DefaultJobScheduler implements JobScheduler {
                 );
             }
         } else {
-            this.upsertJob(
-                job,
-                JobState.CANCELED,
+            this.jobRepository.upsertJob(
+                {
+                    ...job,
+                    state: JobState.CANCELED,
+                },
                 `Job was canceled because no loader with name ${job.name} was found.`
             )();
             this.logger.error(
                 `No loader found for job ${job.name}. Job is cancelled.`
             );
         }
-    }
-
-    private upsertJob(
-        job: JobDescriptor,
-        state: JobState,
-        note: string
-    ): TE.TaskEither<Error, JobSchedule> {
-        this.logger.info(
-            `Updating job ${job.name} with state ${state} and note '${note}'.`
-        );
-        return TE.tryCatch(
-            async () => {
-                const jobSchedule = {
-                    name: job.name,
-                    cursor: job.cursor,
-                    limit: job.limit,
-                    state: state,
-                    scheduledAt: job.scheduledAt,
-                    updatedAt: new Date(),
-                    log: {
-                        create: {
-                            state: state,
-                            log: note,
-                        },
-                    },
-                };
-                return this.prisma.jobSchedule.upsert({
-                    where: {
-                        name: job.name,
-                    },
-                    create: jobSchedule,
-                    update: jobSchedule,
-                });
-            },
-            (err: unknown) => {
-                this.logger.warn(
-                    `Couldn't update job ${job.name} to state ${state}. Cause:`,
-                    err
-                );
-                return new Error(String(err));
-            }
-        );
-    }
-
-    private jobScheduleToJob(
-        jobSchedule: JobSchedule,
-        startedAt: DateTime
-    ): Job {
-        return {
-            name: jobSchedule.name,
-            scheduledAt: jobSchedule.scheduledAt,
-            cursor: jobSchedule.cursor,
-            limit: jobSchedule.limit,
-            execututionStartedAt: startedAt.toJSDate(),
-        };
-    }
-
-    private jobToJobSchedule(job: Job, state: JobState): JobSchedule {
-        return {
-            name: job.name,
-            cursor: job.cursor,
-            limit: job.limit,
-            state: state,
-            scheduledAt: job.scheduledAt,
-            updatedAt: new Date(),
-        };
     }
 }
 
@@ -373,7 +275,7 @@ export class JobSchedulerStub implements JobScheduler {
     stops = [] as boolean[];
     loaders = [] as DataLoader<unknown>[];
     removedLoaders = [] as string[];
-    scheduledJobs = [] as JobDescriptor[];
+    scheduledJobs = [] as Job[];
 
     start(): TE.TaskEither<StartError, void> {
         this.starts.push(true);
@@ -390,8 +292,9 @@ export class JobSchedulerStub implements JobScheduler {
         return TE.right(undefined);
     }
     schedule(
-        job: JobDescriptor
-    ): TE.TaskEither<SchedulingError, JobDescriptor> {
+        jobDescriptor: JobDescriptor
+    ): TE.TaskEither<SchedulingError, Job> {
+        const job = { ...jobDescriptor, state: JobState.SCHEDULED };
         this.scheduledJobs.push(job);
         return TE.right(job);
     }

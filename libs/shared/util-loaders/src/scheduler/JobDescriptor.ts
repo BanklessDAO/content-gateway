@@ -1,5 +1,6 @@
+
 /**
- * Contains the metadata for a {@link Job}.
+ * Contains the metadata for a scheduled job.
  */
 export type JobDescriptor = {
     name: string;

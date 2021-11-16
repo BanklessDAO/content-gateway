@@ -6,7 +6,6 @@ describe("Given a job scheduler", () => {
     const prisma = new PrismaClient();
     const clientStub = createClientStub();
 
-    const scheduler = createJobScheduler(prisma, clientStub);
 
     it("xul", async () => {
         expect(true).toBe(true);
