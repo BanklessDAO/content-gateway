@@ -1,8 +1,5 @@
 import {
-    banklessAcademyLoader,
-    bountyBoardLoader,
-    banklessTokenLoader,
-    poapLoader,
+    banklessAcademyLoader, banklessTokenLoader, bountyBoardLoader, poapLoader
 } from ".";
 
 /**
