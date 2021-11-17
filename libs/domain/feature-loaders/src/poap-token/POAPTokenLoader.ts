@@ -133,7 +133,11 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
             limit: batchSize,
         };
         return pipe(
-            client.saveBatch(poapTokenInfo, data),
+            client.saveBatch({
+                info: poapTokenInfo,
+                data: data,
+                cursor: cursor,
+            }),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {
                 logger.error("POAP Loader data loading failed:", error);

@@ -1,17 +1,16 @@
 import {
     ContentGateway,
     createContentGateway,
-    createDataStorageStub,
-    createSchemaStorageStub,
-    DataStorageStub,
-    SchemaStorageStub,
+    createDataRepositoryStub,
+    createSchemaRepositoryStub,
+    DataRepositoryStub,
+    SchemaRepositoryStub,
 } from "@domain/feature-gateway";
 import { extractRight } from "@shared/util-fp";
-import { createSchemaFromType, Schema, schemaInfoToString } from "@shared/util-schema";
+import { createSchemaFromType, Schema } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as express from "express";
 import * as request from "supertest";
-import { createLogger } from "@shared/util-fp";
 import { v4 as uuid } from "uuid";
 import { generateContentGatewayAPI } from "./ContentGatewayAPI";
 
@@ -45,21 +44,21 @@ const generateUser = () => ({
         id: uuid(),
         name: "Home",
     },
-})
+});
 // TODO: check stub activity too (was the stuff stored?)
 describe("Given a content gateway api", () => {
     let app: express.Application;
     let gateway: ContentGateway;
-    let dataStorageStub: DataStorageStub;
-    let schemaStorageStub: SchemaStorageStub;
+    let dataRepositoryStub: DataRepositoryStub;
+    let schemaRepositoryStub: SchemaRepositoryStub;
     let schemas: Map<string, Schema>;
 
     beforeEach(async () => {
         app = express();
         schemas = new Map();
-        dataStorageStub = createDataStorageStub();
-        schemaStorageStub = createSchemaStorageStub(schemas);
-        gateway = createContentGateway(schemaStorageStub, dataStorageStub);
+        dataRepositoryStub = createDataRepositoryStub();
+        schemaRepositoryStub = createSchemaRepositoryStub(schemas);
+        gateway = createContentGateway(schemaRepositoryStub, dataRepositoryStub);
         app.use(
             "/",
             await generateContentGatewayAPI({
@@ -99,6 +98,7 @@ describe("Given a content gateway api", () => {
             .post("/receive")
             .send({
                 info: userInfo,
+                cursor: 0,
                 data: generateUser(),
             })
             .accept("text/plain")
@@ -127,6 +127,7 @@ describe("Given a content gateway api", () => {
             .post("/receive-batch")
             .send({
                 info: userInfo,
+                cursor: 0,
                 data: users,
             })
             .accept("text/plain")
@@ -141,15 +142,16 @@ describe("Given a content gateway api", () => {
             .post("/receive-batch")
             .send({
                 info: userInfo,
+                cursor: 0,
                 data: generateUser(),
             })
             .accept("text/plain")
             .expect(500);
 
-            expect(result.status).toBe(500);
-            expect(result.body).toEqual({
-                result: "failure",
-                error: "The supplied payload batch was invalid",
-            });
+        expect(result.status).toBe(500);
+        expect(result.body).toEqual({
+            result: "failure",
+            error: "The supplied payload batch was invalid",
+        });
     });
 });

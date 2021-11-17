@@ -4,14 +4,14 @@ import { extractRight } from "@shared/util-fp";
 import {
     createSchemaFromType,
     Schema,
-    schemaInfoToString,
+    schemaInfoToString
 } from "@shared/util-schema";
 import { Type } from "@tsed/core";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import * as O from "fp-ts/Option";
 import { v4 as uuid } from "uuid";
-import { createPrismaSchemaStorage } from "./PrismaSchemaStorage";
+import { createPrismaSchemaRepository } from "./PrismaSchemaRepository";
 
 @AdditionalProperties(false)
 class User {
@@ -61,7 +61,7 @@ const createSchema = (type: Type<unknown>, version: string) => {
 const client = new PrismaClient();
 
 describe("Given a Prisma schema storage", () => {
-    const storage = createPrismaSchemaStorage(client);
+    const storage = createPrismaSchemaRepository(client);
 
     describe("When creating a new schema entry", () => {
         it("Then it is successfully created when valid", async () => {

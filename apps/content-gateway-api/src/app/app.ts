@@ -1,11 +1,9 @@
-import { createClient } from "@banklessdao/content-gateway-client";
+import { createClient, jsonBatchPayloadCodec, jsonPayloadCodec } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cga/prisma";
 import { createContentGateway } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import {
-    batchPayloadCodec,
-    createSchemaFromObject,
-    payloadCodec
+    createSchemaFromObject
 } from "@shared/util-schema";
 import * as express from "express";
 import * as E from "fp-ts/Either";
@@ -16,15 +14,14 @@ import { formatValidationErrors } from "io-ts-reporters";
 import { failure } from "io-ts/lib/PathReporter";
 import { join } from "path";
 import {
-    AppContext, createPrismaDataStorage,
-    createPrismaSchemaStorage
+    AppContext, createPrismaDataRepository,
+    createPrismaSchemaRepository
 } from "./";
 import { generateContentGatewayAPI } from "./endpoints";
 import {
     createGraphQLAPI,
-    decorateSchemaStorage
+    decorateSchemaRepository
 } from "./endpoints/graphql/GraphQLAPI";
-
 const env = process.env.NODE_ENV;
 const isDev = env === "development";
 const isProd = env === "production";
@@ -38,12 +35,12 @@ export const createAPI = async (prisma: PrismaClient) => {
     logger.info(`Running in ${env} mode`);
 
     const app = express();
-    const schemaStorage = decorateSchemaStorage(
-        createPrismaSchemaStorage(prisma)
+    const schemaRepository = decorateSchemaRepository(
+        createPrismaSchemaRepository(prisma)
     );
-    const dataStorage = createPrismaDataStorage(prisma, schemaStorage);
+    const dataRepository = createPrismaDataRepository(prisma, schemaRepository);
 
-    const gateway = createContentGateway(schemaStorage, dataStorage);
+    const gateway = createContentGateway(schemaRepository, dataRepository);
 
     const client = createClient({
         adapter: {
@@ -59,7 +56,7 @@ export const createAPI = async (prisma: PrismaClient) => {
             },
             send: (payload): TE.TaskEither<Error, void> => {
                 return pipe(
-                    payloadCodec.decode(payload),
+                    jsonPayloadCodec.decode(payload),
                     E.mapLeft(
                         (err: Errors) =>
                             new Error(formatValidationErrors(err).join())
@@ -71,7 +68,7 @@ export const createAPI = async (prisma: PrismaClient) => {
             },
             sendBatch: (payload): TE.TaskEither<Error, void> => {
                 return pipe(
-                    batchPayloadCodec.decode(payload),
+                    jsonBatchPayloadCodec.decode(payload),
                     E.mapLeft(
                         (err: Errors) =>
                             new Error(formatValidationErrors(err).join())
@@ -91,8 +88,8 @@ export const createAPI = async (prisma: PrismaClient) => {
         isProd,
         app,
         prisma,
-        schemaStorage,
-        dataStorage,
+        schemaRepository,
+        dataRepository,
         gateway,
         client,
     };

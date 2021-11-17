@@ -1,9 +1,9 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cga/prisma";
-import { ContentGateway, DataStorage } from "@domain/feature-gateway";
+import { ContentGateway, DataRepository } from "@domain/feature-gateway";
 import { Application } from "express";
 import { Logger } from "tslog";
-import { SchemaStorageDecorator } from "./endpoints";
+import { SchemaRepositoryDecorator } from "./endpoints";
 
 export type AppContext = {
     logger: Logger;
@@ -12,8 +12,8 @@ export type AppContext = {
     isProd: boolean;
     app: Application;
     prisma: PrismaClient;
-    schemaStorage: SchemaStorageDecorator;
-    dataStorage: DataStorage;
+    schemaRepository: SchemaRepositoryDecorator;
+    dataRepository: DataRepository;
     gateway: ContentGateway;
     client: ContentGatewayClient;
 };

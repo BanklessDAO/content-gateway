@@ -176,19 +176,3 @@ export const schemaCodec = t.strict({
     info: schemaInfoCodec,
     jsonSchema: supportedJSONSchemaCodec,
 });
-
-export const payloadCodec = t.strict({
-    info: schemaInfoCodec,
-    data: withMessage(
-        t.record(t.string, t.unknown),
-        () => "Data is not a valid json object"
-    ),
-});
-
-export const batchPayloadCodec = withMessage(
-    t.strict({
-        info: schemaInfoCodec,
-        data: t.array(t.record(t.string, t.unknown)),
-    }),
-    () => "Payload is invalid"
-);

@@ -107,11 +107,11 @@ export const courseLoader: DataLoader<Course> = {
         const nextJob = {
             info: courseInfo,
             scheduledAt: DateTime.now().plus({ minutes: 1 }).toJSDate(),
-            cursor: 0, // TODO: use proper timestamps
+            cursor: 0, // TODO: 👈 use proper timestamps 👇
             limit: 1000,
         };
         return pipe(
-            client.saveBatch(courseInfo, data),
+            client.saveBatch({ info: courseInfo, data: data, cursor: 0 }),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {
                 logger.error("Bankless Academy data loading failed:", error);

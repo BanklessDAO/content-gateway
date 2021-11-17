@@ -2,11 +2,11 @@ import { createLogger } from "@shared/util-fp";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import { createClient } from "./";
+import { ContentGatewayClient } from "./ContentGatewayClient";
 import {
-    ContentGatewayClient,
     createOutboundAdapterStub,
     OutboundDataAdapterStub,
-} from "./ContentGatewayClient";
+} from "./OutboundDataAdapter";
 
 class Comment {
     @Required(true)
@@ -107,12 +107,17 @@ describe("Given a gateway client", () => {
 
     it("When sending a valid payload Then it is sent properly", async () => {
         await client.register(info, Post)();
-        const result = await client.save(info, validPost)();
+        const result = await client.save({
+            info: info,
+            data: validPost,
+            cursor: 0,
+        })();
 
         expect(result).toEqual(E.right(undefined));
         expect(adapterStub.payloads).toEqual([
             {
                 info: { namespace: "test", name: "Post", version: "V1" },
+                cursor: 0,
                 data: {
                     id: "1",
                     content: "Hello World",
@@ -123,7 +128,11 @@ describe("Given a gateway client", () => {
     });
 
     it("When sending an unregistered payload Then an error is returned", async () => {
-        const result = await client.save(info, validPost)();
+        const result = await client.save({
+            info: info,
+            data: validPost,
+            cursor: 0,
+        })();
 
         expect(result).toEqual(
             E.left(new Error("The given type test.Post.V1 is not registered"))
@@ -132,7 +141,11 @@ describe("Given a gateway client", () => {
 
     it("When sending a payload with missing data Then an error is returned", async () => {
         await client.register(info, Post)();
-        const result = await client.save(info, invalidPostWithMissingData)();
+        const result = await client.save({
+            info: info,
+            data: invalidPostWithMissingData,
+            cursor: 0,
+        })();
 
         expect(result).toEqual(
             E.left(new Error("field  must have required property 'content'"))
@@ -142,7 +155,11 @@ describe("Given a gateway client", () => {
     // TODO: add it to the docs that they should use @AdditionalProperties(false)
     it("When sending a payload with extra data Then an error is returned", async () => {
         await client.register(info, Post)();
-        const result = await client.save(info, invalidPostWithExtraData)();
+        const result = await client.save({
+            info: info,
+            data: invalidPostWithExtraData,
+            cursor: 0,
+        })();
 
         expect(result).toEqual(
             E.left(new Error("field  must NOT have additional properties"))

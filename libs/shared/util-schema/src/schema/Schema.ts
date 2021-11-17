@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createLogger } from "@shared/util-fp";
 import { Type } from "@tsed/core";
 import { getJsonSchema } from "@tsed/schema";
 import Ajv from "ajv/dist/ajv";
@@ -19,21 +18,9 @@ const ajv = new Ajv({
     messages: true,
 });
 
-const logger = createLogger("Schema");
-
 export type ValidationError = {
     field: string;
     message: string;
-};
-
-export type PayloadJson = {
-    info: SchemaInfo;
-    data: Record<string, unknown>;
-};
-
-export type BatchPayloadJson = {
-    info: SchemaInfo;
-    data: Record<string, unknown>[];
 };
 
 /**

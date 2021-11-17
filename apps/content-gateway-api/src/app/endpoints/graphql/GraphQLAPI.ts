@@ -1,4 +1,4 @@
-import { DataStorage, SchemaStorage } from "@domain/feature-gateway";
+import { DataRepository, SchemaRepository } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import { toGraphQLType } from "@shared/util-graphql";
 import { Operator } from "@shared/util-loaders";
@@ -27,15 +27,15 @@ export type Middleware = (
 ) => Promise<void>;
 
 export type Deps = {
-    readonly schemaStorage: SchemaStorageDecorator;
-    readonly dataStorage: DataStorage;
+    readonly schemaRepository: SchemaRepositoryDecorator;
+    readonly dataRepository: DataRepository;
 };
 
 export type GraphQLAPI = {
     readonly middleware: Middleware;
 };
 
-export type SchemaStorageDecorator = SchemaStorage & {
+export type SchemaRepositoryDecorator = SchemaRepository & {
     onRegister: (listener: () => void) => void;
 };
 
@@ -44,7 +44,7 @@ export type SchemaStorageDecorator = SchemaStorage & {
  */
 export const createGraphQLAPI = async (deps: Deps): Promise<Middleware> => {
     let currentMiddleware = await createGraphQLMiddleware(deps);
-    deps.schemaStorage.onRegister(() => {
+    deps.schemaRepository.onRegister(() => {
         createGraphQLMiddleware(deps).then((middleware) => {
             currentMiddleware = middleware;
         });
@@ -55,11 +55,11 @@ export const createGraphQLAPI = async (deps: Deps): Promise<Middleware> => {
 };
 
 const createGraphQLMiddleware = async ({
-    schemaStorage,
-    dataStorage,
+    schemaRepository,
+    dataRepository,
 }: Deps): Promise<Middleware> => {
     const logger = createLogger("GraphQLAPI");
-    const schemas = await schemaStorage.findAll()();
+    const schemas = await schemaRepository.findAll()();
     pipe(
         schemas,
         O.map((s) => {
@@ -81,7 +81,7 @@ const createGraphQLMiddleware = async ({
 
             const findById = async (id: bigint) => {
                 return pipe(
-                    dataStorage.findById(id),
+                    dataRepository.findById(id),
                     TO.map((data) => data.record),
                     TO.getOrElse(() => T.of(undefined))
                 )();
@@ -110,7 +110,7 @@ const createGraphQLMiddleware = async ({
                 limit++;
 
                 return pipe(
-                    dataStorage.findByFilters({
+                    dataRepository.findByFilters({
                         info: schema.info,
                         cursor: after ? BigInt(after) : undefined,
                         limit: limit,
@@ -131,18 +131,10 @@ const createGraphQLMiddleware = async ({
                             startCursor = entries[0].id.toString();
                             endCursor =
                                 entries[entries.length - 1].id.toString();
-                            logger.info("Has entries");
                         } else {
                             startCursor = after;
                             endCursor = startCursor;
-                            logger.info("Has no entries");
                         }
-
-                        logger.info("Cursors: ", {
-                            startCursor,
-                            endCursor,
-                        });
-
                         return {
                             pageInfo: {
                                 hasNextPage,
@@ -210,16 +202,16 @@ const createGraphQLMiddleware = async ({
  * Decorates a schema storage with a side effect that will regenerate
  * the GraphQL api whenever a new schema is saved.
  */
-export const decorateSchemaStorage = (
-    schemaStorage: SchemaStorage
-): SchemaStorageDecorator => {
-    const logger = createLogger("SchemaStorageDecorator");
+export const decorateSchemaRepository = (
+    schemaRepository: SchemaRepository
+): SchemaRepositoryDecorator => {
+    const logger = createLogger("SchemaRepositoryDecorator");
     const listeners = [] as Array<() => void>;
     return {
-        ...schemaStorage,
+        ...schemaRepository,
         register: (schema: Schema) => {
             return pipe(
-                schemaStorage.register(schema),
+                schemaRepository.register(schema),
                 TE.map((result) => {
                     logger.info("Generating new GraphQL API");
                     listeners.forEach((listener) => listener());

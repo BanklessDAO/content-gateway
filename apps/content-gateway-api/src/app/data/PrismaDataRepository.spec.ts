@@ -6,7 +6,7 @@ import { OperatorType } from "@shared/util-loaders";
 import { createSchemaFromType, SchemaInfo } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import { v4 as uuid } from "uuid";
-import { createPrismaDataStorage, createPrismaSchemaStorage } from ".";
+import { createPrismaDataRepository, createPrismaSchemaRepository } from ".";
 import * as O from "fp-ts/lib/Option";
 
 @AdditionalProperties(false)
@@ -28,8 +28,8 @@ const addressInfo = {
 const prisma = new PrismaClient();
 
 describe("Given a Prisma data storage", () => {
-    const schemaStorage = createPrismaSchemaStorage(prisma);
-    const storage = createPrismaDataStorage(prisma, schemaStorage);
+    const schemaRepository = createPrismaSchemaRepository(prisma);
+    const storage = createPrismaDataRepository(prisma, schemaRepository);
     const schema = extractRight(createSchemaFromType(addressInfo, Address));
 
     const prepareTempSchema = async (version: string) => {

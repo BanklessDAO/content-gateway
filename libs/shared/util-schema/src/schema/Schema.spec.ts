@@ -2,7 +2,7 @@ import { extractRight } from "@shared/util-fp";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import { createSchemaFromObject, createSchemaFromType } from ".";
-import { User as UserWithBackwardsCompatibleNestedAddress } from "./user/UserWithBackwardsCompatibleAddress";
+import { User as UserWithBackwardsCompatibleNestedAddress } from "./test/UserWithBackwardsCompatibleAddress";
 
 class Comment {
     @Required(true)

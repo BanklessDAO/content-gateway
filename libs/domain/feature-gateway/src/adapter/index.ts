@@ -1,3 +1,3 @@
-export * from "./DataStorage";
-export * from "./SchemaStorage";
+export * from "./DataRepository";
+export * from "./SchemaRepository";
 export * from "./Errors";

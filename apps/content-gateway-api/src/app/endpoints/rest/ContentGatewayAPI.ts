@@ -1,9 +1,6 @@
 import { ContentGateway } from "@domain/feature-gateway";
-import {
-    batchPayloadCodec,
-    createSchemaFromObject,
-    payloadCodec,
-} from "@shared/util-schema";
+import { createLogger } from "@shared/util-fp";
+import { createSchemaFromObject } from "@shared/util-schema";
 import * as express from "express";
 import * as E from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/function";
@@ -11,7 +8,10 @@ import * as T from "fp-ts/lib/Task";
 import * as TE from "fp-ts/lib/TaskEither";
 import { Errors } from "io-ts";
 import { formatValidationErrors } from "io-ts-reporters";
-import { createLogger } from "@shared/util-fp";
+import {
+    jsonBatchPayloadCodec,
+    jsonPayloadCodec,
+} from "@banklessdao/content-gateway-client";
 
 const logger = createLogger("ContentGatewayAPI");
 
@@ -44,7 +44,7 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
 
     router.post("/receive", async (req, res) => {
         await pipe(
-            payloadCodec.decode(req.body),
+            jsonPayloadCodec.decode(req.body),
             mapErrors("Validating payload failed"),
             TE.fromEither,
             TE.chain((data) => {
@@ -57,7 +57,7 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
     router.post("/receive-batch", async (req, res) => {
         logger.info("Receiving batch...");
         await pipe(
-            batchPayloadCodec.decode(req.body),
+            jsonBatchPayloadCodec.decode(req.body),
             mapErrors("The supplied payload batch was invalid"),
             TE.fromEither,
             TE.chain((data) => {

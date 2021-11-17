@@ -3,12 +3,13 @@ import { PrismaClient, Schema as PrismaSchema } from "@cga/prisma";
 import {
     RegisteredSchemaIncompatibleError,
     SchemaCreationFailedError,
-    SchemaStorage,
+    SchemaCursorUpdateFailedError,
+    SchemaRepository
 } from "@domain/feature-gateway";
 import {
     createSchemaFromObject,
     Schema,
-    SchemaInfo,
+    SchemaInfo
 } from "@shared/util-schema";
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
@@ -18,9 +19,9 @@ import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import { Errors } from "io-ts";
 
-export const createPrismaSchemaStorage = (
+export const createPrismaSchemaRepository = (
     prisma: PrismaClient
-): SchemaStorage => {
+): SchemaRepository => {
     const findSchema = (info: SchemaInfo) => {
         return pipe(
             TO.tryCatch(() => {
@@ -113,6 +114,22 @@ export const createPrismaSchemaStorage = (
                         )
                     );
                 })
+            );
+        },
+        updateCursor: (info: SchemaInfo, cursor: number) => {
+            return pipe(
+                TE.tryCatch(
+                    async () => {
+                        prisma.schema.update({
+                            where: {
+                                namespace_name_version: info,
+                            },
+                            data: cursor,
+                        });
+                    },
+                    (err: Error) =>
+                        SchemaCursorUpdateFailedError.create(err.message)
+                )
             );
         },
     };

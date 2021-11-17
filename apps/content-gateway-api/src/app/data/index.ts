@@ -1,2 +1,2 @@
-export * from "./PrismaDataStorage";
-export * from "./PrismaSchemaStorage";
+export * from "./PrismaDataRepository";
+export * from "./PrismaSchemaRepository";

@@ -46,10 +46,10 @@ export type OperatorFilter = {
 };
 
 /**
- * The [[DataStorage]] is a server-side component of the content gateway.
+ * The [[DataRepository]] is a server-side component of the content gateway.
  * It is responsible for storing the data received from the SDK.
  */
-export type DataStorage = {
+export type DataRepository = {
     store: (entry: SinglePayload) => TE.TaskEither<StorageError, EntryWithInfo>;
     storeBulk: (
         entryList: ListPayload
@@ -59,18 +59,17 @@ export type DataStorage = {
     findByFilters: (filter: OperatorFilter) => T.Task<EntryList>;
 };
 
-export type DataStorageStub = {
+export type DataRepositoryStub = {
     storage: Map<string, Entry[]>;
-} & DataStorage;
+} & DataRepository;
 
 /**
- * This factory function creates a new [[DataStorage]] instance that will
+ * This factory function creates a new [[DataRepository]] instance that will
  * use the supplied [[map]] as the storage. This is useful for testing.
  */
-export const createDataStorageStub = (
+export const createDataRepositoryStub = (
     map: Map<string, Entry[]> = new Map()
-): DataStorageStub => {
-    const lookup = new Map<bigint, Entry>();
+): DataRepositoryStub => {
     let counter = 1;
 
     const store = (
@@ -87,7 +86,6 @@ export const createDataStorageStub = (
         };
         counter++;
         map.get(keyStr)?.push(entry);
-        lookup.set(entry.id, entry);
         return TE.right(entry);
     };
 

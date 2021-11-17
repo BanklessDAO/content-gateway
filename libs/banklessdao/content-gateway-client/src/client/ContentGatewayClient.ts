@@ -1,25 +1,30 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createLogger } from "@shared/util-fp";
 import {
-    BatchPayloadJson,
     createSchemaFromType,
-    PayloadJson,
+    Payload,
     Schema,
     SchemaInfo,
     schemaInfoToString,
-    SchemaJson,
     ValidationError,
 } from "@shared/util-schema";
 import { isArray, Type } from "@tsed/core";
-import axios from "axios";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/function";
 import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
 import { Errors } from "io-ts";
 import { formatValidationErrors } from "io-ts-reporters";
+import { OutboundDataAdapterStub } from ".";
+import {
+    createOutboundAdapterStub,
+    OutboundDataAdapter,
+} from "./OutboundDataAdapter";
 
 const logger = createLogger("ContentGatewayClient");
+
+export type ClientDependencies = {
+    adapter: OutboundDataAdapter;
+};
 
 /**
  * The {@link ContentGatewayClient} is the client-side component of the *Content Gateway*.
@@ -52,119 +57,15 @@ export type ContentGatewayClient = {
         type: Type<T>
     ) => TE.TaskEither<Error, void>;
     /**
-     * Saves the [[data]] to the Content Gateway using the scema's metadata to
+     * Saves the [[data]] to the Content Gateway using the schema's metadata to
      * identify it. This will return an error if the type of [[data]] is not
      *  {@link ContentGatewayClient#register | register}ed.
      */
-    save: <T>(info: SchemaInfo, data: T) => TE.TaskEither<Error, void>;
+    save: <T>(payload: Payload<T>) => TE.TaskEither<Error, void>;
     /**
      * Same as {@link ContentGatewayClient#save} but sends a batch
      */
-    saveBatch: <T>(
-        info: SchemaInfo,
-        data: Array<T>
-    ) => TE.TaskEither<Error, void>;
-};
-
-/**
- * This abstraction hides the implementation details of how data is sent over the wire.
- */
-export type OutboundDataAdapter = {
-    register: (schema: SchemaJson) => TE.TaskEither<Error, void>;
-    send: (payload: PayloadJson) => TE.TaskEither<Error, void>;
-    sendBatch: (payload: BatchPayloadJson) => TE.TaskEither<Error, void>;
-};
-
-export type OutboundDataAdapterStub = {
-    schemas: Array<SchemaJson>;
-    payloads: Array<PayloadJson | BatchPayloadJson>;
-} & OutboundDataAdapter;
-
-export type ClientDependencies = {
-    adapter: OutboundDataAdapter;
-};
-
-// TODO: extract result here
-export const createRESTAdapter = (url: string): OutboundDataAdapter => {
-    return {
-        register: (schema: SchemaJson) => {
-            return TE.tryCatch(
-                () => axios.post(`${url}/api/rest/register`, schema),
-                (err) => new Error(`Error registering schema: ${err}`)
-            );
-        },
-        send: (payload: PayloadJson) => {
-            return TE.tryCatch(
-                () => axios.post(`${url}/api/rest/receive`, payload),
-                (err) => new Error(`Error sending payload: ${err}`)
-            );
-        },
-        sendBatch: (payload: BatchPayloadJson) => {
-            return TE.tryCatch(
-                async () => {
-                    const result = await axios.post(
-                        `${url}/api/rest/receive-batch`,
-                        payload
-                    );
-
-                    logger.info(
-                        `status: ${result.status}, text: ${result.statusText}`
-                    );
-                },
-                (err: unknown) => {
-                    // TODO: code paths
-                    if (axios.isAxiosError(err)) {
-                        return new Error(`Error sending payload.`);
-                    } else {
-                        return new Error(`Error sending payload.`);
-                    }
-                }
-            );
-        },
-    };
-};
-
-export type ContentGatewayClientStub = {
-    adapter: OutboundDataAdapterStub;
-} & ContentGatewayClient;
-
-/**
- * Creates a stub {@link OutboundDataAdapter} with the corresponding storage
- * objects that can be used for testing.
- */
-export const createOutboundAdapterStub = (): OutboundDataAdapterStub => {
-    const schemas = [] as Array<SchemaJson>;
-    const payloads = [] as Array<PayloadJson | BatchPayloadJson>;
-    return {
-        schemas,
-        payloads,
-        register: (schema) => {
-            schemas.push(schema);
-            return TE.right(undefined);
-        },
-        send: (payload) => {
-            payloads.push(payload);
-            return TE.right(undefined);
-        },
-        sendBatch: (payload) => {
-            payloads.push(payload);
-            return TE.right(undefined);
-        },
-    };
-};
-
-/**
- * Creates a new {@link ContentGatewayClientStub} instance that uses
- * in-memory storage and default serialization. Can be used for
- * testing purposes.
- */
-export const createClientStub: () => ContentGatewayClientStub = () => {
-    const adapter = createOutboundAdapterStub();
-    const client = createClient({ adapter });
-    return {
-        adapter,
-        ...client,
-    };
+    saveBatch: <T>(payload: Payload<Array<T>>) => TE.TaskEither<Error, void>;
 };
 
 /**
@@ -174,7 +75,6 @@ export const createClient = ({
     adapter,
 }: ClientDependencies): ContentGatewayClient => {
     const schemas = new Map<string, Schema>();
-    const logger = createLogger("ContentGatewayClient");
     return {
         register: <T>(
             info: SchemaInfo,
@@ -199,7 +99,8 @@ export const createClient = ({
                 })
             );
         },
-        save: <T>(info: SchemaInfo, data: T): TE.TaskEither<Error, void> => {
+        save: <T>(payload: Payload<T>): TE.TaskEither<Error, void> => {
+            const { info, data, cursor } = payload;
             const mapKey = schemaInfoToString(info);
             const maybeSchema = O.fromNullable(schemas.get(mapKey));
             return pipe(
@@ -217,15 +118,16 @@ export const createClient = ({
                 TE.chain((dataRecord) =>
                     adapter.send({
                         info: info,
+                        cursor: cursor,
                         data: dataRecord,
                     })
                 )
             );
         },
         saveBatch: <T>(
-            info: SchemaInfo,
-            data: Array<T>
+            payload: Payload<Array<T>>
         ): TE.TaskEither<Error, void> => {
+            const { info, data, cursor } = payload;
             const mapKey = schemaInfoToString(info);
             const maybeSchema = O.fromNullable(schemas.get(mapKey));
             return pipe(
@@ -247,11 +149,30 @@ export const createClient = ({
                 TE.chain((dataArray) =>
                     adapter.sendBatch({
                         info: info,
+                        cursor: cursor,
                         data: dataArray as Array<Record<string, unknown>>,
                     })
                 )
             );
         },
+    };
+};
+
+export type ContentGatewayClientStub = {
+    adapter: OutboundDataAdapterStub;
+} & ContentGatewayClient;
+
+/**
+ * Creates a new {@link ContentGatewayClientStub} instance that uses
+ * in-memory storage and default serialization. Can be used for
+ * testing purposes.
+ */
+export const createClientStub: () => ContentGatewayClientStub = () => {
+    const adapter = createOutboundAdapterStub();
+    const client = createClient({ adapter });
+    return {
+        adapter,
+        ...client,
     };
 };
 

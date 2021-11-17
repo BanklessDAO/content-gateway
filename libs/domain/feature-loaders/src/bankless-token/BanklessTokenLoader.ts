@@ -123,11 +123,15 @@ export const banklessTokenLoader: DataLoader<BanklessToken> = {
         const nextJob = {
             info: banklessTokenInfo,
             scheduledAt: DateTime.now().plus({ minutes: 30 }).toJSDate(),
-            cursor: 0, // TODO: use proper timestamps
+            cursor: 0, // TODO: 👈 use proper timestamps 👇
             limit: 1000,
         };
         return pipe(
-            client.saveBatch(banklessTokenInfo, data),
+            client.saveBatch({
+                info: banklessTokenInfo,
+                data: data,
+                cursor: 0,
+            }),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {
                 logger.error(

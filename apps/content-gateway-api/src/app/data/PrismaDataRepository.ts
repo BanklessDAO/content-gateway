@@ -1,7 +1,7 @@
 import { Data, Prisma, PrismaClient } from "@cga/prisma";
 import {
     DatabaseStorageError,
-    DataStorage,
+    DataRepository,
     DataValidationError,
     EntryList,
     EntryWithInfo,
@@ -9,9 +9,9 @@ import {
     MissingSchemaError,
     OperatorFilter,
     SchemaFilter,
-    SchemaStorage,
+    SchemaRepository,
     SinglePayload,
-    StorageError,
+    StorageError
 } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import { OperatorType } from "@shared/util-loaders";
@@ -38,11 +38,11 @@ type PrismaCursor = {
     id: bigint;
 };
 
-export const createPrismaDataStorage = (
+export const createPrismaDataRepository = (
     prisma: PrismaClient,
-    schemaStorage: SchemaStorage
-): DataStorage => {
-    const logger = createLogger("PrismaDataStorage");
+    schemaRepository: SchemaRepository
+): DataRepository => {
+    const logger = createLogger("PrismaDataRepository");
     const upsertData = (data: SinglePayload) => {
         const { info, record } = data;
         const toSave = {
@@ -96,7 +96,7 @@ export const createPrismaDataStorage = (
         ): TE.TaskEither<StorageError, EntryWithInfo> => {
             const { info, record } = payload;
             return pipe(
-                schemaStorage.find(info),
+                schemaRepository.find(info),
                 TE.fromTaskOption(
                     () => new MissingSchemaError(info) as StorageError
                 ),
@@ -126,7 +126,7 @@ export const createPrismaDataStorage = (
         ): TE.TaskEither<StorageError, EntryList> => {
             const { info, records } = listPayload;
             return pipe(
-                schemaStorage.find(info),
+                schemaRepository.find(info),
                 TE.fromTaskOption(
                     () => new MissingSchemaError(info) as StorageError
                 ),
@@ -213,7 +213,6 @@ export const createPrismaDataStorage = (
         findByFilters: (filters: OperatorFilter): T.Task<EntryList> => {
             const { cursor, limit, info, operators } = filters;
             const { namespace, name, version } = info;
-            logger.info("Finding by filters:", filters);
             let where = operators.map((op) => {
                 const operator = operatorLookup[op.type];
                 return {

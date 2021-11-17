@@ -1,9 +1,8 @@
 import { createLogger } from "@shared/util-fp";
-import { Schema } from "@shared/util-schema";
+import { Payload, Schema } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
-import { DataStorage, SchemaStorage } from "../adapter";
-import { Payload } from "../types";
+import { DataRepository, SchemaRepository } from "../adapter";
 
 /**
  * Represents the public API of the Content Gateway.
@@ -29,28 +28,32 @@ export type ContentGateway = {
 };
 
 export type ContentGatewayFactory = (
-    schemaStorage: SchemaStorage,
-    dataStorage: DataStorage
+    schemaRepository: SchemaRepository,
+    dataRepository: DataRepository
 ) => ContentGateway;
 
 /**
  * Creates a new [[ContentGateway]] instance using the supplied
- * [[schemaStorage]] and [[dataStorage]].
+ * [[schemaRepository]] and [[dataRepository]].
  */
 export const createContentGateway: ContentGatewayFactory = (
-    schemaStorage: SchemaStorage,
-    dataStorage: DataStorage
+    schemaRepository: SchemaRepository,
+    dataRepository: DataRepository
 ) => {
     const logger = createLogger("ContentGateway");
     return {
         register: (schema: Schema) => {
-            return schemaStorage.register(schema);
+            return schemaRepository.register(schema);
         },
         receive: <T>(payload: Payload<T>) => {
+            const { info, data, cursor } = payload;
             return pipe(
-                dataStorage.store({
-                    info: payload.info,
-                    record: payload.data as Record<string, unknown>,
+                dataRepository.store({
+                    info: info,
+                    record: data as Record<string, unknown>,
+                }),
+                TE.chain(() => {
+                    return schemaRepository.updateCursor(info, cursor);
                 }),
                 TE.mapLeft((err) => {
                     logger.warn(`Failed to store batch of data:`, err);
@@ -60,12 +63,15 @@ export const createContentGateway: ContentGatewayFactory = (
             );
         },
         receiveBatch: <T>(payload: Payload<Array<T>>) => {
-            const { info, data } = payload;
+            const { info, data, cursor } = payload;
 
             return pipe(
-                dataStorage.storeBulk({
+                dataRepository.storeBulk({
                     info: info,
                     records: data as Record<string, unknown>[],
+                }),
+                TE.chain(() => {
+                    return schemaRepository.updateCursor(info, cursor);
                 }),
                 TE.mapLeft((err) => {
                     logger.warn(`Failed to store batch of data:`, err);
