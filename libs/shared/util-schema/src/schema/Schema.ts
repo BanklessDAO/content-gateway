@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { createLogger } from "@shared/util-fp";
 import { Type } from "@tsed/core";
 import { getJsonSchema } from "@tsed/schema";
 import Ajv from "ajv/dist/ajv";
@@ -6,7 +7,6 @@ import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import { Errors } from "io-ts";
 import * as difftool from "json-schema-diff-validator";
-import { Logger } from "tslog";
 import { schemaCodec } from ".";
 import { SchemaInfo } from "..";
 import { SupportedJSONSchema } from "./codecs";
@@ -19,7 +19,7 @@ const ajv = new Ajv({
     messages: true,
 });
 
-const logger = new Logger({ name: "Schema" });
+const logger = createLogger("Schema");
 
 export type ValidationError = {
     field: string;

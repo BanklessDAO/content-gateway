@@ -1,37 +1,37 @@
 import {
     JobSchedule,
     JobState as PrismaJobState,
-    PrismaClient,
+    PrismaClient
 } from "@cgl/prisma";
+import { createLogger } from "@shared/util-fp";
 import { Job, JobRepository, JobState } from "@shared/util-loaders";
+import { schemaInfoToString, stringToSchemaInfo } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
-import { Logger } from "tslog";
 
 export const createJobRepository = (prisma: PrismaClient): JobRepository => {
-    const logger = new Logger({ name: "PrismaJobRepository" });
+    const logger = createLogger("PrismaJobRepository");
 
-    const jobScheduleToJobDescriptor = (
-        jobSchedule: JobSchedule
-    ): Job => ({
+    const jobScheduleToJobDescriptor = (jobSchedule: JobSchedule): Job => ({
         cursor: jobSchedule.cursor,
         limit: jobSchedule.limit,
-        name: jobSchedule.name,
+        info: stringToSchemaInfo(jobSchedule.name),
         scheduledAt: jobSchedule.scheduledAt,
         state: JobState[jobSchedule.state],
     });
 
     const upsertJob = (job: Job, note: string) => {
+        const key = schemaInfoToString(job.info);
         logger.info(
-            `Updating job ${job.name} with state ${job.state} and note '${note}'.`
+            `Updating job ${key} with state ${job.state} and note '${note}'.`
         );
         const state = PrismaJobState[job.state];
         return pipe(
             TE.tryCatch(
                 async () => {
                     const jobSchedule = {
-                        name: job.name,
+                        name: key,
                         cursor: job.cursor,
                         limit: job.limit,
                         state: state,
@@ -46,7 +46,7 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
                     };
                     return prisma.jobSchedule.upsert({
                         where: {
-                            name: job.name,
+                            name: key,
                         },
                         create: jobSchedule,
                         update: jobSchedule,
@@ -54,7 +54,7 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
                 },
                 (err: unknown) => {
                     logger.warn(
-                        `Couldn't update job ${job.name} to state ${state}. Cause:`,
+                        `Couldn't update job ${key} to state ${state}. Cause:`,
                         err
                     );
                     return new Error(String(err));

@@ -1,9 +1,10 @@
+import { SchemaInfo } from "@shared/util-schema";
 
 /**
  * Contains the metadata for a scheduled job.
  */
 export type JobDescriptor = {
-    name: string;
+    info: SchemaInfo;
     /**
      * The date and time when the job should run
      */

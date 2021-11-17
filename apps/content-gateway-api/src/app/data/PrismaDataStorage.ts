@@ -13,6 +13,7 @@ import {
     SinglePayload,
     StorageError,
 } from "@domain/feature-gateway";
+import { createLogger } from "@shared/util-fp";
 import { OperatorType } from "@shared/util-loaders";
 import { Schema, SchemaInfo, ValidationError } from "@shared/util-schema";
 import * as E from "fp-ts/Either";
@@ -20,7 +21,6 @@ import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
-import { Logger } from "tslog";
 
 const operatorLookup = {
     [OperatorType.EQUALS]: "equals",
@@ -38,12 +38,11 @@ type PrismaCursor = {
     id: bigint;
 };
 
-const logger = new Logger({ name: "PrismaDataStorage" });
-
 export const createPrismaDataStorage = (
     prisma: PrismaClient,
     schemaStorage: SchemaStorage
 ): DataStorage => {
+    const logger = createLogger("PrismaDataStorage");
     const upsertData = (data: SinglePayload) => {
         const { info, record } = data;
         const toSave = {

@@ -1,4 +1,5 @@
 import { DataStorage, SchemaStorage } from "@domain/feature-gateway";
+import { createLogger } from "@shared/util-fp";
 import { toGraphQLType } from "@shared/util-graphql";
 import { Operator } from "@shared/util-loaders";
 import { Schema, schemaInfoToString } from "@shared/util-schema";
@@ -13,14 +14,12 @@ import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
 import * as pluralize from "pluralize";
-import { Logger } from "tslog";
 import { operators as operatorsType } from "./types/Operators";
 import { createResultsType, Results } from "./types/Results";
 
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
 
 const maxItems = 1000;
-const logger = new Logger({ name: "GraphQLAPI" });
 
 export type Middleware = (
     request: Request,
@@ -59,6 +58,7 @@ const createGraphQLMiddleware = async ({
     schemaStorage,
     dataStorage,
 }: Deps): Promise<Middleware> => {
+    const logger = createLogger("GraphQLAPI");
     const schemas = await schemaStorage.findAll()();
     pipe(
         schemas,
@@ -152,7 +152,7 @@ const createGraphQLMiddleware = async ({
                             errors: [],
                             notes: notes,
                             data: entries.map((entry) => ({
-                                ...entry,
+                                ...entry.record,
                                 id: entry.id.toString(),
                             })),
                         };
@@ -213,7 +213,7 @@ const createGraphQLMiddleware = async ({
 export const decorateSchemaStorage = (
     schemaStorage: SchemaStorage
 ): SchemaStorageDecorator => {
-    const gLogger = new Logger({ name: "graphql-updater" });
+    const logger = createLogger("SchemaStorageDecorator");
     const listeners = [] as Array<() => void>;
     return {
         ...schemaStorage,
@@ -221,7 +221,7 @@ export const decorateSchemaStorage = (
             return pipe(
                 schemaStorage.register(schema),
                 TE.map((result) => {
-                    gLogger.info("Generating new GraphQL API");
+                    logger.info("Generating new GraphQL API");
                     listeners.forEach((listener) => listener());
                     return result;
                 })

@@ -1,17 +1,15 @@
-import { notEmpty } from "@shared/util-fp";
+import { createLogger, notEmpty } from "@shared/util-fp";
 import { createGraphQLAPIClient, DataLoader } from "@shared/util-loaders";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
-import { Logger } from "tslog";
 import { POAP_TOKEN_SUBGRAPH_TOKENS } from "./queries";
-import { info, POAPToken } from "./types";
+import { POAPToken, poapTokenInfo } from "./types";
 
-const logger = new Logger({ name: "POAPLoader" });
+const logger = createLogger("POAPLoader");
 const graphAPIClient = createGraphQLAPIClient(
     "https://api.thegraph.com/subgraphs/name/poap-xyz/poap-xdai"
 );
-const name = "poap-loader";
 
 type Token = {
     id: string;
@@ -53,19 +51,21 @@ const pullTokensSince = (cursor: number): Promise<POAPToken[]> => {
     );
 };
 
-export const poapLoader: DataLoader<POAPToken> = {
-    name: name,
+const batchSize = 1000;
+
+export const poapTokenLoader: DataLoader<POAPToken> = {
+    info: poapTokenInfo,
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing POAP loader...");
         return pipe(
-            client.register(info, POAPToken),
+            client.register(poapTokenInfo, POAPToken),
             TE.chainW(() =>
                 // TODO: we don't want to restart everything when the loader is restarted 👇
                 jobScheduler.schedule({
-                    name: name,
+                    info: poapTokenInfo,
                     scheduledAt: new Date(),
                     cursor: 0,
-                    limit: 1000,
+                    limit: batchSize,
                 })
             ),
             TE.map((result) => {
@@ -115,18 +115,25 @@ export const poapLoader: DataLoader<POAPToken> = {
     save: ({ client, data }) => {
         let cursor: number;
         if (data.length > 0) {
+            logger.info(
+                `POAP data length: ${data.length}, setting cursor to: ${
+                    data[data.length - 1].mintedAt
+                }`
+            );
             cursor = data[data.length - 1].mintedAt;
         } else {
             cursor = 0;
         }
+        const cadence =
+            data.length == batchSize ? { seconds: 30 } : { minutes: 5 };
         const nextJob = {
-            name: name,
-            scheduledAt: DateTime.now().plus({ minutes: 30 }).toJSDate(),
+            info: poapTokenInfo,
+            scheduledAt: DateTime.now().plus(cadence).toJSDate(),
             cursor: cursor,
-            limit: 1000,
+            limit: batchSize,
         };
         return pipe(
-            client.saveBatch(info, data),
+            client.saveBatch(poapTokenInfo, data),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {
                 logger.error("POAP Loader data loading failed:", error);

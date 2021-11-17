@@ -11,9 +11,9 @@ import * as T from "fp-ts/lib/Task";
 import * as TE from "fp-ts/lib/TaskEither";
 import { Errors } from "io-ts";
 import { formatValidationErrors } from "io-ts-reporters";
-import { Logger } from "tslog";
+import { createLogger } from "@shared/util-fp";
 
-const logger = new Logger({ name: "ContentGatewayAPI" });
+const logger = createLogger("ContentGatewayAPI");
 
 type Deps = {
     gateway: ContentGateway;
@@ -55,13 +55,13 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
     });
 
     router.post("/receive-batch", async (req, res) => {
-        logger.info("Receiving batch...")
+        logger.info("Receiving batch...");
         await pipe(
             batchPayloadCodec.decode(req.body),
             mapErrors("The supplied payload batch was invalid"),
             TE.fromEither,
             TE.chain((data) => {
-                logger.info("Batch was valid, sending to gateway...")
+                logger.info("Batch was valid, sending to gateway...");
                 return gateway.receiveBatch(data);
             }),
             createResponseTask(res, "Batch payload receiving")

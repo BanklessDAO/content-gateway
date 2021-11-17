@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { createLogger } from "@shared/util-fp";
 import {
     BatchPayloadJson,
     createSchemaFromType,
@@ -17,9 +18,8 @@ import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
 import { Errors } from "io-ts";
 import { formatValidationErrors } from "io-ts-reporters";
-import { Logger } from "tslog";
 
-const logger = new Logger({ name: "ContentGatewayClient" });
+const logger = createLogger("ContentGatewayClient");
 
 /**
  * The {@link ContentGatewayClient} is the client-side component of the *Content Gateway*.
@@ -174,7 +174,7 @@ export const createClient = ({
     adapter,
 }: ClientDependencies): ContentGatewayClient => {
     const schemas = new Map<string, Schema>();
-    const logger = new Logger({ name: "ContentGatewayClient" });
+    const logger = createLogger("ContentGatewayClient");
     return {
         register: <T>(
             info: SchemaInfo,

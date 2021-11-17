@@ -1,5 +1,5 @@
 import * as E from "fp-ts/Either";
-
+import { Logger } from "tslog";
 
 export const extractRight = <T>(either: E.Either<unknown, T>): T => {
     if (E.isLeft(either)) {
@@ -20,3 +20,11 @@ export const extractLeft = <E>(either: E.Either<E, unknown>): E => {
 export function notEmpty<T>(value: T | null | undefined): value is T {
     return value !== null && value !== undefined;
 }
+
+export const createLogger = (name: string) =>
+    new Logger({
+        name: name,
+        printLogMessageInNewLine: true,
+        prefix: ["👉"],
+        // displayFilePath: "hidden",
+    });

@@ -1,6 +1,6 @@
 import { AdditionalProperties, Required } from "@tsed/schema";
 
-export const bountyBoardInfo = {
+export const bountyInfo = {
     namespace: "bounty-board",
     name: "Bounty",
     version: "V1",

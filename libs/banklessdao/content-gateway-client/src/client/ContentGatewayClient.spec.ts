@@ -1,6 +1,6 @@
+import { createLogger } from "@shared/util-fp";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
-import { Logger } from "tslog";
 import { createClient } from "./";
 import {
     ContentGatewayClient,
@@ -60,7 +60,7 @@ const invalidPostWithMissingData = {
 };
 
 describe("Given a gateway client", () => {
-    const logger = new Logger({ name: "ContentGatewayClientTest" });
+    const logger = createLogger("ContentGatewayClient.spec");
     let adapterStub: OutboundDataAdapterStub;
     let client: ContentGatewayClient;
 

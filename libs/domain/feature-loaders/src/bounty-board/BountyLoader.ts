@@ -1,15 +1,12 @@
-import { notEmpty } from "@shared/util-fp";
+import { createLogger, notEmpty } from "@shared/util-fp";
 import { DataLoader } from "@shared/util-loaders";
 import axios from "axios";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
-import { Logger } from "tslog";
-import { Bounty, bountyBoardInfo } from "./types";
+import { Bounty, bountyInfo } from "./types";
 
-const logger = new Logger({ name: "BountyBoardLoader" });
-
-const name = "bounty-board-loader";
+const logger = createLogger("BountyBoardLoader");
 
 type StatusHistoryItem = {
     status: string;
@@ -55,16 +52,16 @@ type ResponseItem = {
     reviewedAt: string;
 };
 
-export const bountyBoardLoader: DataLoader<Bounty> = {
-    name: name,
+export const bountyLoader: DataLoader<Bounty> = {
+    info: bountyInfo,
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing Bounty Board loader...");
         return pipe(
-            client.register(bountyBoardInfo, Bounty),
+            client.register(bountyInfo, Bounty),
             TE.chainW(() =>
                 // TODO: we don't want to restart everything when the loader is restarted 👇
                 jobScheduler.schedule({
-                    name: name,
+                    info: bountyInfo,
                     scheduledAt: new Date(),
                     cursor: 0,
                     limit: 1000,
@@ -159,13 +156,13 @@ export const bountyBoardLoader: DataLoader<Bounty> = {
     },
     save: ({ client, data }) => {
         const nextJob = {
-            name: name,
+            info: bountyInfo,
             scheduledAt: DateTime.now().plus({ minutes: 30 }).toJSDate(),
             cursor: 0, // TODO: use proper timestamps
             limit: 1000,
         };
         return pipe(
-            client.saveBatch(bountyBoardInfo, data),
+            client.saveBatch(bountyInfo, data),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {
                 logger.error("Bounty Board Loader data loading failed:", error);

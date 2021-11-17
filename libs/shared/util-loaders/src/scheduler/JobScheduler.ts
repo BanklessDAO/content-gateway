@@ -1,8 +1,9 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
+import { createLogger } from "@shared/util-fp";
+import { schemaInfoToString } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { AsyncTask, SimpleIntervalJob, ToadScheduler } from "toad-scheduler";
-import { Logger } from "tslog";
 import { JobDescriptor } from ".";
 import { DataLoader } from "../DataLoader";
 import {
@@ -67,7 +68,7 @@ class DefaultJobScheduler implements JobScheduler {
     private started = false;
     private stopped = false;
     private client: ContentGatewayClient;
-    private logger: Logger = new Logger({ name: "JobScheduler" });
+    private logger = createLogger("JobScheduler");
     private scheduler = new ToadScheduler();
     private jobRepository: JobRepository;
 
@@ -120,20 +121,19 @@ class DefaultJobScheduler implements JobScheduler {
     register(
         loader: DataLoader<unknown>
     ): TE.TaskEither<RegistrationError, void> {
+        const key = schemaInfoToString(loader.info);
         if (!this.started) {
             return TE.left(SchedulerNotStartedError.create());
         }
         if (this.stopped) {
             return TE.left(SchedulerStoppedError.create());
         }
-        if (this.loaders.has(loader.name)) {
-            this.logger.error(
-                `A loader by name ${loader.name} already exists.`
-            );
-            return TE.left(LoaderAlreadyRegisteredError.create(loader.name));
+        if (this.loaders.has(key)) {
+            this.logger.error(`A loader by key ${key} already exists.`);
+            return TE.left(LoaderAlreadyRegisteredError.create(key));
         }
-        this.logger.info(`Registering loader with name ${loader.name}.`);
-        this.loaders.set(loader.name, loader);
+        this.logger.info(`Registering loader with key ${key}.`);
+        this.loaders.set(key, loader);
         return loader.initialize({
             client: this.client,
             jobScheduler: this,
@@ -158,6 +158,7 @@ class DefaultJobScheduler implements JobScheduler {
     schedule(
         jobDescriptor: JobDescriptor
     ): TE.TaskEither<SchedulingError, Job> {
+        const key = schemaInfoToString(jobDescriptor.info);
         if (!this.started) {
             return TE.left(SchedulerNotStartedError.create());
         }
@@ -165,10 +166,10 @@ class DefaultJobScheduler implements JobScheduler {
             return TE.left(SchedulerStoppedError.create());
         }
         const job = { ...jobDescriptor, state: JobState.SCHEDULED };
-        if (!this.loaders.has(job.name)) {
-            this.logger.warn(`There is no loader with name ${job.name}`);
+        if (!this.loaders.has(key)) {
+            this.logger.warn(`There is no loader with key ${key}`);
             // TODO: save it as failed?
-            return TE.left(NoLoaderForJobError.create(job.name));
+            return TE.left(NoLoaderForJobError.create(key));
         }
         // TODO: check if job is already scheduled
         return pipe(
@@ -178,7 +179,7 @@ class DefaultJobScheduler implements JobScheduler {
             ),
             TE.mapLeft((e) => {
                 this.logger.warn(`Job scheduling failed:`, e);
-                return JobCreationFailedError.create(job.name, e);
+                return JobCreationFailedError.create(key, e);
             }),
             TE.map(() => job)
         );
@@ -191,7 +192,7 @@ class DefaultJobScheduler implements JobScheduler {
             this.logger.info(`Found ${jobs.length} jobs.`);
             for (const job of jobs) {
                 try {
-                    this.logger.info(`Executing job ${job.name}.`);
+                    this.logger.info(`Executing job for:`, job.info);
                     // TODO: Consider using Bree later down the road
                     // TODO: for offloading jobs => https://github.com/breejs/bree
                     await this.executeJob(job);
@@ -206,7 +207,7 @@ class DefaultJobScheduler implements JobScheduler {
 
     private async executeJob(job: Job) {
         // TODO: maybe run this in a transaction for consistency?
-        const loader = this.loaders.get(job.name);
+        const loader = this.loaders.get(schemaInfoToString(job.info));
         job.state = JobState.RUNNING;
         if (loader) {
             try {
@@ -228,10 +229,13 @@ class DefaultJobScheduler implements JobScheduler {
                         })
                     ),
                     TE.mapLeft((e) => {
-                        this.logger.info(`Loader ${job.name} failed`, e);
+                        const msg = `Loader ${schemaInfoToString(
+                            job.info
+                        )} failed`;
+                        this.logger.info(msg, e);
                         this.jobRepository.upsertJob(
                             { ...job, state: JobState.FAILED },
-                            `Loader ${job.name} failed: ${e.message}`
+                            `${msg}: ${e.message}`
                         )();
                         return e;
                     }),
@@ -240,11 +244,13 @@ class DefaultJobScheduler implements JobScheduler {
                             this.logger.info(
                                 "A next job was returned, scheduling..."
                             );
-                            this.schedule(nextJob);
+                            this.schedule(nextJob)();
                         } else {
                             this.jobRepository.upsertJob(
                                 { ...job, state: JobState.COMPLETED },
-                                `Job ${job.name} completed successfully.`
+                                `Job ${schemaInfoToString(
+                                    job.info
+                                )} completed successfully.`
                             )();
                         }
                     })
@@ -256,16 +262,17 @@ class DefaultJobScheduler implements JobScheduler {
                 );
             }
         } else {
+            const msg = `Job was canceled because no loader with key ${schemaInfoToString(
+                job.info
+            )} was found.`;
             this.jobRepository.upsertJob(
                 {
                     ...job,
                     state: JobState.CANCELED,
                 },
-                `Job was canceled because no loader with name ${job.name} was found.`
+                msg
             )();
-            this.logger.error(
-                `No loader found for job ${job.name}. Job is cancelled.`
-            );
+            this.logger.warn(msg);
         }
     }
 }

@@ -45,7 +45,6 @@ class TheGraphAPIClient implements GraphQLAPIClient {
                     ) {
                         return;
                     }
-                    console.log(`Is loading: ${response.loading}`);
                     const mappedResult = mappingCallback(response.data);
                     resolve(mappedResult);
                 })

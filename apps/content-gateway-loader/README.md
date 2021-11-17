@@ -79,7 +79,7 @@ class CurrentTimestamp {
 If you want to log stuff you can use `tslog`:
 
 ```ts
-import { Logger } from "tslog";
+import { createLogger } from "@shared/util-fp";
 
 const logger = new Logger({ name: "ExampleLoader" });
 ```

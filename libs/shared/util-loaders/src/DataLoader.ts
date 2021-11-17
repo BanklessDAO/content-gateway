@@ -1,4 +1,6 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
+import { SchemaInfo } from "@shared/util-schema";
+import { Schema } from "ajv";
 import * as TE from "fp-ts/TaskEither";
 import { Job, JobDescriptor, JobScheduler } from ".";
 
@@ -36,7 +38,7 @@ export type SaveContext<T> = {
 };
 
 export type DataLoader<T> = {
-    name: string;
+    info: SchemaInfo;
     /**
      * Initializes this loader. This will be called once each time
      * the application starts.

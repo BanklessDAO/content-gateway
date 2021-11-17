@@ -1,8 +1,8 @@
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 
-export const bankAccountInfo = {
+export const banklessTokenInfo = {
     namespace: "bankless-token",
-    name: "BANKAccount",
+    name: "BanklessToken",
     version: "V1",
 };
 
@@ -16,7 +16,7 @@ export class Transaction {
 }
 
 @AdditionalProperties(false)
-export class BANKAccount {
+export class BanklessToken {
     @Required(true)
     id: string;
     @Required(true)

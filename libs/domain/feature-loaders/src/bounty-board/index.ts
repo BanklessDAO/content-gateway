@@ -1,1 +1,1 @@
-export * from "./BountyBoardLoader"
+export * from "./BountyLoader"

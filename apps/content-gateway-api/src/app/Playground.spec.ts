@@ -36,7 +36,6 @@ describe("Playground", () => {
         it("works async", async () => {
             const promise: Promise<string> = fun();
             const result = await promise;
-            console.log(result);
         });
 
         it("works then", async () => {
@@ -47,7 +46,6 @@ describe("Playground", () => {
                 });
                 return "doesn't work"
             }
-            console.log(handle());
         });
     });
 });

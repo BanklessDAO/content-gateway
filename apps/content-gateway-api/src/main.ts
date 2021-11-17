@@ -1,8 +1,8 @@
 import { PrismaClient } from "@cga/prisma";
-import { Logger } from "tslog";
+import { createLogger } from "@shared/util-fp";
 import { createAPI } from "./app/";
 
-const logger = new Logger({ name: "main" });
+const logger = createLogger("main")
 
 const prisma = new PrismaClient();
 

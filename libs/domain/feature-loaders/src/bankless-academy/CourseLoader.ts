@@ -1,13 +1,13 @@
+import { createLogger } from "@shared/util-fp";
 import { DataLoader } from "@shared/util-loaders";
 import axios from "axios";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
-import { Logger } from "tslog";
 import { Course, courseInfo } from "./types";
 
 const name = "bankless-academy-loader";
-const logger = new Logger({ name });
+const logger = createLogger("BanklessAcademyLoader");
 
 // TODO: use discriminated unions (discriminator is type)
 type Slide = {
@@ -33,8 +33,8 @@ type ResponseItem = {
     slides: Slide[];
 };
 
-export const banklessAcademyLoader: DataLoader<Course> = {
-    name: name,
+export const courseLoader: DataLoader<Course> = {
+    info: courseInfo,
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing Bankless Academy loader...");
         return pipe(
@@ -42,7 +42,7 @@ export const banklessAcademyLoader: DataLoader<Course> = {
             TE.chainW(() =>
                 // TODO: we don't want to restart everything when the loader is restarted 👇
                 jobScheduler.schedule({
-                    name: name,
+                    info: courseInfo,
                     scheduledAt: new Date(),
                     cursor: 0,
                     limit: 1000,
@@ -105,7 +105,7 @@ export const banklessAcademyLoader: DataLoader<Course> = {
     },
     save: ({ client, data }) => {
         const nextJob = {
-            name: name,
+            info: courseInfo,
             scheduledAt: DateTime.now().plus({ minutes: 1 }).toJSDate(),
             cursor: 0, // TODO: use proper timestamps
             limit: 1000,

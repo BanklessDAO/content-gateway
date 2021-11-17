@@ -1,2 +1,1 @@
-export * from "./BanklessAcademyLoader"
-export * from "./types"
+export * from "./CourseLoader";

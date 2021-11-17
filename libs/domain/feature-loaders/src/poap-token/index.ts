@@ -1,1 +1,1 @@
-export * from "./POAPLoader";
+export * from "./POAPTokenLoader";

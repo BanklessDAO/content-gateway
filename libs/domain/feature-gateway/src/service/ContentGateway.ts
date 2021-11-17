@@ -1,7 +1,7 @@
+import { createLogger } from "@shared/util-fp";
 import { Schema } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
-import { Logger } from "tslog";
 import { DataStorage, SchemaStorage } from "../adapter";
 import { Payload } from "../types";
 
@@ -41,7 +41,7 @@ export const createContentGateway: ContentGatewayFactory = (
     schemaStorage: SchemaStorage,
     dataStorage: DataStorage
 ) => {
-    const logger = new Logger({ name: "ContentGateway" });
+    const logger = createLogger("ContentGateway");
     return {
         register: (schema: Schema) => {
             return schemaStorage.register(schema);

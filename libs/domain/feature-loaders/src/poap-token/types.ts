@@ -1,6 +1,6 @@
 import { AdditionalProperties, Required } from "@tsed/schema";
 
-export const info = {
+export const poapTokenInfo = {
     namespace: "poap",
     name: "POAPToken",
     version: "V1",

@@ -1,14 +1,12 @@
-import { notEmpty } from "@shared/util-fp";
+import { createLogger, notEmpty } from "@shared/util-fp";
 import { createGraphQLAPIClient, DataLoader } from "@shared/util-loaders";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
-import { Logger } from "tslog";
 import { BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS } from "./queries";
-import { BANKAccount, bankAccountInfo } from "./types";
+import { BanklessToken, banklessTokenInfo } from "./types";
 
-const name = "bankless-token-loader";
-const logger = new Logger({ name });
+const logger = createLogger("BanklessTokenLoader");
 
 const subgraphURI =
     "https://api.thegraph.com/subgraphs/name/0xnshuman/bank-subgraph";
@@ -35,10 +33,10 @@ type Account = {
     ERC20balances: Balance[];
 };
 
-const mapAccounts = (accounts: Account[]): BANKAccount[] =>
+const mapAccounts = (accounts: Account[]): BanklessToken[] =>
     accounts
         .map((account) => {
-            const acc: BANKAccount = {
+            const acc: BanklessToken = {
                 id: account.id,
                 address: account.id,
                 balance: 0.0,
@@ -47,10 +45,10 @@ const mapAccounts = (accounts: Account[]): BANKAccount[] =>
             try {
                 const balances = account.ERC20balances;
                 const balance = balances[0];
-                const transfersTo = balance.transferToEvent;
-                const transfersFrom = balance.transferFromEvent;
+                const transfersTo = balance?.transferToEvent ?? [];
+                const transfersFrom = balance?.transferFromEvent ?? [];
                 const allTransfers = transfersTo.concat(transfersFrom);
-                acc.balance = balance.value ? parseFloat(balance.value) : 0.0;
+                acc.balance = balance?.value ? parseFloat(balance.value) : 0.0;
                 acc.transactions = allTransfers.map((transfer) => ({
                     fromAddress: transfer.from.id,
                     toAddress: transfer.to.id,
@@ -68,15 +66,15 @@ const mapAccounts = (accounts: Account[]): BANKAccount[] =>
         })
         .filter(notEmpty);
 
-export const banklessTokenLoader: DataLoader<BANKAccount> = {
-    name: name,
+export const banklessTokenLoader: DataLoader<BanklessToken> = {
+    info: banklessTokenInfo,
     initialize: ({ client, jobScheduler }) => {
         return pipe(
-            client.register(bankAccountInfo, BANKAccount),
+            client.register(banklessTokenInfo, BanklessToken),
             TE.chainW(() =>
                 // TODO: we don't want to restart everything when the loader is restarted 👇
                 jobScheduler.schedule({
-                    name: name,
+                    info: banklessTokenInfo,
                     scheduledAt: new Date(),
                     cursor: 0,
                     limit: 1000,
@@ -112,7 +110,7 @@ export const banklessTokenLoader: DataLoader<BANKAccount> = {
                             `Loaded data chunk from the original source:`
                         );
                         logger.info(
-                            `Total count: ${data.accounts}; OffsetID: ${cursor} `
+                            `Total count: ${data.accounts.length}; OffsetID: ${cursor} `
                         );
                         return mapAccounts(data.accounts);
                     }
@@ -123,13 +121,13 @@ export const banklessTokenLoader: DataLoader<BANKAccount> = {
     },
     save: ({ client, data }) => {
         const nextJob = {
-            name: name,
+            info: banklessTokenInfo,
             scheduledAt: DateTime.now().plus({ minutes: 30 }).toJSDate(),
             cursor: 0, // TODO: use proper timestamps
             limit: 1000,
         };
         return pipe(
-            client.saveBatch(bankAccountInfo, data),
+            client.saveBatch(banklessTokenInfo, data),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {
                 logger.error(

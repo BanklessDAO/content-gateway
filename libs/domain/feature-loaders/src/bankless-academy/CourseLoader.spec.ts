@@ -5,7 +5,7 @@ import {
 import { createJobSchedulerStub, JobSchedulerStub } from "@shared/util-loaders";
 import axios from "axios";
 import { isRight } from "fp-ts/lib/Either";
-import { banklessAcademyLoader } from "./BanklessAcademyLoader";
+import { courseLoader } from "./CourseLoader";
 axios.defaults.adapter = require("axios/lib/adapters/http");
 
 type Slide = {
@@ -36,7 +36,7 @@ type ResponseItem = {
 };
 
 describe("Given an Bankless Academy loader", () => {
-    const loader = banklessAcademyLoader;
+    const loader = courseLoader;
 
     let clientStub: ContentGatewayClientStub;
     let jobSchedulerStub: JobSchedulerStub;
@@ -61,6 +61,6 @@ describe("Given an Bankless Academy loader", () => {
             jobScheduler: jobSchedulerStub,
         })();
 
-        expect(jobSchedulerStub.scheduledJobs[0].name).toEqual(loader.name);
+        expect(jobSchedulerStub.scheduledJobs[0].info).toEqual(loader.info);
     });
 });

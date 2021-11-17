@@ -3,10 +3,10 @@ import {
     createRESTAdapter
 } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
-import { loaders } from "@domain/feature-loaders";
+import { createLoaderRegistry } from "@domain/feature-loaders";
+import { createLogger } from "@shared/util-fp";
 import { createJobScheduler } from "@shared/util-loaders";
 import * as express from "express";
-import { Logger } from "tslog";
 import { createJobRepository } from "./repository/PrismaJobRepository";
 
 const programError = (msg: string) => {
@@ -22,7 +22,7 @@ const CGA_URL = process.env.CGA_URL || programError("You must specify CGA_URL");
 
 const env = process.env.NODE_ENV;
 const isDev = env === "development";
-const logger = new Logger({ name: "main" });
+const logger = createLogger("main");
 
 const prisma = new PrismaClient();
 
@@ -32,6 +32,7 @@ const main = async () => {
         await prisma.jobSchedule.deleteMany({});
     }
 
+    const loaderRegistry = createLoaderRegistry();
     const app = express();
 
     const clientStub = createClient({
@@ -70,7 +71,7 @@ const main = async () => {
     );
     await scheduler.start()();
 
-    for (const loader of loaders) {
+    for (const loader of loaderRegistry.loaders) {
         await scheduler.register(loader)();
     }
 };

@@ -1,10 +1,11 @@
 import { createClient } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cga/prisma";
 import { createContentGateway } from "@domain/feature-gateway";
+import { createLogger } from "@shared/util-fp";
 import {
     batchPayloadCodec,
     createSchemaFromObject,
-    payloadCodec,
+    payloadCodec
 } from "@shared/util-schema";
 import * as express from "express";
 import * as E from "fp-ts/Either";
@@ -14,24 +15,22 @@ import { Errors } from "io-ts";
 import { formatValidationErrors } from "io-ts-reporters";
 import { failure } from "io-ts/lib/PathReporter";
 import { join } from "path";
-import { Logger } from "tslog";
 import {
-    createPrismaDataStorage,
-    createPrismaSchemaStorage,
-    AppContext,
+    AppContext, createPrismaDataStorage,
+    createPrismaSchemaStorage
 } from "./";
 import { generateContentGatewayAPI } from "./endpoints";
 import {
     createGraphQLAPI,
-    decorateSchemaStorage,
+    decorateSchemaStorage
 } from "./endpoints/graphql/GraphQLAPI";
 
 const env = process.env.NODE_ENV;
 const isDev = env === "development";
 const isProd = env === "production";
-const logger = new Logger({ name: "main" });
 
 export const createAPI = async (prisma: PrismaClient) => {
+    const logger = createLogger("app");
     if (isDev) {
         await prisma.data.deleteMany({});
         await prisma.schema.deleteMany({});

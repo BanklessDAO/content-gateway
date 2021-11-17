@@ -10,3 +10,8 @@ export type SchemaInfo = {
 
 export const schemaInfoToString = ({ namespace, name, version }: SchemaInfo) =>
     `${namespace}.${name}.${version}`;
+
+export const stringToSchemaInfo = (str: string) => {
+    const [namespace, name, version] = str.split(".");
+    return { namespace, name, version };
+};

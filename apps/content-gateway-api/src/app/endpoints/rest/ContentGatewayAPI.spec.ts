@@ -11,7 +11,7 @@ import { createSchemaFromType, Schema, schemaInfoToString } from "@shared/util-s
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as express from "express";
 import * as request from "supertest";
-import { Logger } from "tslog";
+import { createLogger } from "@shared/util-fp";
 import { v4 as uuid } from "uuid";
 import { generateContentGatewayAPI } from "./ContentGatewayAPI";
 
