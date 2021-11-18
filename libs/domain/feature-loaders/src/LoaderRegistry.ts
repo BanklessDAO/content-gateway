@@ -11,7 +11,6 @@ export type LoaderRegistry = {
 export const createLoaderRegistry = (
     loaders: readonly DataLoader<unknown>[] = defaultLoaders
 ): LoaderRegistry => {
-    console.log(loaders);
     const lookup = loaders.reduce((map, obj) => {
         const key = schemaInfoToString(obj.info);
         map[key] = obj;

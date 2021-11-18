@@ -38,7 +38,7 @@ const mapTokens = (tokens: Token[]): POAPToken[] => {
 
 let totalCount = 0;
 
-const pullTokensSince = (cursor: number): Promise<POAPToken[]> => {
+const pullTokensSince = (cursor: string): Promise<POAPToken[]> => {
     return graphAPIClient.query(
         POAP_TOKEN_SUBGRAPH_TOKENS,
         { count: 1000, cursor: cursor },
@@ -64,7 +64,7 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
                 jobScheduler.schedule({
                     info: poapTokenInfo,
                     scheduledAt: new Date(),
-                    cursor: 0,
+                    cursor: "0",
                     limit: batchSize,
                 })
             ),
@@ -86,7 +86,7 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
                 });
 
                 let tokens: POAPToken[] = [];
-                let ts = cursor ?? 0;
+                let ts = cursor?.toString() ?? "0";
 
                 while (tokens.length < limit) {
                     logger.info(
@@ -97,7 +97,7 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
                     if (slice.length === 0) {
                         break;
                     } else {
-                        ts = slice[slice.length - 1].mintedAt;
+                        ts = slice[slice.length - 1].mintedAt.toString();
                     }
                     tokens = tokens.concat(slice);
                 }
@@ -113,16 +113,16 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
         );
     },
     save: ({ client, data }) => {
-        let cursor: number;
+        let cursor: string;
         if (data.length > 0) {
             logger.info(
                 `POAP data length: ${data.length}, setting cursor to: ${
                     data[data.length - 1].mintedAt
                 }`
             );
-            cursor = data[data.length - 1].mintedAt;
+            cursor = data[data.length - 1].mintedAt.toString();
         } else {
-            cursor = 0;
+            cursor = "0";
         }
         const cadence =
             data.length == batchSize ? { seconds: 30 } : { minutes: 5 };

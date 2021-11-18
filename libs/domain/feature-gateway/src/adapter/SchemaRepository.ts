@@ -14,7 +14,7 @@ export type SchemaRepository = {
     findAll: () => TO.TaskOption<Array<Schema>>;
     updateCursor: (
         info: SchemaInfo,
-        cursor: number
+        cursor: string
     ) => TE.TaskEither<SchemaRepositoryError, void>;
 };
 

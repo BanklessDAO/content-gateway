@@ -4,12 +4,13 @@ import {
     RegisteredSchemaIncompatibleError,
     SchemaCreationFailedError,
     SchemaCursorUpdateFailedError,
-    SchemaRepository
+    SchemaRepository,
 } from "@domain/feature-gateway";
+import { createLogger } from "@shared/util-fp";
 import {
     createSchemaFromObject,
     Schema,
-    SchemaInfo
+    SchemaInfo,
 } from "@shared/util-schema";
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
@@ -22,6 +23,7 @@ import { Errors } from "io-ts";
 export const createPrismaSchemaRepository = (
     prisma: PrismaClient
 ): SchemaRepository => {
+    const logger = createLogger("PrismaSchemaRepository");
     const findSchema = (info: SchemaInfo) => {
         return pipe(
             TO.tryCatch(() => {
@@ -116,20 +118,27 @@ export const createPrismaSchemaRepository = (
                 })
             );
         },
-        updateCursor: (info: SchemaInfo, cursor: number) => {
+        updateCursor: (info: SchemaInfo, cursor: string) => {
             return pipe(
                 TE.tryCatch(
                     async () => {
-                        prisma.schema.update({
+                        return prisma.schema.update({
                             where: {
                                 namespace_name_version: info,
                             },
-                            data: cursor,
+                            data: {
+                                cursor: BigInt(cursor),
+                            },
                         });
                     },
                     (err: Error) =>
                         SchemaCursorUpdateFailedError.create(err.message)
-                )
+                ),
+                TE.mapLeft((err) => {
+                    logger.warn(`Failed to update cursor:`, err);
+                    return err;
+                }),
+                TE.map(() => undefined)
             );
         },
     };

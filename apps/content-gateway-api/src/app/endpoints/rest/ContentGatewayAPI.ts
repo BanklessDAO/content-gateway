@@ -1,3 +1,7 @@
+import {
+    jsonBatchPayloadCodec,
+    jsonPayloadCodec
+} from "@banklessdao/content-gateway-client";
 import { ContentGateway } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import { createSchemaFromObject } from "@shared/util-schema";
@@ -8,10 +12,6 @@ import * as T from "fp-ts/lib/Task";
 import * as TE from "fp-ts/lib/TaskEither";
 import { Errors } from "io-ts";
 import { formatValidationErrors } from "io-ts-reporters";
-import {
-    jsonBatchPayloadCodec,
-    jsonPayloadCodec,
-} from "@banklessdao/content-gateway-client";
 
 const logger = createLogger("ContentGatewayAPI");
 

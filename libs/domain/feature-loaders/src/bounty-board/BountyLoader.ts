@@ -63,7 +63,7 @@ export const bountyLoader: DataLoader<Bounty> = {
                 jobScheduler.schedule({
                     info: bountyInfo,
                     scheduledAt: new Date(),
-                    cursor: 0,
+                    cursor: "0",
                     limit: 1000,
                 })
             ),
@@ -158,11 +158,15 @@ export const bountyLoader: DataLoader<Bounty> = {
         const nextJob = {
             info: bountyInfo,
             scheduledAt: DateTime.now().plus({ minutes: 30 }).toJSDate(),
-            cursor: 0, // TODO: 👈 use proper timestamps 👇
+            cursor: "0", // TODO: 👈 use proper timestamps 👇
             limit: 1000,
         };
         return pipe(
-            client.saveBatch({ info: bountyInfo, data: data, cursor: 0 }),
+            client.saveBatch({
+                info: bountyInfo,
+                data: data,
+                cursor: "0",
+            }),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {
                 logger.error("Bounty Board Loader data loading failed:", error);

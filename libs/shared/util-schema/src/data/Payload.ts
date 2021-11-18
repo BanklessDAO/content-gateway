@@ -1,4 +1,4 @@
-import { SchemaInfo } from "@shared/util-schema";
+import { SchemaInfo } from "..";
 
 // * 💡 This type definition shouldn't be here, but otherwise TS would complain about
 // * 💡 a circular type dependency, so we have to define it here. 😒
@@ -17,7 +17,7 @@ export type Payload<T> = {
      * to the data that is sent. If an array is sent set the cursor
      * using the last item in the array.
      */
-    cursor: number;
+    cursor: string;
     /**
      * The actual data that is being sent. This can also be an array.
      */

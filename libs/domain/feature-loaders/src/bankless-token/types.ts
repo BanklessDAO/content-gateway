@@ -26,4 +26,6 @@ export class BanklessToken {
     @Required(true)
     @CollectionOf(Transaction)
     transactions: Transaction[];
+    @Required(true)
+    lastTransactionTimestamp: string;
 }

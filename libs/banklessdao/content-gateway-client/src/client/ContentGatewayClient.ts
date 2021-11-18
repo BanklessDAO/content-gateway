@@ -118,7 +118,7 @@ export const createClient = ({
                 TE.chain((dataRecord) =>
                     adapter.send({
                         info: info,
-                        cursor: cursor,
+                        cursor: cursor.toString(),
                         data: dataRecord,
                     })
                 )
@@ -149,7 +149,7 @@ export const createClient = ({
                 TE.chain((dataArray) =>
                     adapter.sendBatch({
                         info: info,
-                        cursor: cursor,
+                        cursor: cursor.toString(),
                         data: dataArray as Array<Record<string, unknown>>,
                     })
                 )

@@ -1,10 +1,13 @@
-import { createClient, jsonBatchPayloadCodec, jsonPayloadCodec } from "@banklessdao/content-gateway-client";
+import {
+    createClient,
+    jsonBatchPayloadCodec,
+    jsonPayloadCodec
+} from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cga/prisma";
 import { createContentGateway } from "@domain/feature-gateway";
+import { createLoaderRegistry } from "@domain/feature-loaders";
 import { createLogger } from "@shared/util-fp";
-import {
-    createSchemaFromObject
-} from "@shared/util-schema";
+import { createSchemaFromObject } from "@shared/util-schema";
 import * as express from "express";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
@@ -14,7 +17,8 @@ import { formatValidationErrors } from "io-ts-reporters";
 import { failure } from "io-ts/lib/PathReporter";
 import { join } from "path";
 import {
-    AppContext, createPrismaDataRepository,
+    AppContext,
+    createPrismaDataRepository,
     createPrismaSchemaRepository
 } from "./";
 import { generateContentGatewayAPI } from "./endpoints";
@@ -40,8 +44,9 @@ export const createAPI = async (prisma: PrismaClient) => {
     );
     const dataRepository = createPrismaDataRepository(prisma, schemaRepository);
 
-    const gateway = createContentGateway(schemaRepository, dataRepository);
+    const loaderRegistry = createLoaderRegistry();
 
+    const gateway = createContentGateway(schemaRepository, dataRepository);
     const client = createClient({
         adapter: {
             register: (schema): TE.TaskEither<Error, void> => {
@@ -90,6 +95,7 @@ export const createAPI = async (prisma: PrismaClient) => {
         prisma,
         schemaRepository,
         dataRepository,
+        loaderRegistry,
         gateway,
         client,
     };

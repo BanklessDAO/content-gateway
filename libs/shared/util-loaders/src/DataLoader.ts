@@ -1,6 +1,5 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
 import { SchemaInfo } from "@shared/util-schema";
-import { Schema } from "ajv";
 import * as TE from "fp-ts/TaskEither";
 import { Job, JobDescriptor, JobScheduler } from ".";
 
@@ -26,7 +25,7 @@ export type InitContext = {
 };
 
 export type LoadContext = {
-    cursor?: number;
+    cursor?: string;
     limit: number;
 };
 

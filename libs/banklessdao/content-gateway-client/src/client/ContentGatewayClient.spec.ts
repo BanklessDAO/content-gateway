@@ -110,14 +110,14 @@ describe("Given a gateway client", () => {
         const result = await client.save({
             info: info,
             data: validPost,
-            cursor: 0,
+            cursor: "0",
         })();
 
         expect(result).toEqual(E.right(undefined));
         expect(adapterStub.payloads).toEqual([
             {
                 info: { namespace: "test", name: "Post", version: "V1" },
-                cursor: 0,
+                cursor: "0",
                 data: {
                     id: "1",
                     content: "Hello World",
@@ -131,7 +131,7 @@ describe("Given a gateway client", () => {
         const result = await client.save({
             info: info,
             data: validPost,
-            cursor: 0,
+            cursor: "0",
         })();
 
         expect(result).toEqual(
@@ -144,7 +144,7 @@ describe("Given a gateway client", () => {
         const result = await client.save({
             info: info,
             data: invalidPostWithMissingData,
-            cursor: 0,
+            cursor: "0",
         })();
 
         expect(result).toEqual(
@@ -158,7 +158,7 @@ describe("Given a gateway client", () => {
         const result = await client.save({
             info: info,
             data: invalidPostWithExtraData,
-            cursor: 0,
+            cursor: "0",
         })();
 
         expect(result).toEqual(

@@ -18,7 +18,7 @@ model Schema {
   updatedAt  DateTime  @default(now()) @db.Timestamp(6)
   deletedAt  DateTime? @db.Timestamp(6)
   /// The cursor that points to the last Data entry that was saved.
-  cursor     Int?      @db.Integer
+  cursor     BigInt?   @db.BigInt
   data       Data[]
 
   @@id([namespace, name, version])

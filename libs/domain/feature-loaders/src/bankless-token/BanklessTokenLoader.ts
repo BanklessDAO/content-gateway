@@ -31,6 +31,7 @@ type Balance = {
 type Account = {
     id: string;
     ERC20balances: Balance[];
+    lastTransactionTimestamp: string;
 };
 
 const mapAccounts = (accounts: Account[]): BanklessToken[] =>
@@ -41,6 +42,7 @@ const mapAccounts = (accounts: Account[]): BanklessToken[] =>
                 address: account.id,
                 balance: 0.0,
                 transactions: [],
+                lastTransactionTimestamp: "0",
             };
             try {
                 const balances = account.ERC20balances;
@@ -54,6 +56,7 @@ const mapAccounts = (accounts: Account[]): BanklessToken[] =>
                     toAddress: transfer.to.id,
                     amount: transfer.value ? parseFloat(transfer.value) : 0.0,
                 }));
+                acc.lastTransactionTimestamp = account.lastTransactionTimestamp;
                 return acc;
             } catch (err) {
                 logger.warn(
@@ -66,6 +69,8 @@ const mapAccounts = (accounts: Account[]): BanklessToken[] =>
         })
         .filter(notEmpty);
 
+const batchSize = 1000;
+
 export const banklessTokenLoader: DataLoader<BanklessToken> = {
     info: banklessTokenInfo,
     initialize: ({ client, jobScheduler }) => {
@@ -76,8 +81,8 @@ export const banklessTokenLoader: DataLoader<BanklessToken> = {
                 jobScheduler.schedule({
                     info: banklessTokenInfo,
                     scheduledAt: new Date(),
-                    cursor: 0,
-                    limit: 1000,
+                    cursor: "0",
+                    limit: batchSize,
                 })
             ),
             TE.map((result) => {
@@ -102,15 +107,17 @@ export const banklessTokenLoader: DataLoader<BanklessToken> = {
                     limit,
                 });
 
+                const ts = cursor ?? "0";
+
                 return graphAPIClient.query(
                     BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS,
-                    { count: limit, offsetID: "" }, // TODO: 👈 use cursor here
+                    { limit: limit, cursor: ts },
                     (data) => {
                         logger.info(
                             `Loaded data chunk from the original source:`
                         );
                         logger.info(
-                            `Total count: ${data.accounts.length}; OffsetID: ${cursor} `
+                            `Total count: ${data.accounts.length}; cursor: ${cursor} `
                         );
                         return mapAccounts(data.accounts);
                     }
@@ -120,17 +127,22 @@ export const banklessTokenLoader: DataLoader<BanklessToken> = {
         );
     },
     save: ({ client, data }) => {
+        const cursor =
+            data.length > 0
+                ? data[data.length - 1].lastTransactionTimestamp
+                : "0";
+        const cadence = data.length == batchSize ? { seconds: 30 } : { minutes: 5 };
         const nextJob = {
             info: banklessTokenInfo,
-            scheduledAt: DateTime.now().plus({ minutes: 30 }).toJSDate(),
-            cursor: 0, // TODO: 👈 use proper timestamps 👇
-            limit: 1000,
+            scheduledAt: DateTime.now().plus(cadence).toJSDate(),
+            cursor: cursor,
+            limit: batchSize,
         };
         return pipe(
             client.saveBatch({
                 info: banklessTokenInfo,
                 data: data,
-                cursor: 0,
+                cursor: cursor,
             }),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {

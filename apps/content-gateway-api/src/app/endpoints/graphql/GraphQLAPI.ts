@@ -1,4 +1,5 @@
 import { DataRepository, SchemaRepository } from "@domain/feature-gateway";
+import { LoaderRegistry } from "@domain/feature-loaders";
 import { createLogger } from "@shared/util-fp";
 import { toGraphQLType } from "@shared/util-graphql";
 import { Operator } from "@shared/util-loaders";
@@ -29,6 +30,7 @@ export type Middleware = (
 export type Deps = {
     readonly schemaRepository: SchemaRepositoryDecorator;
     readonly dataRepository: DataRepository;
+    readonly loaderRegistry: LoaderRegistry;
 };
 
 export type GraphQLAPI = {
@@ -57,6 +59,7 @@ export const createGraphQLAPI = async (deps: Deps): Promise<Middleware> => {
 const createGraphQLMiddleware = async ({
     schemaRepository,
     dataRepository,
+    loaderRegistry,
 }: Deps): Promise<Middleware> => {
     const logger = createLogger("GraphQLAPI");
     const schemas = await schemaRepository.findAll()();

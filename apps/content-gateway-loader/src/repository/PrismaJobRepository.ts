@@ -14,7 +14,7 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
     const logger = createLogger("PrismaJobRepository");
 
     const jobScheduleToJobDescriptor = (jobSchedule: JobSchedule): Job => ({
-        cursor: jobSchedule.cursor,
+        cursor: jobSchedule.cursor.toString(),
         limit: jobSchedule.limit,
         info: stringToSchemaInfo(jobSchedule.name),
         scheduledAt: jobSchedule.scheduledAt,
@@ -32,7 +32,7 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
                 async () => {
                     const jobSchedule = {
                         name: key,
-                        cursor: job.cursor,
+                        cursor: BigInt(job.cursor),
                         limit: job.limit,
                         state: state,
                         scheduledAt: job.scheduledAt,

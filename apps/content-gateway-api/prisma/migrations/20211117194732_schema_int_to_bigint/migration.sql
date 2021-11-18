@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Schema" ALTER COLUMN "cursor" SET DATA TYPE BIGINT;
