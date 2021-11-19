@@ -1,1 +1,1 @@
-web: script/prisma-deploy.sh cga && node dist/apps/content-gateway-api/main.js
+web: script/prisma-deploy cga && script/run cga

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+print_usage() {
+    echo "💀 $1"
+    echo "Help below 👇"
+    echo ""
+    echo "Builds the specified project for Heroku."
+    echo ""
+    echo "Usage: ./heroku-build <nx-project-name>"
+    echo "Supported projects: content-gateway-api, content-gateway-loader"
+    echo ""
+    echo "__Note that__ this script is intended to be used from CI/CD, you probably won't need it during development."
+    exit 1
+}
+
+if [ -z "$1" ]; then
+    print_usage "Project name is missing!"
+fi
+
+script/prisma-generate $1 && nx build $1 --prod

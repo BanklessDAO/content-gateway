@@ -1,0 +1,22 @@
+#!/bin/bash
+
+print_usage() {
+    echo "💀 $1"
+    echo "Help below 👇"
+    echo ""
+    echo "Scales the specified app to the specified dynos"
+    echo ""
+    echo "Usage: ./heroku-scale <project> <dynos>"
+    echo "Supported projects: cga, cgl"
+    exit 1
+}
+
+if [ -z "$1" ]; then
+    print_usage "Remote is missing!"
+fi
+
+if [ -z "$2" ]; then
+    print_usage "Dyno count is missing!"
+fi
+
+heroku ps:scale web=$2 --remote=$1

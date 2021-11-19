@@ -17,12 +17,11 @@ import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
 import * as pluralize from "pluralize";
+import { MAX_ITEMS } from "./constants";
 import { createFiltersFor } from "./types/Filters";
 import { createResultsType, Results } from "./types/Results";
 
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
-
-const maxItems = 1000;
 
 export type Middleware = (
     request: Request,
@@ -98,21 +97,16 @@ const createGraphQLMiddleware = async ({
             };
 
             const findByFilters = async (
-                first?: number,
-                after?: string,
-                where?: Filter[]
+                first: number,
+                after = "0",
+                where: Filter[]
             ): Promise<Results> => {
                 const notes = [] as string[];
-                let limit = first ?? maxItems;
-                if (limit > maxItems) {
-                    limit = maxItems;
+                let limit = first;
+                if (limit > MAX_ITEMS) {
+                    limit = MAX_ITEMS;
                     notes.push(
-                        `The requested amount of items (${first}) is greater than the allowed maximum (${maxItems}). Setting after to ${maxItems}.`
-                    );
-                }
-                if (typeof first === "undefined") {
-                    notes.push(
-                        `First was undefined, returning ${maxItems} items.`
+                        `The requested amount of items (${first}) is greater than the allowed maximum (${MAX_ITEMS}). Setting after to ${MAX_ITEMS}.`
                     );
                 }
 
@@ -188,10 +182,11 @@ const createGraphQLMiddleware = async ({
                 [`${pluralize.plural(name)}`]: {
                     type: createResultsType(type),
                     args: {
-                        after: { type: g.GraphQLString },
-                        first: { type: g.GraphQLInt },
+                        first: { type: g.GraphQLInt, defaultValue: MAX_ITEMS },
+                        after: { type: g.GraphQLString, defaultValue: "0" },
                         where: {
                             type: createFiltersFor(name, schema.jsonSchema),
+                            defaultValue: {},
                         },
                     },
                     resolve: (_, args) => {

@@ -1,0 +1,24 @@
+#!/bin/bash
+
+cd "$(dirname "$0")"
+
+source includes/projects
+
+print_usage() {
+    echo "💀 $1"
+    echo "Help below 👇"
+    echo ""
+    echo "Runs the given project. Will only work after performing a ./build."
+    echo ""
+    echo "Usage: ./run <project>"
+    echo "Supported projects: cga, cgl"
+    exit 1
+}
+
+if [ -z "$1" ]; then
+    print_usage "Project name is missing!"
+fi
+
+cd ..
+
+node dist/apps/${project_names[$1]}/main.js

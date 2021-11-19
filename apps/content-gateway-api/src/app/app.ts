@@ -20,7 +20,7 @@ import {
 const env = process.env.NODE_ENV ?? programError("NODE_ENV not set");
 const isDev = env === "development";
 const isProd = env === "production";
-const resetDb = process.env.RESET_DB === "true";
+const resetDb = process.env.RESET_DB === "false";
 
 export const createAPI = async (prisma: PrismaClient) => {
     const logger = createLogger("app");

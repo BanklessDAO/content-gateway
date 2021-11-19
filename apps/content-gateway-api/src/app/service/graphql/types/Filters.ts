@@ -42,7 +42,6 @@ export const createFiltersFor = (name: string, type: s.JSONSchemaType) => {
         } else if (s.numberPropertyCodec.is(props)) {
             addFilterTypes(g.GraphQLFloat, fieldName, fields);
         } else if (s.stringPropertyCodec.is(props)) {
-            console.log(fieldName, props);
             addFilterTypes(g.GraphQLString, fieldName, fields);
         } else if (s.booleanPropertyCodec.is(props)) {
             addFilterTypes(g.GraphQLBoolean, fieldName, fields);

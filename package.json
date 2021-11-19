@@ -3,10 +3,10 @@
     "version": "0.0.1",
     "license": "MIT",
     "scripts": {
-        "start": "node dist/apps/content-gateway-api/main.js",
+        "start": "node dist/apps/$PROJECT_NAME/main.js",
         "build": "nx run-many --target build --all --parallel",
-        "heroku-postbuild": "script/prisma-generate.sh $PROJECT_NAME && nx build $PROJECT_NAME --prod",
-        "test": "nx run-many --target test --all --parallel"
+        "test": "nx run-many --target test --all --parallel",
+        "heroku-postbuild": "script/heroku-build $PROJECT_NAME"
     },
     "private": true,
     "dependencies": {
