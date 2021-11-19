@@ -5,28 +5,28 @@ import {
     DataValidationError,
     EntryList,
     EntryWithInfo,
+    FilterType,
     ListPayload,
     MissingSchemaError,
-    OperatorFilter,
+    OrderDirection,
+    Query,
     SchemaFilter,
     SchemaRepository,
     SinglePayload,
     StorageError,
 } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
-import { OperatorType } from "@shared/util-loaders";
 import { Schema, SchemaInfo, ValidationError } from "@shared/util-schema";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
-import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 
-const operatorLookup = {
-    [OperatorType.EQUALS]: "equals",
-    [OperatorType.CONTAINS]: "string_contains",
-    [OperatorType.GREATER_THAN_OR_EQUAL]: "gte",
-    [OperatorType.LESS_THAN_OR_EQUAL]: "lte",
+const filterLookup = {
+    ...FilterType,
+    contains: "string_contains",
+    starts_with: "string_starts_with",
+    ends_with: "string_ends_with",
 } as const;
 
 type PrismaErrors =
@@ -111,7 +111,8 @@ export const createPrismaDataRepository = (
                 TE.chain(() => {
                     return TE.tryCatch(
                         () => upsertData({ ...payload }),
-                        (e: PrismaErrors) => new DatabaseError(e)
+                        (e: unknown) =>
+                            new DatabaseError(e as Error) as StorageError
                     );
                 }),
                 TE.map((data) => ({
@@ -147,7 +148,8 @@ export const createPrismaDataRepository = (
                             prisma.$transaction(
                                 data.map((record) => upsertData(record))
                             ),
-                        (e: PrismaErrors) => new DatabaseError(e)
+                        (e: unknown) =>
+                            new DatabaseError(e as Error) as StorageError
                     );
                 }),
                 TE.map((items) => ({
@@ -187,13 +189,13 @@ export const createPrismaDataRepository = (
         findBySchema: (
             filter: SchemaFilter
         ): TE.TaskEither<StorageError, EntryList> => {
-            const { cursor, limit, info } = filter;
-            let cursorToUse: PrismaCursor | undefined = undefined;
+            const { limit, info } = filter;
+            let cursor: PrismaCursor | undefined = undefined;
             let skip = 0;
-            if (cursor) {
+            if (filter.cursor) {
                 skip = 1;
-                cursorToUse = {
-                    id: cursor,
+                cursor = {
+                    id: filter.cursor,
                 };
             }
             return pipe(
@@ -208,37 +210,42 @@ export const createPrismaDataRepository = (
                                 id: "asc",
                             },
                             skip: skip,
-                            cursor: cursorToUse,
+                            cursor: cursor,
                         }),
-                    (e: PrismaErrors) => new DatabaseError(e)
+                    (e: unknown) => new DatabaseError(e as Error)
                 ),
                 prismaDataToEntries(info)
             );
         },
-        findByFilters: (
-            filters: OperatorFilter
-        ): TE.TaskEither<StorageError, EntryList> => {
-            const { cursor, limit, info, operators } = filters;
+        findByQuery: (query: Query): TE.TaskEither<StorageError, EntryList> => {
+            const { limit, info, where: filters } = query;
             const { namespace, name, version } = info;
-            let where = operators.map((op) => {
-                const operator = operatorLookup[op.type];
-                return {
-                    data: {
-                        path: [op.field],
-                        [operator]: op.value,
-                    },
-                };
-            }) as unknown[];
+
+            // * Here you can pass the wrong parameters (for example a string for greater than or equal).
+            // * 👇 We can add schema checking later. The GraphQL layer will check it for now .
+            let where: Record<string, unknown>[] = (filters ?? []).map(
+                (op) => {
+                    const filter = filterLookup[op.type];
+                    return {
+                        data: {
+                            path: op.fieldPath,
+                            [filter]: op.value,
+                        },
+                    };
+                }
+            );
+            const orderBy: Record<string, OrderDirection> = {
+                id: "asc",
+            };
             where = [...where, { namespace }, { name }, { version }];
-            let cursorToUse: PrismaCursor | undefined = undefined;
+            let cursor: PrismaCursor | undefined = undefined;
             let skip: undefined | number = undefined;
-            if (cursor) {
+            if (query.cursor) {
                 skip = 1;
-                cursorToUse = {
-                    id: cursor,
+                cursor = {
+                    id: query.cursor,
                 };
             }
-
             return pipe(
                 TE.tryCatch(
                     () =>
@@ -247,13 +254,11 @@ export const createPrismaDataRepository = (
                             where: {
                                 AND: where,
                             },
-                            orderBy: {
-                                id: "asc",
-                            },
+                            orderBy: orderBy,
                             skip: skip,
-                            cursor: cursorToUse,
+                            cursor: cursor,
                         }),
-                    (e: PrismaErrors) => new DatabaseError(e)
+                    (e: unknown) => new DatabaseError(e as StorageError)
                 ),
                 prismaDataToEntries(info)
             );

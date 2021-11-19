@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Operator } from "@shared/util-loaders";
 import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import * as A from "fp-ts/Array";
 import { pipe } from "fp-ts/lib/function";
-import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import { StorageError } from "./Errors";
@@ -38,11 +36,36 @@ export type SchemaFilter = {
     info: SchemaInfo;
 };
 
-export type OperatorFilter = {
-    cursor?: bigint;
-    limit: number;
-    operators: Operator[];
+export const FilterType = {
+    equals: "equals",
+    not: "not",
+    contains: "contains",
+    starts_with: "starts_with",
+    ends_with: "ends_with",
+    lt: "lt",
+    lte: "lte",
+    gt: "gt",
+    gte: "gte",
+} as const;
+
+export type FilterType = keyof typeof FilterType;
+
+export type Filter = {
+    type: FilterType;
+    fieldPath: string[];
+    value: unknown;
+};
+
+export type OrderDirection = "asc" | "desc";
+
+export type OrderBy = Record<string, OrderDirection>;
+
+export type Query = {
     info: SchemaInfo;
+    limit: number;
+    cursor?: bigint;
+    where?: Filter[];
+    orderBy?: OrderBy;
 };
 
 /**
@@ -55,8 +78,10 @@ export type DataRepository = {
         entryList: ListPayload
     ) => TE.TaskEither<StorageError, EntryList>;
     findById: (id: bigint) => TO.TaskOption<EntryWithInfo>;
-    findBySchema: (filter: SchemaFilter) => TE.TaskEither<StorageError, EntryList>;
-    findByFilters: (filter: OperatorFilter) => TE.TaskEither<StorageError, EntryList>;
+    findBySchema: (
+        filter: SchemaFilter
+    ) => TE.TaskEither<StorageError, EntryList>;
+    findByQuery: (query: Query) => TE.TaskEither<StorageError, EntryList>;
 };
 
 export type DataRepositoryStub = {
@@ -109,7 +134,7 @@ export const createDataRepositoryStub = (
         findById: (): TO.TaskOption<EntryWithInfo> => TO.none,
         findBySchema: (filter: SchemaFilter) =>
             TE.of({ info: filter.info, entries: [] }),
-        findByFilters: (filter: OperatorFilter) =>
+        findByQuery: (filter: Query) =>
             TE.of({ info: filter.info, entries: [] }),
     };
 };

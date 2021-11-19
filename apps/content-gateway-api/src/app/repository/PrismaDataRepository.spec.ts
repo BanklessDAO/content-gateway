@@ -1,14 +1,16 @@
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { PrismaClient } from "@cga/prisma";
-import { DataValidationError, Entry } from "@domain/feature-gateway";
+import {
+    DataValidationError,
+    Entry,
+    FilterType,
+} from "@domain/feature-gateway";
 import { extractLeft, extractRight } from "@shared/util-fp";
-import { OperatorType } from "@shared/util-loaders";
 import { createSchemaFromType, SchemaInfo } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
+import * as O from "fp-ts/lib/Option";
 import { v4 as uuid } from "uuid";
 import { createPrismaDataRepository, createPrismaSchemaRepository } from ".";
-import * as O from "fp-ts/lib/Option";
-import * as TE from "fp-ts/TaskEither"
 
 @AdditionalProperties(false)
 class Address {
@@ -26,7 +28,9 @@ const addressInfo = {
     version: "V1",
 };
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+    // log: ["query"],
+});
 
 describe("Given a Prisma data storage", () => {
     const schemaRepository = createPrismaSchemaRepository(prisma);
@@ -109,10 +113,12 @@ describe("Given a Prisma data storage", () => {
 
             const data = extractRight(await storage.store(item)());
 
-            const result = extractRight(await storage.findBySchema({
-                limit: 2,
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findBySchema({
+                    limit: 2,
+                    info: tempSchema.info,
+                })()
+            );
 
             expect(result.entries).toEqual([
                 {
@@ -189,10 +195,12 @@ describe("Given a Prisma data storage", () => {
                 records: records,
             })();
 
-            const result = extractRight(await storage.findBySchema({
-                limit: 10,
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findBySchema({
+                    limit: 10,
+                    info: tempSchema.info,
+                })()
+            );
 
             expect(result.entries.map((e) => e.record)).toEqual(records);
         });
@@ -228,10 +236,12 @@ describe("Given a Prisma data storage", () => {
                 records: records,
             })();
 
-            const result = extractRight(await storage.findBySchema({
-                limit: 10,
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findBySchema({
+                    limit: 10,
+                    info: tempSchema.info,
+                })()
+            );
 
             expect(result.entries.map((e) => e.record)).toEqual(records);
         });
@@ -243,11 +253,13 @@ describe("Given a Prisma data storage", () => {
             const tempSchema = await prepareTempSchema(version);
             const addresses = await prepareAddresses(tempSchema.info, 2);
 
-            const result = extractRight(await storage.findBySchema({
-                cursor: addresses[0].id,
-                limit: 10,
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findBySchema({
+                    cursor: addresses[0].id,
+                    limit: 10,
+                    info: tempSchema.info,
+                })()
+            );
 
             expect(result.entries).toEqual([
                 {
@@ -262,10 +274,12 @@ describe("Given a Prisma data storage", () => {
             const tempSchema = await prepareTempSchema(version);
             const addresses = await prepareAddresses(tempSchema.info, 2);
 
-            const result = extractRight(await storage.findBySchema({
-                limit: 10,
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findBySchema({
+                    limit: 10,
+                    info: tempSchema.info,
+                })()
+            );
 
             expect(result.entries).toEqual(
                 addresses.map((a) => ({
@@ -277,10 +291,12 @@ describe("Given a Prisma data storage", () => {
 
         it("Then when there is no data, an empty array is returned", async () => {
             const tempSchema = await prepareTempSchema(uuid());
-            const result = extractRight(await storage.findBySchema({
-                limit: 10,
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findBySchema({
+                    limit: 10,
+                    info: tempSchema.info,
+                })()
+            );
 
             expect(result.entries).toEqual([]);
         });
@@ -293,17 +309,20 @@ describe("Given a Prisma data storage", () => {
 
             const addresses = await prepareAddresses(tempSchema.info, 2);
 
-            const result = extractRight(await storage.findByFilters({
-                cursor: first[1].id,
-                limit: 2,
-                operators: [],
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findByQuery({
+                    cursor: first[1].id,
+                    limit: 2,
+                    info: tempSchema.info,
+                })()
+            );
 
-            expect(result.entries).toEqual(addresses.map((a) => ({
-                id: a.id,
-                record: a.record,
-            })));
+            expect(result.entries).toEqual(
+                addresses.map((a) => ({
+                    id: a.id,
+                    record: a.record,
+                }))
+            );
         });
 
         it("Then it works with the contains operator", async () => {
@@ -330,22 +349,24 @@ describe("Given a Prisma data storage", () => {
                 })()
             );
 
-            const result = extractRight(await storage.findByFilters({
-                limit: 2,
-                operators: [
-                    {
-                        field: "name",
-                        type: OperatorType.CONTAINS,
-                        value: "World",
-                    },
-                ],
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findByQuery({
+                    limit: 2,
+                    where: [
+                        {
+                            fieldPath: ["name"],
+                            type: FilterType.contains,
+                            value: "World",
+                        },
+                    ],
+                    info: tempSchema.info,
+                })()
+            );
 
-            const expected = [data0, data1].map(d => ({
+            const expected = [data0, data1].map((d) => ({
                 id: d.id,
                 record: d.record,
-            }))
+            }));
 
             expect(result.entries).toEqual(expected);
         });
@@ -372,22 +393,26 @@ describe("Given a Prisma data storage", () => {
                 },
             })();
 
-            const result = extractRight(await storage.findByFilters({
-                limit: 2,
-                operators: [
-                    {
-                        field: "num",
-                        type: OperatorType.GREATER_THAN_OR_EQUAL,
-                        value: 2,
-                    },
-                ],
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findByQuery({
+                    limit: 2,
+                    where: [
+                        {
+                            fieldPath: ["num"],
+                            type: FilterType.gte,
+                            value: 2,
+                        },
+                    ],
+                    info: tempSchema.info,
+                })()
+            );
 
-            expect(result.entries).toEqual([{
-                id: data0.id,
-                record: data0.record,
-            }]);
+            expect(result.entries).toEqual([
+                {
+                    id: data0.id,
+                    record: data0.record,
+                },
+            ]);
         });
 
         it("Then it works with the less than or equal operator", async () => {
@@ -412,22 +437,26 @@ describe("Given a Prisma data storage", () => {
                 },
             })();
 
-            const result = extractRight(await storage.findByFilters({
-                limit: 2,
-                operators: [
-                    {
-                        field: "num",
-                        type: OperatorType.LESS_THAN_OR_EQUAL,
-                        value: 2,
-                    },
-                ],
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findByQuery({
+                    limit: 2,
+                    where: [
+                        {
+                            fieldPath: ["num"],
+                            type: FilterType.lte,
+                            value: 2,
+                        },
+                    ],
+                    info: tempSchema.info,
+                })()
+            );
 
-            expect(result.entries).toEqual([{
-                id: data0.id,
-                record: data0.record,
-            }]);
+            expect(result.entries).toEqual([
+                {
+                    id: data0.id,
+                    record: data0.record,
+                },
+            ]);
         });
 
         it("Then it works with the equals operator", async () => {
@@ -456,22 +485,26 @@ describe("Given a Prisma data storage", () => {
                 },
             })();
 
-            const result = extractRight(await storage.findByFilters({
-                limit: 2,
-                operators: [
-                    {
-                        field: "id",
-                        type: OperatorType.EQUALS,
-                        value: id0,
-                    },
-                ],
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findByQuery({
+                    limit: 2,
+                    where: [
+                        {
+                            fieldPath: ["id"],
+                            type: FilterType.equals,
+                            value: id0,
+                        },
+                    ],
+                    info: tempSchema.info,
+                })()
+            );
 
-            expect(result.entries).toEqual([{
-                id: data0.id,
-                record: data0.record,
-            }]);
+            expect(result.entries).toEqual([
+                {
+                    id: data0.id,
+                    record: data0.record,
+                },
+            ]);
         });
 
         it("Then it works with two operators when there is a result", async () => {
@@ -499,27 +532,31 @@ describe("Given a Prisma data storage", () => {
                 },
             })();
 
-            const result = extractRight(await storage.findByFilters({
-                limit: 2,
-                operators: [
-                    {
-                        field: "id",
-                        type: OperatorType.EQUALS,
-                        value: id0,
-                    },
-                    {
-                        field: "name",
-                        type: OperatorType.CONTAINS,
-                        value: "World",
-                    },
-                ],
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findByQuery({
+                    limit: 2,
+                    where: [
+                        {
+                            fieldPath: ["id"],
+                            type: FilterType.equals,
+                            value: id0,
+                        },
+                        {
+                            fieldPath: ["name"],
+                            type: FilterType.contains,
+                            value: "World",
+                        },
+                    ],
+                    info: tempSchema.info,
+                })()
+            );
 
-            expect(result.entries).toEqual([{
-                id: data0.id,
-                record: data0.record,
-            }]);
+            expect(result.entries).toEqual([
+                {
+                    id: data0.id,
+                    record: data0.record,
+                },
+            ]);
         });
 
         it("Then it works with two operators when there is no match", async () => {
@@ -546,22 +583,24 @@ describe("Given a Prisma data storage", () => {
                 },
             })();
 
-            const result = extractRight(await storage.findByFilters({
-                limit: 2,
-                operators: [
-                    {
-                        field: "id",
-                        type: OperatorType.EQUALS,
-                        value: id0,
-                    },
-                    {
-                        field: "name",
-                        type: OperatorType.CONTAINS,
-                        value: "Wombat",
-                    },
-                ],
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findByQuery({
+                    limit: 2,
+                    where: [
+                        {
+                            fieldPath: ["id"],
+                            type: FilterType.equals,
+                            value: id0,
+                        },
+                        {
+                            fieldPath: ["name"],
+                            type: FilterType.contains,
+                            value: "Wombat",
+                        },
+                    ],
+                    info: tempSchema.info,
+                })()
+            );
 
             expect(result.entries).toEqual([]);
         });
@@ -590,23 +629,52 @@ describe("Given a Prisma data storage", () => {
                 })()
             );
 
-            const result = extractRight(await storage.findByFilters({
-                cursor: data0.id,
-                limit: 2,
-                operators: [
-                    {
-                        field: "name",
-                        type: OperatorType.CONTAINS,
-                        value: "World",
-                    },
-                ],
-                info: tempSchema.info,
-            })());
+            const result = extractRight(
+                await storage.findByQuery({
+                    cursor: data0.id,
+                    limit: 2,
+                    where: [
+                        {
+                            fieldPath: ["name"],
+                            type: FilterType.contains,
+                            value: "World",
+                        },
+                    ],
+                    info: tempSchema.info,
+                })()
+            );
 
-            expect(result.entries).toEqual([{
-                id: data1.id,
-                record: data1.record,
-            }]);
+            expect(result.entries).toEqual([
+                {
+                    id: data1.id,
+                    record: data1.record,
+                },
+            ]);
+        });
+
+        it("Test", async () => {
+            const tempSchema = await prepareTempSchema(uuid());
+
+            const data0 = extractRight(
+                await storage.store({
+                    info: tempSchema.info,
+                    record: {
+                        id: uuid(),
+                        name: "ok",
+                        num: 4,
+                    },
+                })()
+            );
+            
+
+            const result = await prisma.data.findMany({
+                where: {
+                    data: {
+                        path: ["num"],
+                        not: 1,
+                    }
+                }
+            });
         });
     });
 

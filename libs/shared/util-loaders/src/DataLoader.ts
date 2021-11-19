@@ -3,19 +3,6 @@ import { SchemaInfo } from "@shared/util-schema";
 import * as TE from "fp-ts/TaskEither";
 import { Job, JobDescriptor, JobScheduler } from ".";
 
-export enum OperatorType {
-    EQUALS,
-    CONTAINS,
-    LESS_THAN_OR_EQUAL,
-    GREATER_THAN_OR_EQUAL,
-}
-
-export type Operator = {
-    type: OperatorType;
-    field: string;
-    value: unknown;
-};
-
 /**
  * Contains the necessary information for initializing.
  */

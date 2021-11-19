@@ -4,14 +4,10 @@ import {
 } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
 import { createLoaderRegistry } from "@domain/feature-loaders";
-import { createLogger } from "@shared/util-fp";
+import { createLogger, programError } from "@shared/util-fp";
 import { createJobScheduler } from "@shared/util-loaders";
 import * as express from "express";
 import { createJobRepository } from "./repository/PrismaJobRepository";
-
-const programError = (msg: string) => {
-    throw new Error(msg);
-};
 
 const PORT =
     process.env.PORT ||

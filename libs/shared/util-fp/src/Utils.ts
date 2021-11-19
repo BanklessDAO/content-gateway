@@ -28,3 +28,7 @@ export const createLogger = (name: string) =>
         prefix: ["👉"],
         // displayFilePath: "hidden",
     });
+
+export const programError = (msg: string): never => {
+    throw new Error(msg);
+};

@@ -28,8 +28,9 @@ export const createInMemoryOutboundDataAdapter = ({
             return pipe(
                 createSchemaFromObject(schema),
                 TE.fromEither,
+                TE.mapLeft((err: Errors) => new Error(failure(err).join("\n"))),
                 TE.chainW(contentGateway.register),
-                TE.mapLeft((err: Errors) => new Error(failure(err).join("\n")))
+                TE.map(() => undefined)
             );
         },
         send: (payload): TE.TaskEither<Error, void> => {

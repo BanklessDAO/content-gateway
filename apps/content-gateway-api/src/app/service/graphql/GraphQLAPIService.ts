@@ -1,7 +1,11 @@
-import { DataRepository, SchemaRepository } from "@domain/feature-gateway";
+import {
+    DataRepository,
+    Filter,
+    FilterType,
+    SchemaRepository,
+} from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import { toGraphQLType } from "@shared/util-graphql";
-import { Operator } from "@shared/util-loaders";
 import { Schema, schemaInfoToString } from "@shared/util-schema";
 import { Request, Response } from "express";
 import { graphqlHTTP } from "express-graphql";
@@ -13,7 +17,7 @@ import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
 import * as pluralize from "pluralize";
-import { operators as operatorsType } from "./types/Operators";
+import { createFiltersFor } from "./types/Filters";
 import { createResultsType, Results } from "./types/Results";
 
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
@@ -55,6 +59,19 @@ export const createGraphQLAPIService = async (
     };
 };
 
+const mapFilters = (from: Record<string, unknown>): Filter[] => {
+    return Object.entries(from).reduce((acc, next) => {
+        const [key, value] = next;
+        const filterKind = key.split("_");
+        acc.push({
+            fieldPath: [filterKind[0]],
+            type: FilterType[filterKind[1] as FilterType],
+            value: value,
+        });
+        return acc;
+    }, [] as Filter[]);
+};
+
 const createGraphQLMiddleware = async ({
     schemaRepository,
     dataRepository,
@@ -69,21 +86,21 @@ const createGraphQLMiddleware = async ({
             (schema: Schema) =>
                 [schema, toGraphQLType(schema)] as SchemaGQLTypePair
         ),
-        A.map(([schema, type]) => {
+        A.map(([schema, type]): g.GraphQLFieldConfigMap<string, unknown> => {
             const name = schema.info.name;
 
             const findById = async (id: bigint) => {
                 return pipe(
                     dataRepository.findById(id),
                     TO.map((data) => data.record),
-                    TO.getOrElse(() => T.of(undefined))
+                    TO.getOrElse(() => T.of({} as Record<string, unknown>))
                 )();
             };
 
             const findByFilters = async (
                 first?: number,
                 after?: string,
-                operators?: Operator[]
+                where?: Filter[]
             ): Promise<Results> => {
                 const notes = [] as string[];
                 let limit = first ?? maxItems;
@@ -103,11 +120,11 @@ const createGraphQLMiddleware = async ({
                 limit++;
 
                 return pipe(
-                    dataRepository.findByFilters({
+                    dataRepository.findByQuery({
                         info: schema.info,
                         cursor: after ? BigInt(after) : undefined,
                         limit: limit,
-                        operators: operators ?? [],
+                        where: where ?? [],
                     }),
                     TE.map((entryList) => {
                         // TODO: write tests for this paging stuff
@@ -125,7 +142,7 @@ const createGraphQLMiddleware = async ({
                             endCursor =
                                 entries[entries.length - 1].id.toString();
                         } else {
-                            startCursor = after;
+                            startCursor = after ?? "";
                             endCursor = startCursor;
                         }
                         return {
@@ -150,20 +167,21 @@ const createGraphQLMiddleware = async ({
                                 endCursor: "0",
                             },
                             errors: [e.message],
-                            notes: [],
-                            data: [],
+                            notes: [] as string[],
+                            data: [] as Record<string, unknown>[],
                         })
                     )
                 )();
             };
 
-            return {
+            const result: g.GraphQLFieldConfigMap<string, unknown> = {
                 [name]: {
                     type: type,
                     args: {
                         id: { type: g.GraphQLInt },
                     },
-                    resolve: async (_, { id }) => {
+                    resolve: async (_, args) => {
+                        const { id } = args as { id: bigint };
                         return findById(id);
                     },
                 },
@@ -172,16 +190,24 @@ const createGraphQLMiddleware = async ({
                     args: {
                         after: { type: g.GraphQLString },
                         first: { type: g.GraphQLInt },
-                        operators: operatorsType,
+                        where: {
+                            type: createFiltersFor(name, schema.jsonSchema),
+                        },
                     },
-                    resolve: (_, { first, after, operators }) => {
-                        return findByFilters(first, after, operators);
+                    resolve: (_, args) => {
+                        const { first, after, where } = args as {
+                            first: number;
+                            after: string;
+                            where: Record<string, unknown>;
+                        };
+                        return findByFilters(first, after, mapFilters(where));
                     },
                 },
             };
+            return result;
         }),
         A.reduce(
-            {} as g.Thunk<g.GraphQLFieldConfigMap<unknown, unknown>>,
+            {} as g.Thunk<g.GraphQLFieldConfigMap<string, unknown>>,
             (acc, curr) => ({
                 ...acc,
                 ...curr,

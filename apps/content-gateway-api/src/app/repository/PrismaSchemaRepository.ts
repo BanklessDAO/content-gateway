@@ -2,13 +2,14 @@
 import { PrismaClient, Schema as PrismaSchema } from "@cga/prisma";
 import {
     RegisteredSchemaIncompatibleError,
-    SchemaCreationFailedError, SchemaRepository
+    SchemaCreationFailedError,
+    SchemaRepository,
 } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import {
     createSchemaFromObject,
     Schema,
-    SchemaInfo
+    SchemaInfo,
 } from "@shared/util-schema";
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
@@ -60,7 +61,8 @@ export const createPrismaSchemaRepository = (
                     update: data,
                 });
             },
-            (e: Error) => SchemaCreationFailedError.create(e.message)
+            (e: unknown) =>
+                SchemaCreationFailedError.create((e as Error).message)
         );
 
     const prismaSchemaToSchema: (
@@ -83,8 +85,8 @@ export const createPrismaSchemaRepository = (
                         const o = await findSchema(schema.info)();
                         return Promise.resolve(O.getOrElse(() => schema)(o));
                     },
-                    (err: Error) =>
-                        SchemaCreationFailedError.create(err.message)
+                    (e: unknown) =>
+                        SchemaCreationFailedError.create((e as Error).message)
                 ),
                 TE.chain((oldSchema) => {
                     if (schema.isBackwardCompatibleWith(oldSchema)) {

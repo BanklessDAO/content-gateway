@@ -1,8 +1,8 @@
 import { PrismaClient } from "@cga/prisma";
-import { createLogger } from "@shared/util-fp";
+import { createLogger, programError } from "@shared/util-fp";
 import { createAPI } from "./app/";
 
-const logger = createLogger("main")
+const logger = createLogger("main");
 
 const prisma = new PrismaClient();
 
@@ -28,7 +28,3 @@ main()
     .finally(() => {
         prisma.$disconnect();
     });
-
-const programError = (message: string) => {
-    throw new Error(message);
-};
