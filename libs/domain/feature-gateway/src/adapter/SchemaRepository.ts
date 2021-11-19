@@ -1,4 +1,5 @@
 import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
+import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import { SchemaRepositoryError } from ".";
@@ -11,11 +12,7 @@ export type SchemaRepository = {
     register: (schema: Schema) => TE.TaskEither<SchemaRepositoryError, void>;
     find: (key: SchemaInfo) => TO.TaskOption<Schema>;
     // TODO: make this a Task instead
-    findAll: () => TO.TaskOption<Array<Schema>>;
-    updateCursor: (
-        info: SchemaInfo,
-        cursor: string
-    ) => TE.TaskEither<SchemaRepositoryError, void>;
+    findAll: () => T.Task<Array<Schema>>;
 };
 
 export type SchemaRepositoryStub = {
@@ -46,9 +43,6 @@ export const createSchemaRepositoryStub = (
                 return TO.none;
             }
         },
-        findAll: () => TO.some(Array.from(map.values())),
-        updateCursor: (): TE.TaskEither<SchemaRepositoryError, void> => {
-            return TE.right(undefined);
-        },
+        findAll: () => T.of(Array.from(map.values())),
     };
 };

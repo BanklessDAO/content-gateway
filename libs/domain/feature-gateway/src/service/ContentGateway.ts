@@ -46,14 +46,11 @@ export const createContentGateway: ContentGatewayFactory = (
             return schemaRepository.register(schema);
         },
         receive: <T>(payload: Payload<T>) => {
-            const { info, data, cursor } = payload;
+            const { info, data } = payload;
             return pipe(
                 dataRepository.store({
                     info: info,
                     record: data as Record<string, unknown>,
-                }),
-                TE.chain(() => {
-                    return schemaRepository.updateCursor(info, cursor);
                 }),
                 TE.mapLeft((err) => {
                     logger.warn(`Failed to store batch of data:`, err);
@@ -63,15 +60,12 @@ export const createContentGateway: ContentGatewayFactory = (
             );
         },
         receiveBatch: <T>(payload: Payload<Array<T>>) => {
-            const { info, data, cursor } = payload;
+            const { info, data } = payload;
 
             return pipe(
                 dataRepository.storeBulk({
                     info: info,
                     records: data as Record<string, unknown>[],
-                }),
-                TE.chain(() => {
-                    return schemaRepository.updateCursor(info, cursor);
                 }),
                 TE.mapLeft((err) => {
                     logger.warn(`Failed to store batch of data:`, err);

@@ -18,7 +18,7 @@ import {
     SchedulerStartupError,
     SchedulerStoppedError,
     SchedulingError,
-    StartError,
+    StartError
 } from "./Errors";
 import { Job } from "./Job";
 import { JobRepository } from "./JobRepository";
@@ -220,12 +220,12 @@ class DefaultJobScheduler implements JobScheduler {
                         limit: job.limit,
                         cursor: job.cursor,
                     }),
-                    TE.chain((data) =>
+                    TE.chain((result) =>
                         loader.save({
                             currentJob: job,
                             client: this.client,
                             jobScheduler: this,
-                            data: data,
+                            loadingResult: result,
                         })
                     ),
                     TE.mapLeft((e) => {

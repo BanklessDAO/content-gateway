@@ -13,12 +13,6 @@ export type Payload<T> = {
      */
     info: SchemaInfo;
     /**
-     * The cursor (id / timestamp / block time) that corresponds
-     * to the data that is sent. If an array is sent set the cursor
-     * using the last item in the array.
-     */
-    cursor: string;
-    /**
      * The actual data that is being sent. This can also be an array.
      */
     data: T;

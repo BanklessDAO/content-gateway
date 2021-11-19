@@ -26,6 +26,11 @@ export type ClientDependencies = {
     adapter: OutboundDataAdapter;
 };
 
+export type RegistrationParams<T> = {
+    info: SchemaInfo;
+    type: Type<T>;
+};
+
 /**
  * The {@link ContentGatewayClient} is the client-side component of the *Content Gateway*.
  * Use it to {@link ContentGatewayClient#register | register} your schema types and to
@@ -51,11 +56,7 @@ export type ContentGatewayClient = {
      * }
      * ```
      */
-    // ⚠️ note that these should return TE.TaskEithers but it is easier this way for non-fp users.
-    register: <T>(
-        info: SchemaInfo,
-        type: Type<T>
-    ) => TE.TaskEither<Error, void>;
+    register: <T>(params: RegistrationParams<T>) => TE.TaskEither<Error, void>;
     /**
      * Saves the [[data]] to the Content Gateway using the schema's metadata to
      * identify it. This will return an error if the type of [[data]] is not
@@ -71,15 +72,15 @@ export type ContentGatewayClient = {
 /**
  * This object is instantiated in the client.
  */
-export const createClient = ({
+export const createContentGatewayClient = ({
     adapter,
 }: ClientDependencies): ContentGatewayClient => {
     const schemas = new Map<string, Schema>();
     return {
-        register: <T>(
-            info: SchemaInfo,
-            type: Type<T>
-        ): TE.TaskEither<Error, void> => {
+        register: <T>({
+            info,
+            type,
+        }: RegistrationParams<T>): TE.TaskEither<Error, void> => {
             return pipe(
                 createSchemaFromType(info, type),
                 TE.fromEither,
@@ -100,7 +101,7 @@ export const createClient = ({
             );
         },
         save: <T>(payload: Payload<T>): TE.TaskEither<Error, void> => {
-            const { info, data, cursor } = payload;
+            const { info, data } = payload;
             const mapKey = schemaInfoToString(info);
             const maybeSchema = O.fromNullable(schemas.get(mapKey));
             return pipe(
@@ -118,7 +119,6 @@ export const createClient = ({
                 TE.chain((dataRecord) =>
                     adapter.send({
                         info: info,
-                        cursor: cursor.toString(),
                         data: dataRecord,
                     })
                 )
@@ -127,7 +127,7 @@ export const createClient = ({
         saveBatch: <T>(
             payload: Payload<Array<T>>
         ): TE.TaskEither<Error, void> => {
-            const { info, data, cursor } = payload;
+            const { info, data } = payload;
             const mapKey = schemaInfoToString(info);
             const maybeSchema = O.fromNullable(schemas.get(mapKey));
             return pipe(
@@ -149,7 +149,6 @@ export const createClient = ({
                 TE.chain((dataArray) =>
                     adapter.sendBatch({
                         info: info,
-                        cursor: cursor.toString(),
                         data: dataArray as Array<Record<string, unknown>>,
                     })
                 )
@@ -169,7 +168,7 @@ export type ContentGatewayClientStub = {
  */
 export const createClientStub: () => ContentGatewayClientStub = () => {
     const adapter = createOutboundAdapterStub();
-    const client = createClient({ adapter });
+    const client = createContentGatewayClient({ adapter });
     return {
         adapter,
         ...client,

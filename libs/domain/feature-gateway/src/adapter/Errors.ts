@@ -17,12 +17,22 @@ export class DataValidationError extends Error {
     }
 }
 
-export class DatabaseStorageError extends Error {
+export class DatabaseError extends Error {
     public _tag = "DatabaseError";
     public cause: Error;
 
     constructor(cause: Error) {
         super(`Failed to store data: ${cause.message}`);
+        this.cause = cause;
+    }
+}
+
+export class UnknownError extends Error {
+    public _tag = "UnknownError";
+    public cause: Error;
+
+    constructor(cause: Error) {
+        super(`An unknown error happened: ${cause.message}`);
         this.cause = cause;
     }
 }
@@ -37,10 +47,22 @@ export class MissingSchemaError extends Error {
     }
 }
 
+export class MissingLoaderError extends Error {
+    public _tag = "MissingLoaderError";
+    public info: SchemaInfo;
+
+    constructor(info: SchemaInfo) {
+        super(`No loader found for schema: ${schemaInfoToString(info)}`);
+        this.info = info;
+    }
+}
+
 export type StorageError =
     | DataValidationError
-    | DatabaseStorageError
-    | MissingSchemaError;
+    | DatabaseError
+    | MissingSchemaError
+    | MissingLoaderError
+    | UnknownError;
 
 export class RegisteredSchemaIncompatibleError extends Error {
     public _tag = "RegisteredSchemaIncompatibleError";

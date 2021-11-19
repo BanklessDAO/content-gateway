@@ -4,7 +4,7 @@ import { ContentGateway, DataRepository } from "@domain/feature-gateway";
 import { LoaderRegistry } from "@domain/feature-loaders";
 import { Application } from "express";
 import { Logger } from "tslog";
-import { SchemaRepositoryDecorator } from "./endpoints";
+import { ObservableSchemaRepository } from "./service";
 
 export type AppContext = {
     logger: Logger;
@@ -13,9 +13,9 @@ export type AppContext = {
     isProd: boolean;
     app: Application;
     prisma: PrismaClient;
-    schemaRepository: SchemaRepositoryDecorator;
+    schemaRepository: ObservableSchemaRepository;
     dataRepository: DataRepository;
     loaderRegistry: LoaderRegistry;
-    gateway: ContentGateway;
+    contentGateway: ContentGateway;
     client: ContentGatewayClient;
 };

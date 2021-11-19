@@ -8,6 +8,7 @@ import { AdditionalProperties, Required } from "@tsed/schema";
 import { v4 as uuid } from "uuid";
 import { createPrismaDataRepository, createPrismaSchemaRepository } from ".";
 import * as O from "fp-ts/lib/Option";
+import * as TE from "fp-ts/TaskEither"
 
 @AdditionalProperties(false)
 class Address {
@@ -108,10 +109,10 @@ describe("Given a Prisma data storage", () => {
 
             const data = extractRight(await storage.store(item)());
 
-            const result = await storage.findBySchema({
+            const result = extractRight(await storage.findBySchema({
                 limit: 2,
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries).toEqual([
                 {
@@ -188,10 +189,10 @@ describe("Given a Prisma data storage", () => {
                 records: records,
             })();
 
-            const result = await storage.findBySchema({
+            const result = extractRight(await storage.findBySchema({
                 limit: 10,
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries.map((e) => e.record)).toEqual(records);
         });
@@ -227,10 +228,10 @@ describe("Given a Prisma data storage", () => {
                 records: records,
             })();
 
-            const result = await storage.findBySchema({
+            const result = extractRight(await storage.findBySchema({
                 limit: 10,
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries.map((e) => e.record)).toEqual(records);
         });
@@ -242,11 +243,11 @@ describe("Given a Prisma data storage", () => {
             const tempSchema = await prepareTempSchema(version);
             const addresses = await prepareAddresses(tempSchema.info, 2);
 
-            const result = await storage.findBySchema({
+            const result = extractRight(await storage.findBySchema({
                 cursor: addresses[0].id,
                 limit: 10,
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries).toEqual([
                 {
@@ -261,10 +262,10 @@ describe("Given a Prisma data storage", () => {
             const tempSchema = await prepareTempSchema(version);
             const addresses = await prepareAddresses(tempSchema.info, 2);
 
-            const result = await storage.findBySchema({
+            const result = extractRight(await storage.findBySchema({
                 limit: 10,
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries).toEqual(
                 addresses.map((a) => ({
@@ -276,10 +277,10 @@ describe("Given a Prisma data storage", () => {
 
         it("Then when there is no data, an empty array is returned", async () => {
             const tempSchema = await prepareTempSchema(uuid());
-            const result = await storage.findBySchema({
+            const result = extractRight(await storage.findBySchema({
                 limit: 10,
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries).toEqual([]);
         });
@@ -292,12 +293,12 @@ describe("Given a Prisma data storage", () => {
 
             const addresses = await prepareAddresses(tempSchema.info, 2);
 
-            const result = await storage.findByFilters({
+            const result = extractRight(await storage.findByFilters({
                 cursor: first[1].id,
                 limit: 2,
                 operators: [],
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries).toEqual(addresses.map((a) => ({
                 id: a.id,
@@ -329,7 +330,7 @@ describe("Given a Prisma data storage", () => {
                 })()
             );
 
-            const result = await storage.findByFilters({
+            const result = extractRight(await storage.findByFilters({
                 limit: 2,
                 operators: [
                     {
@@ -339,7 +340,7 @@ describe("Given a Prisma data storage", () => {
                     },
                 ],
                 info: tempSchema.info,
-            })();
+            })());
 
             const expected = [data0, data1].map(d => ({
                 id: d.id,
@@ -371,7 +372,7 @@ describe("Given a Prisma data storage", () => {
                 },
             })();
 
-            const result = await storage.findByFilters({
+            const result = extractRight(await storage.findByFilters({
                 limit: 2,
                 operators: [
                     {
@@ -381,7 +382,7 @@ describe("Given a Prisma data storage", () => {
                     },
                 ],
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries).toEqual([{
                 id: data0.id,
@@ -411,7 +412,7 @@ describe("Given a Prisma data storage", () => {
                 },
             })();
 
-            const result = await storage.findByFilters({
+            const result = extractRight(await storage.findByFilters({
                 limit: 2,
                 operators: [
                     {
@@ -421,7 +422,7 @@ describe("Given a Prisma data storage", () => {
                     },
                 ],
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries).toEqual([{
                 id: data0.id,
@@ -455,7 +456,7 @@ describe("Given a Prisma data storage", () => {
                 },
             })();
 
-            const result = await storage.findByFilters({
+            const result = extractRight(await storage.findByFilters({
                 limit: 2,
                 operators: [
                     {
@@ -465,7 +466,7 @@ describe("Given a Prisma data storage", () => {
                     },
                 ],
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries).toEqual([{
                 id: data0.id,
@@ -498,7 +499,7 @@ describe("Given a Prisma data storage", () => {
                 },
             })();
 
-            const result = await storage.findByFilters({
+            const result = extractRight(await storage.findByFilters({
                 limit: 2,
                 operators: [
                     {
@@ -513,7 +514,7 @@ describe("Given a Prisma data storage", () => {
                     },
                 ],
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries).toEqual([{
                 id: data0.id,
@@ -545,7 +546,7 @@ describe("Given a Prisma data storage", () => {
                 },
             })();
 
-            const result = await storage.findByFilters({
+            const result = extractRight(await storage.findByFilters({
                 limit: 2,
                 operators: [
                     {
@@ -560,7 +561,7 @@ describe("Given a Prisma data storage", () => {
                     },
                 ],
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries).toEqual([]);
         });
@@ -589,7 +590,7 @@ describe("Given a Prisma data storage", () => {
                 })()
             );
 
-            const result = await storage.findByFilters({
+            const result = extractRight(await storage.findByFilters({
                 cursor: data0.id,
                 limit: 2,
                 operators: [
@@ -600,7 +601,7 @@ describe("Given a Prisma data storage", () => {
                     },
                 ],
                 info: tempSchema.info,
-            })();
+            })());
 
             expect(result.entries).toEqual([{
                 id: data1.id,

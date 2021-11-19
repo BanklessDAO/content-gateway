@@ -58,7 +58,7 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing POAP loader...");
         return pipe(
-            client.register(poapTokenInfo, POAPToken),
+            client.register({ info: poapTokenInfo, type: POAPToken }),
             TE.chainW(() =>
                 // TODO: we don't want to restart everything when the loader is restarted 👇
                 jobScheduler.schedule({
@@ -85,12 +85,12 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
                     limit,
                 });
 
-                let tokens: POAPToken[] = [];
+                let data: POAPToken[] = [];
                 let ts = cursor?.toString() ?? "0";
 
-                while (tokens.length < limit) {
+                while (data.length < limit) {
                     logger.info(
-                        `Pulling POAP tokens... size: ${tokens.length}, limit: ${limit}, ts: ${ts}`
+                        `Pulling POAP tokens... size: ${data.length}, limit: ${limit}, ts: ${ts}`
                     );
                     const slice: POAPToken[] = await pullTokensSince(ts);
                     logger.info(`Pulled ${slice.length} POAP tokens.`);
@@ -99,31 +99,35 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
                     } else {
                         ts = slice[slice.length - 1].mintedAt.toString();
                     }
-                    tokens = tokens.concat(slice);
+                    data = data.concat(slice);
                 }
-                if (tokens.length > limit) {
+                if (data.length > limit) {
                     logger.info(
-                        `Too many POAP tokens were loaded (amount: ${tokens.length}, limit: ${limit}). Truncating list...`
+                        `Too many POAP tokens were loaded (amount: ${data.length}, limit: ${limit}). Truncating list...`
                     );
-                    tokens = tokens.slice(0, limit);
+                    data = data.slice(0, limit);
                 }
-                return tokens;
+                let nextCursor: string;
+                if (data.length > 0) {
+                    logger.info(
+                        `POAP data length: ${data.length}, setting cursor to: ${
+                            data[data.length - 1].mintedAt
+                        }`
+                    );
+                    nextCursor = data[data.length - 1].mintedAt.toString();
+                } else {
+                    nextCursor = "0";
+                }
+                return {
+                    data: data,
+                    cursor: nextCursor,
+                };
             },
             (error: unknown) => new Error(String(error))
         );
     },
-    save: ({ client, data }) => {
-        let cursor: string;
-        if (data.length > 0) {
-            logger.info(
-                `POAP data length: ${data.length}, setting cursor to: ${
-                    data[data.length - 1].mintedAt
-                }`
-            );
-            cursor = data[data.length - 1].mintedAt.toString();
-        } else {
-            cursor = "0";
-        }
+    save: ({ client, loadingResult }) => {
+        const { cursor, data } = loadingResult;
         const cadence =
             data.length == batchSize ? { seconds: 30 } : { minutes: 5 };
         const nextJob = {
@@ -136,7 +140,6 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
             client.saveBatch({
                 info: poapTokenInfo,
                 data: data,
-                cursor: cursor,
             }),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {

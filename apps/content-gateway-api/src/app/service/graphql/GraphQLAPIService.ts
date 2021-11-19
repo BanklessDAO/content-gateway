@@ -1,5 +1,4 @@
 import { DataRepository, SchemaRepository } from "@domain/feature-gateway";
-import { LoaderRegistry } from "@domain/feature-loaders";
 import { createLogger } from "@shared/util-fp";
 import { toGraphQLType } from "@shared/util-graphql";
 import { Operator } from "@shared/util-loaders";
@@ -9,7 +8,6 @@ import { graphqlHTTP } from "express-graphql";
 import * as A from "fp-ts/Array";
 import { pipe } from "fp-ts/lib/function";
 import { map } from "fp-ts/lib/Identity";
-import * as O from "fp-ts/Option";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
@@ -28,23 +26,24 @@ export type Middleware = (
 ) => Promise<void>;
 
 export type Deps = {
-    readonly schemaRepository: SchemaRepositoryDecorator;
+    readonly schemaRepository: ObservableSchemaRepository;
     readonly dataRepository: DataRepository;
-    readonly loaderRegistry: LoaderRegistry;
 };
 
-export type GraphQLAPI = {
+export type GraphQLAPIService = {
     readonly middleware: Middleware;
 };
 
-export type SchemaRepositoryDecorator = SchemaRepository & {
+export type ObservableSchemaRepository = SchemaRepository & {
     onRegister: (listener: () => void) => void;
 };
 
 /**
  * Creates a new GraphQL API that can be used as an Express middleware.
  */
-export const createGraphQLAPI = async (deps: Deps): Promise<Middleware> => {
+export const createGraphQLAPIService = async (
+    deps: Deps
+): Promise<Middleware> => {
     let currentMiddleware = await createGraphQLMiddleware(deps);
     deps.schemaRepository.onRegister(() => {
         createGraphQLMiddleware(deps).then((middleware) => {
@@ -59,22 +58,13 @@ export const createGraphQLAPI = async (deps: Deps): Promise<Middleware> => {
 const createGraphQLMiddleware = async ({
     schemaRepository,
     dataRepository,
-    loaderRegistry,
 }: Deps): Promise<Middleware> => {
     const logger = createLogger("GraphQLAPI");
     const schemas = await schemaRepository.findAll()();
-    pipe(
-        schemas,
-        O.map((s) => {
-            const str = s
-                .map((schema) => schemaInfoToString(schema.info))
-                .join();
-            logger.info(`Current schemas are: ${str}`);
-        })
-    );
+    const str = schemas.map((schema) => schemaInfoToString(schema.info)).join();
+    logger.info(`Current schemas are: ${str}`);
     return pipe(
         schemas,
-        O.getOrElse(() => [] as Schema[]),
         A.map(
             (schema: Schema) =>
                 [schema, toGraphQLType(schema)] as SchemaGQLTypePair
@@ -119,7 +109,7 @@ const createGraphQLMiddleware = async ({
                         limit: limit,
                         operators: operators ?? [],
                     }),
-                    T.map((entryList) => {
+                    TE.map((entryList) => {
                         // TODO: write tests for this paging stuff
                         const entries = entryList.entries;
                         const hasNextPage = entries.length === limit;
@@ -151,7 +141,19 @@ const createGraphQLMiddleware = async ({
                                 id: entry.id.toString(),
                             })),
                         };
-                    })
+                    }),
+                    TE.getOrElse((e) =>
+                        T.of({
+                            pageInfo: {
+                                hasNextPage: false,
+                                startCursor: "0",
+                                endCursor: "0",
+                            },
+                            errors: [e.message],
+                            notes: [],
+                            data: [],
+                        })
+                    )
                 )();
             };
 
@@ -205,10 +207,10 @@ const createGraphQLMiddleware = async ({
  * Decorates a schema storage with a side effect that will regenerate
  * the GraphQL api whenever a new schema is saved.
  */
-export const decorateSchemaRepository = (
+export const toObservableSchemaRepository = (
     schemaRepository: SchemaRepository
-): SchemaRepositoryDecorator => {
-    const logger = createLogger("SchemaRepositoryDecorator");
+): ObservableSchemaRepository => {
+    const logger = createLogger("ObservableSchemaRepository");
     const listeners = [] as Array<() => void>;
     return {
         ...schemaRepository,

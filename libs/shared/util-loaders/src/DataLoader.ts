@@ -29,11 +29,16 @@ export type LoadContext = {
     limit: number;
 };
 
+export type LoadingResult<T> = {
+    data: T[];
+    cursor: string;
+};
+
 export type SaveContext<T> = {
     currentJob: Job;
     client: ContentGatewayClient;
     jobScheduler: JobScheduler;
-    data: T[];
+    loadingResult: LoadingResult<T>;
 };
 
 export type DataLoader<T> = {
@@ -46,7 +51,7 @@ export type DataLoader<T> = {
     /**
      * Loads data from the data source asynchronously.
      */
-    load: (deps: LoadContext) => TE.TaskEither<Error, T[]>;
+    load: (deps: LoadContext) => TE.TaskEither<Error, LoadingResult<T>>;
     /**
      * Sends the data to the Content Gateway API asynchronously.
      */

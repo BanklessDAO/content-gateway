@@ -1,11 +1,11 @@
 import { createLogger } from "@shared/util-fp";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
-import { createClient } from "./";
+import { createContentGatewayClient } from "./";
 import { ContentGatewayClient } from "./ContentGatewayClient";
 import {
     createOutboundAdapterStub,
-    OutboundDataAdapterStub,
+    OutboundDataAdapterStub
 } from "./OutboundDataAdapter";
 
 class Comment {
@@ -66,11 +66,14 @@ describe("Given a gateway client", () => {
 
     beforeEach(() => {
         adapterStub = createOutboundAdapterStub();
-        client = createClient({ adapter: adapterStub });
+        client = createContentGatewayClient({ adapter: adapterStub });
     });
 
     it("When registering a valid schema Then it should register properly", async () => {
-        const result = await client.register(info, Post)();
+        const result = await client.register({
+            info: info,
+            type: Post,
+        })();
 
         const expected = {
             info: { namespace: "test", name: "Post", version: "V1" },
@@ -101,23 +104,24 @@ describe("Given a gateway client", () => {
     });
 
     it("When registering an invalid schema Then it returns an error", async () => {
-        const result = await client.register(info, InvalidPost)();
+        const result = await client.register({
+            info: info,
+            type: InvalidPost,
+        })();
         expect(E.isLeft(result)).toBeTruthy();
     });
 
     it("When sending a valid payload Then it is sent properly", async () => {
-        await client.register(info, Post)();
+        await client.register({ info: info, type: Post })();
         const result = await client.save({
             info: info,
             data: validPost,
-            cursor: "0",
         })();
 
         expect(result).toEqual(E.right(undefined));
         expect(adapterStub.payloads).toEqual([
             {
                 info: { namespace: "test", name: "Post", version: "V1" },
-                cursor: "0",
                 data: {
                     id: "1",
                     content: "Hello World",
@@ -131,7 +135,6 @@ describe("Given a gateway client", () => {
         const result = await client.save({
             info: info,
             data: validPost,
-            cursor: "0",
         })();
 
         expect(result).toEqual(
@@ -140,11 +143,10 @@ describe("Given a gateway client", () => {
     });
 
     it("When sending a payload with missing data Then an error is returned", async () => {
-        await client.register(info, Post)();
+        await client.register({ info: info, type: Post })();
         const result = await client.save({
             info: info,
             data: invalidPostWithMissingData,
-            cursor: "0",
         })();
 
         expect(result).toEqual(
@@ -154,11 +156,10 @@ describe("Given a gateway client", () => {
 
     // TODO: add it to the docs that they should use @AdditionalProperties(false)
     it("When sending a payload with extra data Then an error is returned", async () => {
-        await client.register(info, Post)();
+        await client.register({ info: info, type: Post })();
         const result = await client.save({
             info: info,
             data: invalidPostWithExtraData,
-            cursor: "0",
         })();
 
         expect(result).toEqual(

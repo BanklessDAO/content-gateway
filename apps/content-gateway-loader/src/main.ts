@@ -1,5 +1,5 @@
 import {
-    createClient,
+    createContentGatewayClient,
     createRESTAdapter
 } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
@@ -35,7 +35,7 @@ const main = async () => {
     const loaderRegistry = createLoaderRegistry();
     const app = express();
 
-    const clientStub = createClient({
+    const clientStub = createContentGatewayClient({
         adapter: createRESTAdapter(CGA_URL),
     });
 

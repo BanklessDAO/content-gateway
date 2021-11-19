@@ -6,7 +6,6 @@ import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { Course, courseInfo } from "./types";
 
-const name = "bankless-academy-loader";
 const logger = createLogger("BanklessAcademyLoader");
 
 // TODO: use discriminated unions (discriminator is type)
@@ -38,7 +37,7 @@ export const courseLoader: DataLoader<Course> = {
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing Bankless Academy loader...");
         return pipe(
-            client.register(courseInfo, Course),
+            client.register({ info: courseInfo, type: Course }),
             TE.chainW(() =>
                 // TODO: we don't want to restart everything when the loader is restarted 👇
                 jobScheduler.schedule({
@@ -71,7 +70,7 @@ export const courseLoader: DataLoader<Course> = {
                 const response = await axios.request<ResponseItem[]>({
                     url: "https://bankless-academy-cg-lab.vercel.app/api/courses",
                 });
-                return response.data.map((item: ResponseItem) => {
+                const data = response.data.map((item: ResponseItem) => {
                     const course: Course = {
                         id: item.slug,
                         name: item.name,
@@ -99,22 +98,26 @@ export const courseLoader: DataLoader<Course> = {
                     };
                     return course;
                 });
+                return {
+                    cursor: "0", // TODO: 👈 use proper timestamps
+                    data: data,
+                };
             },
             (err: unknown) => new Error(String(err))
         );
     },
-    save: ({ client, data }) => {
+    save: ({ client, loadingResult }) => {
+        const { cursor, data } = loadingResult;
         const nextJob = {
             info: courseInfo,
             scheduledAt: DateTime.now().plus({ minutes: 1 }).toJSDate(),
-            cursor: "0", // TODO: 👈 use proper timestamps 👇
+            cursor: cursor,
             limit: 1000,
         };
         return pipe(
             client.saveBatch({
                 info: courseInfo,
                 data: data,
-                cursor: "0",
             }),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {

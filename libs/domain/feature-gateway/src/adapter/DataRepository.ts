@@ -55,8 +55,8 @@ export type DataRepository = {
         entryList: ListPayload
     ) => TE.TaskEither<StorageError, EntryList>;
     findById: (id: bigint) => TO.TaskOption<EntryWithInfo>;
-    findBySchema: (filter: SchemaFilter) => T.Task<EntryList>;
-    findByFilters: (filter: OperatorFilter) => T.Task<EntryList>;
+    findBySchema: (filter: SchemaFilter) => TE.TaskEither<StorageError, EntryList>;
+    findByFilters: (filter: OperatorFilter) => TE.TaskEither<StorageError, EntryList>;
 };
 
 export type DataRepositoryStub = {
@@ -108,8 +108,8 @@ export const createDataRepositoryStub = (
         },
         findById: (): TO.TaskOption<EntryWithInfo> => TO.none,
         findBySchema: (filter: SchemaFilter) =>
-            T.of({ info: filter.info, entries: [] }),
+            TE.of({ info: filter.info, entries: [] }),
         findByFilters: (filter: OperatorFilter) =>
-            T.of({ info: filter.info, entries: [] }),
+            TE.of({ info: filter.info, entries: [] }),
     };
 };

@@ -1,6 +1,6 @@
 import { Data, Prisma, PrismaClient } from "@cga/prisma";
 import {
-    DatabaseStorageError,
+    DatabaseError,
     DataRepository,
     DataValidationError,
     EntryList,
@@ -11,7 +11,7 @@ import {
     SchemaFilter,
     SchemaRepository,
     SinglePayload,
-    StorageError
+    StorageError,
 } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import { OperatorType } from "@shared/util-loaders";
@@ -79,7 +79,7 @@ export const createPrismaDataRepository = (
     };
 
     const prismaDataToEntries = (info: SchemaInfo) => {
-        return T.map((data: Data[]) => ({
+        return TE.map((data: Data[]) => ({
             info: info,
             entries: data.map((d) => {
                 return {
@@ -111,7 +111,7 @@ export const createPrismaDataRepository = (
                 TE.chain(() => {
                     return TE.tryCatch(
                         () => upsertData({ ...payload }),
-                        (e: PrismaErrors) => new DatabaseStorageError(e)
+                        (e: PrismaErrors) => new DatabaseError(e)
                     );
                 }),
                 TE.map((data) => ({
@@ -147,7 +147,7 @@ export const createPrismaDataRepository = (
                             prisma.$transaction(
                                 data.map((record) => upsertData(record))
                             ),
-                        (e: PrismaErrors) => new DatabaseStorageError(e)
+                        (e: PrismaErrors) => new DatabaseError(e)
                     );
                 }),
                 TE.map((items) => ({
@@ -184,7 +184,9 @@ export const createPrismaDataRepository = (
                 })
             );
         },
-        findBySchema: (filter: SchemaFilter): T.Task<EntryList> => {
+        findBySchema: (
+            filter: SchemaFilter
+        ): TE.TaskEither<StorageError, EntryList> => {
             const { cursor, limit, info } = filter;
             let cursorToUse: PrismaCursor | undefined = undefined;
             let skip = 0;
@@ -195,22 +197,27 @@ export const createPrismaDataRepository = (
                 };
             }
             return pipe(
-                () =>
-                    prisma.data.findMany({
-                        take: limit,
-                        where: {
-                            ...info,
-                        },
-                        orderBy: {
-                            id: "asc",
-                        },
-                        skip: skip,
-                        cursor: cursorToUse,
-                    }),
+                TE.tryCatch(
+                    () =>
+                        prisma.data.findMany({
+                            take: limit,
+                            where: {
+                                ...info,
+                            },
+                            orderBy: {
+                                id: "asc",
+                            },
+                            skip: skip,
+                            cursor: cursorToUse,
+                        }),
+                    (e: PrismaErrors) => new DatabaseError(e)
+                ),
                 prismaDataToEntries(info)
             );
         },
-        findByFilters: (filters: OperatorFilter): T.Task<EntryList> => {
+        findByFilters: (
+            filters: OperatorFilter
+        ): TE.TaskEither<StorageError, EntryList> => {
             const { cursor, limit, info, operators } = filters;
             const { namespace, name, version } = info;
             let where = operators.map((op) => {
@@ -233,18 +240,21 @@ export const createPrismaDataRepository = (
             }
 
             return pipe(
-                () =>
-                    prisma.data.findMany({
-                        take: limit,
-                        where: {
-                            AND: where,
-                        },
-                        orderBy: {
-                            id: "asc",
-                        },
-                        skip: skip,
-                        cursor: cursorToUse,
-                    }),
+                TE.tryCatch(
+                    () =>
+                        prisma.data.findMany({
+                            take: limit,
+                            where: {
+                                AND: where,
+                            },
+                            orderBy: {
+                                id: "asc",
+                            },
+                            skip: skip,
+                            cursor: cursorToUse,
+                        }),
+                    (e: PrismaErrors) => new DatabaseError(e)
+                ),
                 prismaDataToEntries(info)
             );
         },

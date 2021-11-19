@@ -57,7 +57,7 @@ export const bountyLoader: DataLoader<Bounty> = {
     initialize: ({ client, jobScheduler }) => {
         logger.info("Initializing Bounty Board loader...");
         return pipe(
-            client.register(bountyInfo, Bounty),
+            client.register({ info: bountyInfo, type: Bounty }),
             TE.chainW(() =>
                 // TODO: we don't want to restart everything when the loader is restarted 👇
                 jobScheduler.schedule({
@@ -93,7 +93,7 @@ export const bountyLoader: DataLoader<Bounty> = {
                     url: "https://bountyboard.bankless.community/api/bounties",
                 });
 
-                return response.data.data
+                const data = response.data.data
                     .map((item) => {
                         try {
                             return {
@@ -104,42 +104,7 @@ export const bountyLoader: DataLoader<Bounty> = {
                                 season: item.season.toString(),
                                 title: item.title,
                                 description: item.description,
-                                // criteria: item.criteria,
                                 rewardAmount: item.reward.amount,
-                                // reward: {
-                                //     currency: item.reward.currency,
-                                //     amount: item.reward.amount,
-                                //     scale: item.reward.scale
-                                // },
-                                // createdBy: item.createdBy,
-                                // createdAt: item.createdAt,
-                                // dueAt: item.dueAt,
-                                // discordMessageId: item.discordMessageId,
-                                // status: item.status,
-                                // statusHistory: item.statusHistory
-                                //     .map(event => {
-                                //         return {
-                                //             status: event.status,
-                                //             setAt: event.setAt
-                                //         }
-                                //     }),
-                                // claimedBy: {
-                                //     discordHandle: item.claimedBy.discordHandle,
-                                //     discordId: item.claimedBy.discordId
-                                // },
-                                // claimedAt: item.claimedAt,
-                                // submissionNotes: item.submissionNotes,
-                                // submissionUrl: item.submissionUrl,
-                                // submittedAt: item.submittedAt,
-                                // submittedBy: {
-                                //     discordHandle: item.submittedBy.discordHandle,
-                                //     discordId: item.submittedBy.discordId
-                                // },
-                                // reviewedAt: item.reviewedAt,
-                                // reviewedBy: {
-                                //     discordHandle: item.reviewedBy.discordHandle,
-                                //     discordId: item.reviewedBy.discordId
-                                // }
                             };
                         } catch (err) {
                             logger.warn(
@@ -150,22 +115,26 @@ export const bountyLoader: DataLoader<Bounty> = {
                         }
                     })
                     .filter(notEmpty);
+                return {
+                    cursor: "0", // TODO: 👈 use proper timestamps
+                    data: data,
+                };
             },
             (err: unknown) => new Error(String(err))
         );
     },
-    save: ({ client, data }) => {
+    save: ({ client, loadingResult }) => {
+        const { cursor, data } = loadingResult;
         const nextJob = {
             info: bountyInfo,
             scheduledAt: DateTime.now().plus({ minutes: 30 }).toJSDate(),
-            cursor: "0", // TODO: 👈 use proper timestamps 👇
+            cursor: cursor,
             limit: 1000,
         };
         return pipe(
             client.saveBatch({
                 info: bountyInfo,
                 data: data,
-                cursor: "0",
             }),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {

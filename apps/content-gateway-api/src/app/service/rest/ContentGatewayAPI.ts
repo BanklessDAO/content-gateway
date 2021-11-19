@@ -1,6 +1,6 @@
 import {
     jsonBatchPayloadCodec,
-    jsonPayloadCodec
+    jsonPayloadCodec,
 } from "@banklessdao/content-gateway-client";
 import { ContentGateway } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
@@ -16,11 +16,14 @@ import { formatValidationErrors } from "io-ts-reporters";
 const logger = createLogger("ContentGatewayAPI");
 
 type Deps = {
-    gateway: ContentGateway;
+    contentGateway: ContentGateway;
     app: express.Application;
 };
 
-export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
+export const generateContentGatewayAPI = async ({
+    contentGateway,
+    app,
+}: Deps) => {
     app.use(
         express.json({
             strict: true,
@@ -36,7 +39,7 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
             mapErrors("The supplied schema was invalid"),
             TE.fromEither,
             TE.chain((schema) => {
-                return gateway.register(schema);
+                return contentGateway.register(schema);
             }),
             createResponseTask(res, "Schema registration")
         )();
@@ -48,7 +51,7 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
             mapErrors("Validating payload failed"),
             TE.fromEither,
             TE.chain((data) => {
-                return gateway.receive(data);
+                return contentGateway.receive(data);
             }),
             createResponseTask(res, "Payload receiving ")
         )();
@@ -62,7 +65,7 @@ export const generateContentGatewayAPI = async ({ gateway, app }: Deps) => {
             TE.fromEither,
             TE.chain((data) => {
                 logger.info("Batch was valid, sending to gateway...");
-                return gateway.receiveBatch(data);
+                return contentGateway.receiveBatch(data);
             }),
             createResponseTask(res, "Batch payload receiving")
         )();

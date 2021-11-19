@@ -2,20 +2,19 @@
 import { PrismaClient, Schema as PrismaSchema } from "@cga/prisma";
 import {
     RegisteredSchemaIncompatibleError,
-    SchemaCreationFailedError,
-    SchemaCursorUpdateFailedError,
-    SchemaRepository,
+    SchemaCreationFailedError, SchemaRepository
 } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import {
     createSchemaFromObject,
     Schema,
-    SchemaInfo,
+    SchemaInfo
 } from "@shared/util-schema";
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/Option";
+import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import { Errors } from "io-ts";
@@ -104,41 +103,16 @@ export const createPrismaSchemaRepository = (
         find: findSchema,
         findAll: () => {
             return pipe(
-                TO.tryCatch(async () => {
+                async () => {
                     return prisma.schema.findMany();
-                }),
-                TO.chain((entities) => {
-                    return TO.some(
-                        pipe(
-                            entities.map(prismaSchemaToSchema),
-                            A.filter(E.isRight),
-                            A.map((item) => item.right)
-                        )
+                },
+                T.map((entities) => {
+                    return pipe(
+                        entities.map(prismaSchemaToSchema),
+                        A.filter(E.isRight),
+                        A.map((item) => item.right)
                     );
                 })
-            );
-        },
-        updateCursor: (info: SchemaInfo, cursor: string) => {
-            return pipe(
-                TE.tryCatch(
-                    async () => {
-                        return prisma.schema.update({
-                            where: {
-                                namespace_name_version: info,
-                            },
-                            data: {
-                                cursor: BigInt(cursor),
-                            },
-                        });
-                    },
-                    (err: Error) =>
-                        SchemaCursorUpdateFailedError.create(err.message)
-                ),
-                TE.mapLeft((err) => {
-                    logger.warn(`Failed to update cursor:`, err);
-                    return err;
-                }),
-                TE.map(() => undefined)
             );
         },
     };

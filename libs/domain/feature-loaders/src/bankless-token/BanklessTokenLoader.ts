@@ -75,7 +75,7 @@ export const banklessTokenLoader: DataLoader<BanklessToken> = {
     info: banklessTokenInfo,
     initialize: ({ client, jobScheduler }) => {
         return pipe(
-            client.register(banklessTokenInfo, BanklessToken),
+            client.register({ info: banklessTokenInfo, type: BanklessToken }),
             TE.chainW(() =>
                 // TODO: we don't want to restart everything when the loader is restarted 👇
                 jobScheduler.schedule({
@@ -100,38 +100,48 @@ export const banklessTokenLoader: DataLoader<BanklessToken> = {
     },
     load: ({ cursor, limit }) => {
         // TODO: start using loadFrom / limit once we have the dates in place
-        return TE.tryCatch(
-            () => {
-                logger.info("Loading Bankless Token data:", {
-                    cursor,
-                    limit,
-                });
+        return pipe(
+            TE.tryCatch(
+                () => {
+                    logger.info("Loading Bankless Token data:", {
+                        cursor,
+                        limit,
+                    });
 
-                const ts = cursor ?? "0";
+                    const ts = cursor ?? "0";
 
-                return graphAPIClient.query(
-                    BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS,
-                    { limit: limit, cursor: ts },
-                    (data) => {
-                        logger.info(
-                            `Loaded data chunk from the original source:`
-                        );
-                        logger.info(
-                            `Total count: ${data.accounts.length}; cursor: ${cursor} `
-                        );
-                        return mapAccounts(data.accounts);
-                    }
-                );
-            },
-            (err: unknown) => new Error(String(err))
+                    return graphAPIClient.query(
+                        BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS,
+                        { limit: limit, cursor: ts },
+                        (data) => {
+                            logger.info(
+                                `Loaded data chunk from the original source:`
+                            );
+                            logger.info(
+                                `Total count: ${data.accounts.length}; cursor: ${cursor} `
+                            );
+                            return mapAccounts(data.accounts);
+                        }
+                    );
+                },
+                (err: unknown) => new Error(String(err))
+            ),
+            TE.map((data) => {
+                const nextCursor =
+                    data.length > 0
+                        ? data[data.length - 1].lastTransactionTimestamp
+                        : "0";
+                return {
+                    cursor: nextCursor,
+                    data: data,
+                };
+            })
         );
     },
-    save: ({ client, data }) => {
-        const cursor =
-            data.length > 0
-                ? data[data.length - 1].lastTransactionTimestamp
-                : "0";
-        const cadence = data.length == batchSize ? { seconds: 30 } : { minutes: 5 };
+    save: ({ client, loadingResult }) => {
+        const { cursor, data } = loadingResult;
+        const cadence =
+            data.length == batchSize ? { seconds: 30 } : { minutes: 5 };
         const nextJob = {
             info: banklessTokenInfo,
             scheduledAt: DateTime.now().plus(cadence).toJSDate(),
@@ -142,7 +152,6 @@ export const banklessTokenLoader: DataLoader<BanklessToken> = {
             client.saveBatch({
                 info: banklessTokenInfo,
                 data: data,
-                cursor: cursor,
             }),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {

@@ -63,7 +63,7 @@ describe("Given a content gateway api", () => {
             "/",
             await generateContentGatewayAPI({
                 app: app,
-                gateway: gateway,
+                contentGateway: gateway,
             })
         );
     });
@@ -98,7 +98,7 @@ describe("Given a content gateway api", () => {
             .post("/receive")
             .send({
                 info: userInfo,
-                cursor: 0,
+                cursor: "0",
                 data: generateUser(),
             })
             .accept("text/plain")
@@ -127,7 +127,7 @@ describe("Given a content gateway api", () => {
             .post("/receive-batch")
             .send({
                 info: userInfo,
-                cursor: 0,
+                cursor: "0",
                 data: users,
             })
             .accept("text/plain")

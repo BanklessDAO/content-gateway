@@ -66,7 +66,6 @@ export const createRESTAdapter = (url: string): OutboundDataAdapter => {
                         `${url}/api/rest/receive-batch`,
                         payload
                     );
-
                     logger.info(
                         `status: ${result.status}, text: ${result.statusText}`
                     );
