@@ -3,7 +3,6 @@ import { createLogger, programError } from "@shared/util-fp";
 import { createAPI } from "./app/";
 
 const logger = createLogger("main");
-
 const prisma = new PrismaClient();
 
 async function main() {

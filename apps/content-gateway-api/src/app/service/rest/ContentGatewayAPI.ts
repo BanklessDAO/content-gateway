@@ -1,6 +1,6 @@
 import {
     jsonBatchPayloadCodec,
-    jsonPayloadCodec,
+    jsonPayloadCodec
 } from "@banklessdao/content-gateway-client";
 import { ContentGateway } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
@@ -20,6 +20,10 @@ type Deps = {
     app: express.Application;
 };
 
+/**
+ * This is the REST API of Content Gateway that is used
+ * by the Content Gateway Client
+ */
 export const generateContentGatewayAPI = async ({
     contentGateway,
     app,

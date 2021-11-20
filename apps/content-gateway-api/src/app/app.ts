@@ -1,29 +1,28 @@
 import { createContentGatewayClient } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cga/prisma";
 import { createContentGateway } from "@domain/feature-gateway";
-import { createLoaderRegistry } from "@domain/feature-loaders";
 import { createLogger, programError } from "@shared/util-fp";
 import * as express from "express";
 import { join } from "path";
 import { createInMemoryOutboundDataAdapter } from ".";
 import {
-    AppContext,
+    ApplicationContext,
     createPrismaDataRepository,
-    createPrismaSchemaRepository
+    createPrismaSchemaRepository,
 } from "./";
 import { generateContentGatewayAPI } from "./service";
 import {
     createGraphQLAPIService,
-    toObservableSchemaRepository
+    toObservableSchemaRepository,
 } from "./service/graphql/GraphQLAPIService";
 
-const env = process.env.NODE_ENV ?? programError("NODE_ENV not set");
-const isDev = env === "development";
-const isProd = env === "production";
-const resetDb = process.env.RESET_DB === "false";
-
 export const createAPI = async (prisma: PrismaClient) => {
-    const logger = createLogger("app");
+    const env = process.env.NODE_ENV ?? programError("NODE_ENV not set");
+    const isDev = env === "development";
+    const isProd = env === "production";
+    const resetDb = process.env.RESET_DB === "false";
+    const logger = createLogger("ContentGatewayAPIApp");
+
     if (resetDb) {
         await prisma.data.deleteMany({});
         await prisma.schema.deleteMany({});
@@ -36,8 +35,6 @@ export const createAPI = async (prisma: PrismaClient) => {
     );
     const dataRepository = createPrismaDataRepository(prisma, schemaRepository);
 
-    const loaderRegistry = createLoaderRegistry();
-
     const contentGateway = createContentGateway(
         schemaRepository,
         dataRepository
@@ -48,7 +45,7 @@ export const createAPI = async (prisma: PrismaClient) => {
         }),
     });
 
-    const appContext: AppContext = {
+    const appContext: ApplicationContext = {
         logger: logger,
         env,
         isDev,
@@ -57,7 +54,6 @@ export const createAPI = async (prisma: PrismaClient) => {
         prisma,
         schemaRepository,
         dataRepository,
-        loaderRegistry,
         contentGateway,
         client,
     };
