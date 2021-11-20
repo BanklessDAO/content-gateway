@@ -1,3 +1,3 @@
 export * from "./ContentGatewayClient";
-export * from "./OutboundDataAdapter"
-export * from "./codecs"
+export * from "./OutboundDataAdapter";
+

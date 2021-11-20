@@ -2,7 +2,7 @@ import { createLogger } from "@shared/util-fp";
 import { Payload, Schema } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
-import { DataRepository, SchemaRepository } from "../adapter";
+import { DataRepository, SchemaRepository } from "../repository";
 
 /**
  * Represents the public API of the Content Gateway.

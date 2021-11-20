@@ -1,8 +1,8 @@
+import { JsonBatchPayload, JsonPayload } from "@shared/util-dto";
 import { createLogger } from "@shared/util-fp";
 import { SchemaJson } from "@shared/util-schema";
 import axios from "axios";
 import * as TE from "fp-ts/TaskEither";
-import { JsonBatchPayload, JsonPayload } from "./codecs";
 
 /**
  * This abstraction hides the implementation details of how data is sent over the wire.

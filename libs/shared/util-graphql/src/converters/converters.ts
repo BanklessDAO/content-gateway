@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import * as s from "@shared/util-schema";
+import * as s from "@shared/util-dto";
+import { Schema } from "@shared/util-schema";
 import * as g from "graphql";
 
 /**
  * Converts the root type in the [[schema]] to a GraphQL object type.
  * This function will also recursively extract any addition object types.
  */
-export const toGraphQLType = (schema: s.Schema): g.GraphQLObjectType => {
+export const toGraphQLType = (schema: Schema): g.GraphQLObjectType => {
     const types = new Map<string, s.JSONSchemaType>();
     const result = new Map<string, g.GraphQLObjectType>();
     const jsonSchema = schema.jsonSchema;

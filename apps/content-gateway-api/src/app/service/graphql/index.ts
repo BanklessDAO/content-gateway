@@ -1,1 +1,3 @@
-export * from "./GraphQLAPIService"
+export * from "./decorator";
+export * from "./GraphQLAPIService";
+

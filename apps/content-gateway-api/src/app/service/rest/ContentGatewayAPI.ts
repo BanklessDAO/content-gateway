@@ -1,7 +1,4 @@
-import {
-    jsonBatchPayloadCodec,
-    jsonPayloadCodec
-} from "@banklessdao/content-gateway-client";
+import { jsonBatchPayloadCodec, jsonPayloadCodec } from "@shared/util-dto";
 import { ContentGateway } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import { createSchemaFromObject } from "@shared/util-schema";

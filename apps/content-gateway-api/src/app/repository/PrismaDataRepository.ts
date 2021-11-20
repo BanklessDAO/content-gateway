@@ -2,6 +2,7 @@ import { Data, Prisma, PrismaClient } from "@cga/prisma";
 import {
     DatabaseError,
     DataRepository,
+    DataRepositoryError,
     DataValidationError,
     EntryList,
     EntryWithInfo,
@@ -13,7 +14,6 @@ import {
     SchemaFilter,
     SchemaRepository,
     SinglePayload,
-    StorageError,
 } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import { Schema, SchemaInfo, ValidationError } from "@shared/util-schema";
@@ -93,12 +93,12 @@ export const createPrismaDataRepository = (
     return {
         store: (
             payload: SinglePayload
-        ): TE.TaskEither<StorageError, EntryWithInfo> => {
+        ): TE.TaskEither<DataRepositoryError, EntryWithInfo> => {
             const { info, record } = payload;
             return pipe(
                 schemaRepository.find(info),
                 TE.fromTaskOption(
-                    () => new MissingSchemaError(info) as StorageError
+                    () => new MissingSchemaError(info) as DataRepositoryError
                 ),
                 TE.chainW((schema) => {
                     return pipe(
@@ -112,7 +112,7 @@ export const createPrismaDataRepository = (
                     return TE.tryCatch(
                         () => upsertData({ ...payload }),
                         (e: unknown) =>
-                            new DatabaseError(e as Error) as StorageError
+                            new DatabaseError(e as Error) as DataRepositoryError
                     );
                 }),
                 TE.map((data) => ({
@@ -124,12 +124,12 @@ export const createPrismaDataRepository = (
         },
         storeBulk: (
             listPayload: ListPayload
-        ): TE.TaskEither<StorageError, EntryList> => {
+        ): TE.TaskEither<DataRepositoryError, EntryList> => {
             const { info, records } = listPayload;
             return pipe(
                 schemaRepository.find(info),
                 TE.fromTaskOption(
-                    () => new MissingSchemaError(info) as StorageError
+                    () => new MissingSchemaError(info) as DataRepositoryError
                 ),
                 TE.chainW((schema) => {
                     return TE.fromEither(validateRecords(schema, records));
@@ -149,7 +149,7 @@ export const createPrismaDataRepository = (
                                 data.map((record) => upsertData(record))
                             ),
                         (e: unknown) =>
-                            new DatabaseError(e as Error) as StorageError
+                            new DatabaseError(e as Error) as DataRepositoryError
                     );
                 }),
                 TE.map((items) => ({
@@ -188,7 +188,7 @@ export const createPrismaDataRepository = (
         },
         findBySchema: (
             filter: SchemaFilter
-        ): TE.TaskEither<StorageError, EntryList> => {
+        ): TE.TaskEither<DataRepositoryError, EntryList> => {
             const { limit, info } = filter;
             let cursor: PrismaCursor | undefined = undefined;
             let skip = 0;
@@ -217,23 +217,23 @@ export const createPrismaDataRepository = (
                 prismaDataToEntries(info)
             );
         },
-        findByQuery: (query: Query): TE.TaskEither<StorageError, EntryList> => {
+        findByQuery: (
+            query: Query
+        ): TE.TaskEither<DataRepositoryError, EntryList> => {
             const { limit, info, where: filters } = query;
             const { namespace, name, version } = info;
 
             // * Here you can pass the wrong parameters (for example a string for greater than or equal).
             // * 👇 We can add schema checking later. The GraphQL layer will check it for now .
-            let where: Record<string, unknown>[] = (filters ?? []).map(
-                (op) => {
-                    const filter = filterLookup[op.type];
-                    return {
-                        data: {
-                            path: op.fieldPath,
-                            [filter]: op.value,
-                        },
-                    };
-                }
-            );
+            let where: Record<string, unknown>[] = (filters ?? []).map((op) => {
+                const filter = filterLookup[op.type];
+                return {
+                    data: {
+                        path: op.fieldPath,
+                        [filter]: op.value,
+                    },
+                };
+            });
             const orderBy: Record<string, OrderDirection> = {
                 id: "asc",
             };
@@ -258,7 +258,7 @@ export const createPrismaDataRepository = (
                             skip: skip,
                             cursor: cursor,
                         }),
-                    (e: unknown) => new DatabaseError(e as StorageError)
+                    (e: unknown) => new DatabaseError(e as DataRepositoryError)
                 ),
                 prismaDataToEntries(info)
             );

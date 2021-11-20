@@ -1,5 +1,5 @@
 import { FilterType } from "@domain/feature-gateway";
-import * as s from "@shared/util-schema";
+import * as s from "@shared/util-dto";
 import * as g from "graphql";
 
 const filterTypeLookup: Record<string, FilterType[]> = {

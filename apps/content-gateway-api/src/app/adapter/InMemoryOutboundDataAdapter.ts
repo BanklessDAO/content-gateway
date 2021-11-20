@@ -1,10 +1,7 @@
-import {
-    jsonBatchPayloadCodec,
-    jsonPayloadCodec,
-    OutboundDataAdapter,
-} from "@banklessdao/content-gateway-client";
+import { OutboundDataAdapter } from "@banklessdao/content-gateway-client";
 import { ContentGateway } from "@domain/feature-gateway";
 import { createSchemaFromObject } from "@shared/util-schema";
+import { jsonBatchPayloadCodec, jsonPayloadCodec } from "@shared/util-dto";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";

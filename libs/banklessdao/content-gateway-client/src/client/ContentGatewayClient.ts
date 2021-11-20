@@ -22,7 +22,7 @@ import {
 
 const logger = createLogger("ContentGatewayClient");
 
-export type ClientDependencies = {
+export type Deps = {
     adapter: OutboundDataAdapter;
 };
 
@@ -74,7 +74,7 @@ export type ContentGatewayClient = {
  */
 export const createContentGatewayClient = ({
     adapter,
-}: ClientDependencies): ContentGatewayClient => {
+}: Deps): ContentGatewayClient => {
     const schemas = new Map<string, Schema>();
     return {
         register: <T>({

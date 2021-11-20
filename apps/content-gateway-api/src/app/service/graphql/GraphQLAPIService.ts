@@ -1,8 +1,7 @@
 import {
     DataRepository,
     Filter,
-    FilterType,
-    SchemaRepository,
+    FilterType
 } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import { toGraphQLType } from "@shared/util-graphql";
@@ -18,13 +17,14 @@ import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
 import * as pluralize from "pluralize";
 import { MAX_ITEMS } from "./constants";
+import { ObservableSchemaRepository } from "./decorator";
 import { createFiltersFor } from "./types/Filters";
 import { createResultsType, Results } from "./types/Results";
 
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
 
 export type Middleware = (
-    request: Request,
+    readonlyrequest: Request,
     response: Response
 ) => Promise<void>;
 
@@ -35,10 +35,6 @@ export type Deps = {
 
 export type GraphQLAPIService = {
     readonly middleware: Middleware;
-};
-
-export type ObservableSchemaRepository = SchemaRepository & {
-    onRegister: (listener: () => void) => void;
 };
 
 /**
@@ -98,7 +94,7 @@ const createGraphQLMiddleware = async ({
 
             const findByFilters = async (
                 first: number,
-                after = "0",
+                after: string,
                 where: Filter[]
             ): Promise<Results> => {
                 const notes = [] as string[];
@@ -222,31 +218,4 @@ const createGraphQLMiddleware = async ({
             });
         })
     );
-};
-
-/**
- * Decorates a schema storage with a side effect that will regenerate
- * the GraphQL api whenever a new schema is saved.
- */
-export const toObservableSchemaRepository = (
-    schemaRepository: SchemaRepository
-): ObservableSchemaRepository => {
-    const logger = createLogger("ObservableSchemaRepository");
-    const listeners = [] as Array<() => void>;
-    return {
-        ...schemaRepository,
-        register: (schema: Schema) => {
-            return pipe(
-                schemaRepository.register(schema),
-                TE.map((result) => {
-                    logger.info("Generating new GraphQL API");
-                    listeners.forEach((listener) => listener());
-                    return result;
-                })
-            );
-        },
-        onRegister: (listener: () => void) => {
-            listeners.push(listener);
-        },
-    };
 };

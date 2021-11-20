@@ -1,7 +1,17 @@
 #!/bin/bash
 
 declare -A projects
-projects=( ["cga"]="apps/content-gateway-api" ["cgl"]="apps/content-gateway-loader")
+projects=(
+    ["cga"]="apps/content-gateway-api"
+    ["cgl"]="apps/content-gateway-loader"
+    ["cgaf"]="apps/content-gateway-api-frontend"
+    ["cglf"]="apps/content-gateway-loader-frontend"
+)
 
 declare -A project_names
-project_names=( ["cga"]="content-gateway-api" ["cgl"]="content-gateway-loader")
+project_names=(
+    ["cga"]="content-gateway-api"
+    ["cgl"]="content-gateway-loader"
+    ["cgaf"]="content-gateway-api-frontend"
+    ["cglf"]="content-gateway-loader-frontend"
+)
