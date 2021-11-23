@@ -1,8 +1,4 @@
-import {
-    DataRepository,
-    Filter,
-    FilterType
-} from "@domain/feature-gateway";
+import { DataRepository, Filter, FilterType } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import { toGraphQLType } from "@shared/util-graphql";
 import { Schema, schemaInfoToString } from "@shared/util-schema";
@@ -18,7 +14,7 @@ import * as g from "graphql";
 import * as pluralize from "pluralize";
 import { MAX_ITEMS } from "./constants";
 import { ObservableSchemaRepository } from "./decorator";
-import { createFiltersFor } from "./types/Filters";
+import { AnyFilter, createFiltersFor } from "./types/Filters";
 import { createResultsType, Results } from "./types/Results";
 
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
@@ -54,14 +50,15 @@ export const createGraphQLAPIService = async (
     };
 };
 
-const mapFilters = (from: Record<string, unknown>): Filter[] => {
+const mapFilters = (from: Record<string, AnyFilter>): Filter[] => {
     return Object.entries(from).reduce((acc, next) => {
-        const [key, value] = next;
-        const filterKind = key.split("_");
-        acc.push({
-            fieldPath: [filterKind[0]],
-            type: FilterType[filterKind[1] as FilterType],
-            value: value,
+        const [fieldName, filter] = next;
+        Object.entries(filter).forEach(([filterType, value]) => {
+            acc.push({
+                fieldPath: [fieldName],
+                type: filterType as FilterType,
+                value: value,
+            });
         });
         return acc;
     }, [] as Filter[]);
@@ -189,8 +186,9 @@ const createGraphQLMiddleware = async ({
                         const { first, after, where } = args as {
                             first: number;
                             after: string;
-                            where: Record<string, unknown>;
+                            where: Record<string, AnyFilter>;
                         };
+                        mapFilters(where);
                         return findByFilters(first, after, mapFilters(where));
                     },
                 },

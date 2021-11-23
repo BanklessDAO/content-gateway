@@ -2,49 +2,60 @@ import { FilterType } from "@domain/feature-gateway";
 import * as s from "@shared/util-dto";
 import * as g from "graphql";
 
-const filterTypeLookup: Record<string, FilterType[]> = {
-    [g.GraphQLID.name]: [FilterType.equals, FilterType.not],
-    [g.GraphQLString.name]: [
-        FilterType.equals,
-        FilterType.not,
-        FilterType.contains,
-        FilterType.starts_with,
-        FilterType.ends_with,
-    ],
-    [g.GraphQLBoolean.name]: [FilterType.equals, FilterType.not],
-    [g.GraphQLFloat.name]: [
-        FilterType.equals,
-        FilterType.not,
-        FilterType.lt,
-        FilterType.lte,
-        FilterType.gt,
-        FilterType.gte,
-    ],
-};
+const IDFilter = new g.GraphQLInputObjectType({
+    name: "IDFilter",
+    fields: {
+        [FilterType.equals]: { type: g.GraphQLString },
+        [FilterType.not]: { type: g.GraphQLString },
+    },
+});
 
-const addFilterTypes = (
-    type: g.GraphQLScalarType,
-    fieldName: string,
-    fields: g.GraphQLInputFieldConfigMap
-) => {
-    filterTypeLookup[type.name].forEach((filterType) => {
-        fields[`${fieldName}_${filterType}`] = {
-            type: type,
-        };
-    });
+const StringFilter = new g.GraphQLInputObjectType({
+    name: "StringFilter",
+    fields: {
+        [FilterType.equals]: { type: g.GraphQLString },
+        [FilterType.not]: { type: g.GraphQLString },
+        [FilterType.contains]: { type: g.GraphQLString },
+        [FilterType.starts_with]: { type: g.GraphQLString },
+        [FilterType.ends_with]: { type: g.GraphQLString },
+    },
+});
+
+const BooleanFilter = new g.GraphQLInputObjectType({
+    name: "BooleanFilter",
+    fields: {
+        [FilterType.equals]: { type: g.GraphQLBoolean },
+        [FilterType.not]: { type: g.GraphQLBoolean },
+    },
+});
+
+const FloatFilter = new g.GraphQLInputObjectType({
+    name: "NumberFilter",
+    fields: {
+        [FilterType.equals]: { type: g.GraphQLFloat },
+        [FilterType.not]: { type: g.GraphQLFloat },
+        [FilterType.lt]: { type: g.GraphQLFloat },
+        [FilterType.lte]: { type: g.GraphQLFloat },
+        [FilterType.gt]: { type: g.GraphQLFloat },
+        [FilterType.gte]: { type: g.GraphQLFloat },
+    },
+});
+
+export type AnyFilter = {
+    [key in FilterType]?: unknown;
 };
 
 export const createFiltersFor = (name: string, type: s.JSONSchemaType) => {
     const fields: g.GraphQLInputFieldConfigMap = {};
     Object.entries(type.properties).forEach(([fieldName, props]) => {
         if (fieldName === "id" && s.idPropertyCodec.is(props)) {
-            addFilterTypes(g.GraphQLID, fieldName, fields);
+            fields[fieldName] = { type: IDFilter };
         } else if (s.numberPropertyCodec.is(props)) {
-            addFilterTypes(g.GraphQLFloat, fieldName, fields);
+            fields[fieldName] = { type: FloatFilter };
         } else if (s.stringPropertyCodec.is(props)) {
-            addFilterTypes(g.GraphQLString, fieldName, fields);
+            fields[fieldName] = { type: StringFilter };
         } else if (s.booleanPropertyCodec.is(props)) {
-            addFilterTypes(g.GraphQLBoolean, fieldName, fields);
+            fields[fieldName] = { type: BooleanFilter };
         }
     });
     return new g.GraphQLInputObjectType({

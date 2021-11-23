@@ -74,7 +74,7 @@ const allowFindPublishedTodosForUser: Permission<void, Todo[]> = {
     filters: [filterOnlyPublished()],
 };
 
-const allowFindPublishedTodosForAdmin: Permission<void, Todo[]> = {
+const allowFindTodosForAdmin: Permission<void, Todo[]> = {
     name: "Allow find all todos for user",
     operation: findAllTodos,
     policies: [allowAllPolicy()],
@@ -116,7 +116,7 @@ const userPermissions: AnyPermission[] = [
 ];
 
 const adminPermissions: AnyPermission[] = [
-    allowFindPublishedTodosForAdmin,
+    allowFindTodosForAdmin,
     allowFindTodoForAnybody,
     allowCompleteTodoForSelf,
     allowDeleteTodoForAll,

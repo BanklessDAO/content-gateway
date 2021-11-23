@@ -73,6 +73,8 @@ export type ContentGatewayClient = {
     ) => TE.TaskEither<ClientError, Record<string, unknown>>;
 };
 
+
+
 export const createContentGatewayClient = ({
     adapter,
 }: Deps): ContentGatewayClient => {
