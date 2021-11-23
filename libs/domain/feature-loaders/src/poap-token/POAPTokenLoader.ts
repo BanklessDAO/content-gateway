@@ -59,6 +59,10 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
         logger.info("Initializing POAP loader...");
         return pipe(
             client.register({ info: poapTokenInfo, type: POAPToken }),
+            TE.mapLeft((error) => {
+                logger.error("Client registration failed", error);
+                return error;
+            }),
             TE.chainW(() =>
                 // TODO: we don't want to restart everything when the loader is restarted 👇
                 jobScheduler.schedule({

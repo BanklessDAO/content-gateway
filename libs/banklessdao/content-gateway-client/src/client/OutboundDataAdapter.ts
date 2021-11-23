@@ -1,16 +1,52 @@
-import { JsonBatchPayload, JsonPayload } from "@shared/util-dto";
-import { createLogger } from "@shared/util-fp";
+import {
+    DataTransferError,
+    JsonBatchPayload,
+    JsonPayload,
+    post,
+} from "@shared/util-dto";
 import { SchemaJson } from "@shared/util-schema";
-import axios from "axios";
 import * as TE from "fp-ts/TaskEither";
+import * as t from "io-ts";
 
 /**
  * This abstraction hides the implementation details of how data is sent over the wire.
  */
 export type OutboundDataAdapter = {
-    register: (schema: SchemaJson) => TE.TaskEither<Error, void>;
-    send: (payload: JsonPayload) => TE.TaskEither<Error, void>;
-    sendBatch: (payload: JsonBatchPayload) => TE.TaskEither<Error, void>;
+    register: (
+        schema: SchemaJson
+    ) => TE.TaskEither<DataTransferError, Record<string, unknown>>;
+    send: (
+        payload: JsonPayload
+    ) => TE.TaskEither<DataTransferError, Record<string, unknown>>;
+    sendBatch: (
+        payload: JsonBatchPayload
+    ) => TE.TaskEither<DataTransferError, Record<string, unknown>>;
+};
+
+export const createRESTAdapter = (url: string): OutboundDataAdapter => {
+    return {
+        register: (schema: SchemaJson) => {
+            return post({
+                url: `${url}/api/rest/register`,
+                input: schema,
+                codec: t.UnknownRecord,
+            });
+        },
+        send: (payload: JsonPayload) => {
+            return post({
+                url: `${url}/api/rest/receive`,
+                input: payload,
+                codec: t.UnknownRecord,
+            });
+        },
+        sendBatch: (payload: JsonBatchPayload) => {
+            return post({
+                url: `${url}/api/rest/receive-batch`,
+                input: payload,
+                codec: t.UnknownRecord,
+            });
+        },
+    };
 };
 
 export type OutboundDataAdapterStub = {
@@ -30,55 +66,15 @@ export const createOutboundAdapterStub = (): OutboundDataAdapterStub => {
         payloads,
         register: (schema) => {
             schemas.push(schema);
-            return TE.right(undefined);
+            return TE.right({});
         },
         send: (payload) => {
             payloads.push(payload);
-            return TE.right(undefined);
+            return TE.right({});
         },
         sendBatch: (payload) => {
             payloads.push(payload);
-            return TE.right(undefined);
-        },
-    };
-};
-
-// TODO: extract result here
-export const createRESTAdapter = (url: string): OutboundDataAdapter => {
-    const logger = createLogger("RESTOutboundDataAdapter");
-    return {
-        register: (schema: SchemaJson) => {
-            return TE.tryCatch(
-                () => axios.post(`${url}/api/rest/register`, schema),
-                (err) => new Error(`Error registering schema: ${err}`)
-            );
-        },
-        send: (payload: JsonPayload) => {
-            return TE.tryCatch(
-                () => axios.post(`${url}/api/rest/receive`, payload),
-                (err) => new Error(`Error sending payload: ${err}`)
-            );
-        },
-        sendBatch: (payload: JsonBatchPayload) => {
-            return TE.tryCatch(
-                async () => {
-                    const result = await axios.post(
-                        `${url}/api/rest/receive-batch`,
-                        payload
-                    );
-                    logger.info(
-                        `status: ${result.status}, text: ${result.statusText}`
-                    );
-                },
-                (err: unknown) => {
-                    // TODO: code paths
-                    if (axios.isAxiosError(err)) {
-                        return new Error(`Error sending payload.`);
-                    } else {
-                        return new Error(`Error sending payload.`);
-                    }
-                }
-            );
+            return TE.right({});
         },
     };
 };

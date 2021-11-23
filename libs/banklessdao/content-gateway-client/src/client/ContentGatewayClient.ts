@@ -1,27 +1,22 @@
-import { createLogger } from "@shared/util-fp";
+import { DataTransferError } from "@shared/util-dto";
 import {
     createSchemaFromType,
     Payload,
     Schema,
     SchemaInfo,
     schemaInfoToString,
-    ValidationError,
+    SchemaValidationError
 } from "@shared/util-schema";
-import { isArray, Type } from "@tsed/core";
+import { Type } from "@tsed/core";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/function";
 import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
-import { Errors } from "io-ts";
-import { formatValidationErrors } from "io-ts-reporters";
-import { OutboundDataAdapterStub } from ".";
+import { OutboundDataAdapterStub, SchemaNotFoundError } from ".";
 import {
     createOutboundAdapterStub,
-    OutboundDataAdapter,
+    OutboundDataAdapter
 } from "./OutboundDataAdapter";
-
-const logger = createLogger("ContentGatewayClient");
-
 export type Deps = {
     adapter: OutboundDataAdapter;
 };
@@ -30,6 +25,11 @@ export type RegistrationParams<T> = {
     info: SchemaInfo;
     type: Type<T>;
 };
+
+type ClientError =
+    | SchemaValidationError
+    | SchemaNotFoundError
+    | DataTransferError;
 
 /**
  * The {@link ContentGatewayClient} is the client-side component of the *Content Gateway*.
@@ -56,22 +56,23 @@ export type ContentGatewayClient = {
      * }
      * ```
      */
-    register: <T>(params: RegistrationParams<T>) => TE.TaskEither<Error, void>;
+    register: <T>(
+        params: RegistrationParams<T>
+    ) => TE.TaskEither<ClientError, Record<string, unknown>>;
     /**
      * Saves the [[data]] to the Content Gateway using the schema's metadata to
      * identify it. This will return an error if the type of [[data]] is not
      *  {@link ContentGatewayClient#register | register}ed.
      */
-    save: <T>(payload: Payload<T>) => TE.TaskEither<Error, void>;
+    save: <T>(payload: Payload<T>) => TE.TaskEither<ClientError, Record<string, unknown>>;
     /**
      * Same as {@link ContentGatewayClient#save} but sends a batch
      */
-    saveBatch: <T>(payload: Payload<Array<T>>) => TE.TaskEither<Error, void>;
+    saveBatch: <T>(
+        payload: Payload<Array<T>>
+    ) => TE.TaskEither<ClientError, Record<string, unknown>>;
 };
 
-/**
- * This object is instantiated in the client.
- */
 export const createContentGatewayClient = ({
     adapter,
 }: Deps): ContentGatewayClient => {
@@ -80,19 +81,15 @@ export const createContentGatewayClient = ({
         register: <T>({
             info,
             type,
-        }: RegistrationParams<T>): TE.TaskEither<Error, void> => {
+        }: RegistrationParams<T>): TE.TaskEither<ClientError, Record<string, unknown>> => {
             return pipe(
                 createSchemaFromType(info, type),
                 TE.fromEither,
-                TE.mapLeft(
-                    (err: Errors) =>
-                        new Error(formatValidationErrors(err).join("\n"))
-                ),
                 TE.chainFirstIOK(
                     (schema) => () =>
                         schemas.set(schemaInfoToString(info), schema)
                 ),
-                TE.chain((schema) => {
+                TE.chainW((schema) => {
                     return adapter.register({
                         info: info,
                         jsonSchema: schema.jsonSchema,
@@ -100,23 +97,19 @@ export const createContentGatewayClient = ({
                 })
             );
         },
-        save: <T>(payload: Payload<T>): TE.TaskEither<Error, void> => {
+        save: <T>(payload: Payload<T>): TE.TaskEither<ClientError, Record<string, unknown>> => {
             const { info, data } = payload;
             const mapKey = schemaInfoToString(info);
             const maybeSchema = O.fromNullable(schemas.get(mapKey));
             return pipe(
                 maybeSchema,
-                TE.fromOption(
-                    () =>
-                        new Error(`The given type ${mapKey} is not registered`)
-                ),
+                TE.fromOption(() => new SchemaNotFoundError(info)),
                 TE.chainW((schema) =>
                     TE.fromEither(
                         schema.validate(data as Record<string, unknown>)
                     )
                 ),
-                mapError(),
-                TE.chain((dataRecord) =>
+                TE.chainW((dataRecord) =>
                     adapter.send({
                         info: info,
                         data: dataRecord,
@@ -126,16 +119,13 @@ export const createContentGatewayClient = ({
         },
         saveBatch: <T>(
             payload: Payload<Array<T>>
-        ): TE.TaskEither<Error, void> => {
+        ): TE.TaskEither<ClientError, Record<string, unknown>> => {
             const { info, data } = payload;
             const mapKey = schemaInfoToString(info);
             const maybeSchema = O.fromNullable(schemas.get(mapKey));
             return pipe(
                 maybeSchema,
-                TE.fromOption(
-                    () =>
-                        new Error(`The given type ${mapKey} is not registered`)
-                ),
+                TE.fromOption(() => new SchemaNotFoundError(info)),
                 TE.chainW((schema) => {
                     const result = pipe(
                         data,
@@ -145,8 +135,7 @@ export const createContentGatewayClient = ({
                     );
                     return TE.fromEither(result);
                 }),
-                mapError(),
-                TE.chain((dataArray) =>
+                TE.chainW((dataArray) =>
                     adapter.sendBatch({
                         info: info,
                         data: dataArray as Array<Record<string, unknown>>,
@@ -174,15 +163,3 @@ export const createClientStub: () => ContentGatewayClientStub = () => {
         ...client,
     };
 };
-
-const mapError = () =>
-    TE.mapLeft((err: Error | ValidationError[]) => {
-        logger.warn("Mapping error:", err);
-        let result: string;
-        if (isArray(err)) {
-            result = err.map((e) => `field ${e.field} ${e.message}`).join(",");
-        } else {
-            result = err.message;
-        }
-        return new Error(result);
-    });

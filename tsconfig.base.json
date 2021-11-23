@@ -1,57 +1,40 @@
 {
-  "compileOnSave": false,
-  "compilerOptions": {
-    "rootDir": ".",
-    "sourceMap": true,
-    "declaration": false,
-    "moduleResolution": "node",
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "strict": true,
-    "strictPropertyInitialization": false,
-    "importHelpers": true,
-    "target": "es2015",
-    "module": "esnext",
-    "lib": [
-      "es2017",
-      "dom"
-    ],
-    "skipLibCheck": true,
-    "skipDefaultLibCheck": true,
-    "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
-    "paths": {
-      "@banklessdao/content-gateway-client": [
-        "libs/banklessdao/content-gateway-client/src/index.ts"
-      ],
-      "@domain/feature-gateway": [
-        "libs/domain/feature-gateway/src/index.ts"
-      ],
-      "@domain/feature-loaders": [
-        "libs/domain/feature-loaders/src/index.ts"
-      ],
-      "@domain/loaders": [
-        "libs/domain/loaders/src/index.ts"
-      ],
-      "@shared/util-dto": [
-        "libs/shared/util-dto/src/index.ts"
-      ],
-      "@shared/util-fp": [
-        "libs/shared/util-fp/src/index.ts"
-      ],
-      "@shared/util-graphql": [
-        "libs/shared/util-graphql/src/index.ts"
-      ],
-      "@shared/util-loaders": [
-        "libs/shared/util-loaders/src/index.ts"
-      ],
-      "@shared/util-schema": [
-        "libs/shared/util-schema/src/index.ts"
-      ]
-    }
-  },
-  "exclude": [
-    "node_modules",
-    "tmp"
-  ]
+    "compileOnSave": false,
+    "compilerOptions": {
+        "rootDir": ".",
+        "sourceMap": true,
+        "declaration": false,
+        "moduleResolution": "node",
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "strict": true,
+        "strictPropertyInitialization": false,
+        "importHelpers": true,
+        "target": "es2015",
+        "module": "esnext",
+        "lib": ["es2020", "dom"],
+        "skipLibCheck": true,
+        "skipDefaultLibCheck": true,
+        "allowSyntheticDefaultImports": true,
+        "baseUrl": ".",
+        "paths": {
+            "@banklessdao/content-gateway-client": [
+                "libs/banklessdao/content-gateway-client/src/index.ts"
+            ],
+            "@domain/feature-gateway": [
+                "libs/domain/feature-gateway/src/index.ts"
+            ],
+            "@domain/feature-loaders": [
+                "libs/domain/feature-loaders/src/index.ts"
+            ],
+            "@domain/loaders": ["libs/domain/loaders/src/index.ts"],
+            "@shared/util-auth": ["libs/shared/util-auth/src/index.ts"],
+            "@shared/util-dto": ["libs/shared/util-dto/src/index.ts"],
+            "@shared/util-fp": ["libs/shared/util-fp/src/index.ts"],
+            "@shared/util-graphql": ["libs/shared/util-graphql/src/index.ts"],
+            "@shared/util-loaders": ["libs/shared/util-loaders/src/index.ts"],
+            "@shared/util-schema": ["libs/shared/util-schema/src/index.ts"]
+        }
+    },
+    "exclude": ["node_modules", "tmp"]
 }

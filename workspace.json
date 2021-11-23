@@ -363,6 +363,38 @@
                 }
             }
         },
+        "shared-util-auth": {
+            "root": "libs/shared/util-auth",
+            "sourceRoot": "libs/shared/util-auth/src",
+            "projectType": "library",
+            "targets": {
+                "build": {
+                    "executor": "@nrwl/workspace:tsc",
+                    "outputs": ["{options.outputPath}"],
+                    "options": {
+                        "outputPath": "dist/libs/shared/util-auth",
+                        "main": "libs/shared/util-auth/src/index.ts",
+                        "tsConfig": "libs/shared/util-auth/tsconfig.lib.json",
+                        "assets": ["libs/shared/util-auth/*.md"]
+                    }
+                },
+                "lint": {
+                    "executor": "@nrwl/linter:eslint",
+                    "outputs": ["{options.outputFile}"],
+                    "options": {
+                        "lintFilePatterns": ["libs/shared/util-auth/**/*.ts"]
+                    }
+                },
+                "test": {
+                    "executor": "@nrwl/jest:jest",
+                    "outputs": ["coverage/libs/shared/util-auth"],
+                    "options": {
+                        "jestConfig": "libs/shared/util-auth/jest.config.js",
+                        "passWithNoTests": true
+                    }
+                }
+            }
+        },
         "shared-util-dto": {
             "root": "libs/shared/util-dto",
             "sourceRoot": "libs/shared/util-dto/src",

@@ -1,10 +1,11 @@
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { PrismaClient } from "@cga/prisma";
 import {
-    DataValidationError,
     Entry,
     FilterType,
+    SchemaValidationError,
 } from "@domain/feature-gateway";
+import { GenericProgramError } from "@shared/util-dto";
 import { extractLeft, extractRight } from "@shared/util-fp";
 import { createSchemaFromType, SchemaInfo } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
@@ -140,14 +141,18 @@ describe("Given a Prisma data storage", () => {
                         num: 1,
                     },
                 })()
-            ) as DataValidationError;
+            );
 
-            expect(result.errors).toEqual([
-                {
-                    field: "",
-                    message: "must have required property 'id'",
-                },
-            ]);
+            expect(result).toEqual(
+                new GenericProgramError({
+                    _tag: "SchemaValidationError",
+                    message: "Schema validation failed",
+                    details: {
+                        validationErrors: ["must have required property 'id'"],
+                    },
+                    cause: undefined,
+                })
+            );
         });
 
         it("Then it fails when name is missing", async () => {
@@ -162,14 +167,20 @@ describe("Given a Prisma data storage", () => {
                         num: 1,
                     },
                 })()
-            ) as DataValidationError;
+            ) as SchemaValidationError;
 
-            expect(result.errors).toEqual([
-                {
-                    field: "",
-                    message: "must have required property 'name'",
-                },
-            ]);
+            expect(result).toEqual(
+                new GenericProgramError({
+                    _tag: "SchemaValidationError",
+                    message: "Schema validation failed",
+                    details: {
+                        validationErrors: [
+                            "must have required property 'name'",
+                        ],
+                    },
+                    cause: undefined,
+                })
+            );
         });
     });
 
@@ -665,15 +676,14 @@ describe("Given a Prisma data storage", () => {
                     },
                 })()
             );
-            
 
             const result = await prisma.data.findMany({
                 where: {
                     data: {
                         path: ["num"],
                         not: 1,
-                    }
-                }
+                    },
+                },
             });
         });
     });

@@ -1,13 +1,14 @@
 import { OutboundDataAdapter } from "@banklessdao/content-gateway-client";
 import { ContentGateway } from "@domain/feature-gateway";
+import {
+    DataTransferError,
+    jsonBatchPayloadCodec,
+    jsonPayloadCodec,
+    mapCodecValidationError,
+} from "@shared/util-dto";
 import { createSchemaFromObject } from "@shared/util-schema";
-import { jsonBatchPayloadCodec, jsonPayloadCodec } from "@shared/util-dto";
-import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
-import { Errors } from "io-ts";
-import { formatValidationErrors } from "io-ts-reporters";
-import { failure } from "io-ts/lib/PathReporter";
 
 type Deps = {
     contentGateway: ContentGateway;
@@ -21,37 +22,36 @@ export const createInMemoryOutboundDataAdapter = ({
     contentGateway,
 }: Deps): OutboundDataAdapter => {
     return {
-        register: (schema): TE.TaskEither<Error, void> => {
+        register: (
+            schema
+        ): TE.TaskEither<DataTransferError, Record<string, unknown>> => {
             return pipe(
                 createSchemaFromObject(schema),
                 TE.fromEither,
-                TE.mapLeft((err: Errors) => new Error(failure(err).join("\n"))),
                 TE.chainW(contentGateway.register),
-                TE.map(() => undefined)
+                TE.chain(() => TE.of({}))
             );
         },
-        send: (payload): TE.TaskEither<Error, void> => {
+        send: (
+            payload
+        ): TE.TaskEither<DataTransferError, Record<string, unknown>> => {
             return pipe(
                 jsonPayloadCodec.decode(payload),
-                E.mapLeft(
-                    (err: Errors) =>
-                        new Error(formatValidationErrors(err).join())
-                ),
+                mapCodecValidationError("Validating json payload failed"),
                 TE.fromEither,
-                TE.chain(contentGateway.receive),
-                TE.chain(() => TE.of(undefined))
+                TE.chainW(contentGateway.receive),
+                TE.chain(() => TE.of({}))
             );
         },
-        sendBatch: (payload): TE.TaskEither<Error, void> => {
+        sendBatch: (
+            payload
+        ): TE.TaskEither<DataTransferError, Record<string, unknown>> => {
             return pipe(
                 jsonBatchPayloadCodec.decode(payload),
-                E.mapLeft(
-                    (err: Errors) =>
-                        new Error(formatValidationErrors(err).join())
-                ),
+                mapCodecValidationError("Validating json batch payload failed"),
                 TE.fromEither,
-                TE.chain(contentGateway.receiveBatch),
-                TE.chain(() => TE.of(undefined))
+                TE.chainW(contentGateway.receiveBatch),
+                TE.chain(() => TE.of({}))
             );
         },
     };

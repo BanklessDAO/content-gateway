@@ -1,11 +1,12 @@
-import { createLogger } from "@shared/util-fp";
+import { createLogger, extractLeft } from "@shared/util-fp";
+import { SchemaValidationError } from "@shared/util-schema";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import { createContentGatewayClient } from "./";
 import { ContentGatewayClient } from "./ContentGatewayClient";
 import {
     createOutboundAdapterStub,
-    OutboundDataAdapterStub
+    OutboundDataAdapterStub,
 } from "./OutboundDataAdapter";
 
 class Comment {
@@ -60,7 +61,6 @@ const invalidPostWithMissingData = {
 };
 
 describe("Given a gateway client", () => {
-    const logger = createLogger("ContentGatewayClient.spec");
     let adapterStub: OutboundDataAdapterStub;
     let client: ContentGatewayClient;
 
@@ -99,7 +99,7 @@ describe("Given a gateway client", () => {
             },
         };
 
-        expect(result).toEqual(E.right(undefined));
+        expect(result).toEqual(E.right({}));
         expect(adapterStub.schemas[0]).toEqual(expected);
     });
 
@@ -118,7 +118,7 @@ describe("Given a gateway client", () => {
             data: validPost,
         })();
 
-        expect(result).toEqual(E.right(undefined));
+        expect(result).toEqual(E.right({}));
         expect(adapterStub.payloads).toEqual([
             {
                 info: { namespace: "test", name: "Post", version: "V1" },
@@ -138,7 +138,7 @@ describe("Given a gateway client", () => {
         })();
 
         expect(result).toEqual(
-            E.left(new Error("The given type test.Post.V1 is not registered"))
+            E.left(new Error("No schema found for key test.Post.V1"))
         );
     });
 
@@ -150,7 +150,17 @@ describe("Given a gateway client", () => {
         })();
 
         expect(result).toEqual(
-            E.left(new Error("field  must have required property 'content'"))
+            E.left(
+                new SchemaValidationError({
+                    errors: [
+                        {
+                            validationErrors: [
+                                "must have required property 'content'",
+                            ],
+                        },
+                    ],
+                })
+            )
         );
     });
 
@@ -163,7 +173,17 @@ describe("Given a gateway client", () => {
         })();
 
         expect(result).toEqual(
-            E.left(new Error("field  must NOT have additional properties"))
+            E.left(
+                new SchemaValidationError({
+                    errors: [
+                        {
+                            validationErrors: [
+                                "must NOT have additional properties",
+                            ],
+                        },
+                    ],
+                })
+            )
         );
     });
 });

@@ -1,12 +1,12 @@
 import {
     ContentGatewayClient,
-    createContentGatewayClient,
+    createContentGatewayClient
 } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cga/prisma";
 import {
     ContentGateway,
     createContentGateway,
-    DataRepository,
+    DataRepository
 } from "@domain/feature-gateway";
 import { createLogger, programError } from "@shared/util-fp";
 import * as express from "express";
@@ -16,7 +16,7 @@ import {
     createGraphQLAPIService,
     createInMemoryOutboundDataAdapter,
     ObservableSchemaRepository,
-    toObservableSchemaRepository,
+    toObservableSchemaRepository
 } from ".";
 import { createPrismaDataRepository, createPrismaSchemaRepository } from "./";
 import { generateContentGatewayAPI } from "./service";
@@ -41,7 +41,6 @@ export const createApp = async (prisma: PrismaClient) => {
     const resetDb = process.env.RESET_DB === "true";
     const addFrontend = process.env.ADD_FRONTEND === "true";
 
-    console.log(`========= ${addFrontend}`);
     const logger = createLogger("ContentGatewayAPIApp");
 
     if (resetDb) {
@@ -56,10 +55,10 @@ export const createApp = async (prisma: PrismaClient) => {
     );
     const dataRepository = createPrismaDataRepository(prisma, schemaRepository);
 
-    const contentGateway = createContentGateway(
+    const contentGateway = createContentGateway({
         schemaRepository,
-        dataRepository
-    );
+        dataRepository,
+    });
     const client = createContentGatewayClient({
         adapter: createInMemoryOutboundDataAdapter({
             contentGateway,
@@ -84,7 +83,6 @@ export const createApp = async (prisma: PrismaClient) => {
 
     const clientBuildPath = join(__dirname, "../content-gateway-api-frontend");
     if (addFrontend || isProd) {
-
         app.use(express.static(clientBuildPath));
         app.get("*", (_, response) => {
             response.sendFile(join(clientBuildPath, "index.html"));

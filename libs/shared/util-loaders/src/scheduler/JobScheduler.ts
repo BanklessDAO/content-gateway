@@ -8,18 +8,14 @@ import { JobDescriptor } from ".";
 import { DataLoader } from "../DataLoader";
 import {
     JobCreationFailedError,
-    LoaderAlreadyRegisteredError,
+    LoaderInitializationError,
     NoLoaderForJobError,
     NoLoaderFoundError,
     RegistrationError,
-    RemoveError,
-    SchedulerAlreadyStartedError,
-    SchedulerNotStartedError,
+    SchedulerNotRunningError,
     SchedulerStartupError,
-    SchedulerStoppedError,
     SchedulingError,
-    StartError
-} from "./Errors";
+} from "./errors";
 import { Job } from "./Job";
 import { JobRepository } from "./JobRepository";
 import { JobState } from "./JobState";
@@ -32,14 +28,14 @@ export type JobScheduler = {
     /**
      * Starts this scheduler.
      */
-    start: () => TE.TaskEither<StartError, void>;
+    start: () => TE.TaskEither<SchedulerStartupError, void>;
     /**
      * Registers the given loader with the given name.
      */
     register: (
         loader: DataLoader<unknown>
     ) => TE.TaskEither<RegistrationError, void>;
-    remove: (name: string) => TE.TaskEither<NoLoaderFoundError, void>;
+    remove: (name: string) => TE.TaskEither<SchedulerNotRunningError, void>;
     /**
      * Schedules a new job. The given job must have a corresponding loader
      * registered with the scheduler.
@@ -53,10 +49,13 @@ export type JobScheduler = {
     stop: () => TE.TaskEither<Error, void>;
 };
 
-export const createJobScheduler = (
-    jobRepository: JobRepository,
-    client: ContentGatewayClient
-): JobScheduler => new DefaultJobScheduler(jobRepository, client);
+export type Deps = {
+    jobRepository: JobRepository;
+    contentGatewayClient: ContentGatewayClient;
+};
+
+export const createJobScheduler = (deps: Deps): JobScheduler =>
+    new DefaultJobScheduler(deps);
 
 class DefaultJobScheduler implements JobScheduler {
     // TODO: this implementation does way too much and it is also
@@ -65,26 +64,23 @@ class DefaultJobScheduler implements JobScheduler {
     // TODO: store an in-memory representation of the state too, to avoid
     // TODO: being suspended because of async/await
     private loaders = new Map<string, DataLoader<unknown>>();
-    private started = false;
-    private stopped = false;
+    private running = false;
     private client: ContentGatewayClient;
     private logger = createLogger("JobScheduler");
     private scheduler = new ToadScheduler();
     private jobRepository: JobRepository;
 
-    constructor(jobRepository: JobRepository, client: ContentGatewayClient) {
-        this.jobRepository = jobRepository;
-        this.client = client;
+    constructor(deps: Deps) {
+        this.jobRepository = deps.jobRepository;
+        this.client = deps.contentGatewayClient;
     }
 
-    start(): TE.TaskEither<StartError, void> {
-        if (this.started) {
-            this.logger.warn("Job scheduler already started.");
-            return TE.left(SchedulerAlreadyStartedError.create());
+    start(): TE.TaskEither<SchedulerStartupError, void> {
+        if (this.running) {
+            return TE.right(undefined);
         }
         this.logger.info("Starting job scheduler.");
-        this.started = true;
-        this.stopped = false;
+        this.running = true;
         return TE.tryCatch(
             async () => {
                 await this.jobRepository.cleanStaleJobs()();
@@ -101,19 +97,17 @@ class DefaultJobScheduler implements JobScheduler {
                 this.scheduler.addSimpleIntervalJob(job);
             },
             (e: unknown) => {
-                return SchedulerStartupError.create(e);
+                return new SchedulerStartupError(e);
             }
         );
     }
 
     stop() {
-        if (this.stopped) {
-            this.logger.warn("Job scheduler already stopped.");
-            return TE.left(SchedulerStoppedError.create());
+        if (!this.running) {
+            return TE.of(undefined);
         }
         this.logger.info("Stopping job scheduler.");
-        this.stopped = true;
-        this.started = false;
+        this.running = false;
         this.scheduler.stop();
         return TE.of(undefined);
     }
@@ -122,54 +116,48 @@ class DefaultJobScheduler implements JobScheduler {
         loader: DataLoader<unknown>
     ): TE.TaskEither<RegistrationError, void> {
         const key = schemaInfoToString(loader.info);
-        if (!this.started) {
-            return TE.left(SchedulerNotStartedError.create());
-        }
-        if (this.stopped) {
-            return TE.left(SchedulerStoppedError.create());
+        if (!this.running) {
+            return TE.left(new SchedulerNotRunningError());
         }
         if (this.loaders.has(key)) {
-            this.logger.error(`A loader by key ${key} already exists.`);
-            return TE.left(LoaderAlreadyRegisteredError.create(key));
+            this.logger.info(
+                `A loader by key ${key} already exists, overwriting...`
+            );
+        } else {
+            this.logger.info(`Registering loader with key ${key}.`);
         }
-        this.logger.info(`Registering loader with key ${key}.`);
         this.loaders.set(key, loader);
-        return loader.initialize({
-            client: this.client,
-            jobScheduler: this,
-        });
+        return pipe(
+            loader.initialize({
+                client: this.client,
+                jobScheduler: this,
+            }),
+            TE.mapLeft((e) => new LoaderInitializationError(e))
+        );
     }
 
-    remove(name: string): TE.TaskEither<RemoveError, void> {
-        if (!this.started) {
-            return TE.left(SchedulerNotStartedError.create());
-        }
-        if (this.stopped) {
-            return TE.left(SchedulerStoppedError.create());
+    remove(name: string): TE.TaskEither<SchedulerNotRunningError, void> {
+        if (!this.running) {
+            return TE.left(new SchedulerNotRunningError());
         }
         if (this.loaders.has(name)) {
             this.loaders.delete(name);
-            return TE.right(undefined);
-        } else {
-            return TE.left(NoLoaderFoundError.create(name));
         }
+        return TE.right(undefined);
     }
 
     schedule(
         jobDescriptor: JobDescriptor
     ): TE.TaskEither<SchedulingError, Job> {
         const key = schemaInfoToString(jobDescriptor.info);
-        if (!this.started) {
-            return TE.left(SchedulerNotStartedError.create());
-        }
-        if (this.stopped) {
-            return TE.left(SchedulerStoppedError.create());
+        if (!this.running) {
+            return TE.left(new SchedulerNotRunningError());
         }
         const job = { ...jobDescriptor, state: JobState.SCHEDULED };
         if (!this.loaders.has(key)) {
             this.logger.warn(`There is no loader with key ${key}`);
             // TODO: save it as failed?
-            return TE.left(NoLoaderForJobError.create(key));
+            return TE.left(new NoLoaderForJobError(key));
         }
         // TODO: check if job is already scheduled
         return pipe(
@@ -179,7 +167,7 @@ class DefaultJobScheduler implements JobScheduler {
             ),
             TE.mapLeft((e) => {
                 this.logger.warn(`Job scheduling failed:`, e);
-                return JobCreationFailedError.create(key, e);
+                return new JobCreationFailedError(key, e);
             }),
             TE.map(() => job)
         );
@@ -232,7 +220,6 @@ class DefaultJobScheduler implements JobScheduler {
                         const msg = `Loader ${schemaInfoToString(
                             job.info
                         )} failed`;
-                        this.logger.info(msg, e);
                         this.jobRepository.upsertJob(
                             { ...job, state: JobState.FAILED },
                             `${msg}: ${e.message}`
@@ -284,7 +271,7 @@ export class JobSchedulerStub implements JobScheduler {
     removedLoaders = [] as string[];
     scheduledJobs = [] as Job[];
 
-    start(): TE.TaskEither<StartError, void> {
+    start(): TE.TaskEither<SchedulerStartupError, void> {
         this.starts.push(true);
         return TE.right(undefined);
     }
@@ -294,7 +281,7 @@ export class JobSchedulerStub implements JobScheduler {
         this.loaders.push(loader);
         return TE.right(undefined);
     }
-    remove(name: string): TE.TaskEither<NoLoaderFoundError, void> {
+    remove(name: string): TE.TaskEither<SchedulerNotRunningError, void> {
         this.removedLoaders.push(name);
         return TE.right(undefined);
     }

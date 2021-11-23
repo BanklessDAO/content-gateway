@@ -1,11 +1,13 @@
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { PrismaClient, Schema as PrismaSchema } from "@cga/prisma";
 import {
+    DatabaseError,
     RegisteredSchemaIncompatibleError,
-    SchemaCreationFailedError,
+    SchemaRegistrationError,
     SchemaRepository,
+    UnknownError,
 } from "@domain/feature-gateway";
-import { createLogger } from "@shared/util-fp";
+import { CodecValidationError } from "@shared/util-dto";
 import {
     createSchemaFromObject,
     Schema,
@@ -18,12 +20,11 @@ import * as O from "fp-ts/Option";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
-import { Errors } from "io-ts";
+import { wrapPrismaOperation } from ".";
 
 export const createPrismaSchemaRepository = (
     prisma: PrismaClient
 ): SchemaRepository => {
-    const logger = createLogger("PrismaSchemaRepository");
     const findSchema = (info: SchemaInfo) => {
         return pipe(
             TO.tryCatch(() => {
@@ -46,28 +47,27 @@ export const createPrismaSchemaRepository = (
         );
     };
 
-    const upsertSchema = (schema: Schema) =>
-        TE.tryCatch(
-            () => {
-                const data = {
-                    ...schema.info,
-                    jsonSchema: schema.jsonSchema,
-                };
-                return prisma.schema.upsert({
-                    where: {
-                        namespace_name_version: schema.info,
-                    },
-                    create: data,
-                    update: data,
-                });
-            },
-            (e: unknown) =>
-                SchemaCreationFailedError.create((e as Error).message)
-        );
+    const upsertSchema: (
+        params: Schema
+    ) => TE.TaskEither<DatabaseError, PrismaSchema> = wrapPrismaOperation(
+        (schema: Schema) => {
+            const data = {
+                ...schema.info,
+                jsonSchema: schema.jsonSchema,
+            };
+            return prisma.schema.upsert({
+                where: {
+                    namespace_name_version: schema.info,
+                },
+                create: data,
+                update: data,
+            });
+        }
+    );
 
     const prismaSchemaToSchema: (
         schema: PrismaSchema
-    ) => E.Either<Errors, Schema> = (schema) =>
+    ) => E.Either<CodecValidationError, Schema> = (schema) =>
         createSchemaFromObject({
             info: {
                 namespace: schema.namespace,
@@ -85,19 +85,21 @@ export const createPrismaSchemaRepository = (
                         const o = await findSchema(schema.info)();
                         return Promise.resolve(O.getOrElse(() => schema)(o));
                     },
-                    (e: unknown) =>
-                        SchemaCreationFailedError.create((e as Error).message)
+                    (e: unknown) => new UnknownError(e)
                 ),
-                TE.chain((oldSchema) => {
+                TE.chainW((oldSchema) => {
+                    let result: TE.TaskEither<
+                        SchemaRegistrationError,
+                        PrismaSchema
+                    >;
                     if (schema.isBackwardCompatibleWith(oldSchema)) {
-                        return upsertSchema(schema);
+                        result = upsertSchema(schema);
                     } else {
-                        return TE.left(
-                            RegisteredSchemaIncompatibleError.create(
-                                schema.info
-                            )
+                        result = TE.left(
+                            new RegisteredSchemaIncompatibleError(schema.info)
                         );
                     }
+                    return result;
                 }),
                 TE.map(() => undefined)
             );
@@ -106,6 +108,8 @@ export const createPrismaSchemaRepository = (
         findAll: () => {
             return pipe(
                 async () => {
+                    // * this can fail on paper, but if there is no database connection
+                    // * 👇 then we have bigger problems
                     return prisma.schema.findMany();
                 },
                 T.map((entities) => {

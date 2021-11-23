@@ -58,7 +58,10 @@ describe("Given a content gateway api", () => {
         schemas = new Map();
         dataRepositoryStub = createDataRepositoryStub();
         schemaRepositoryStub = createSchemaRepositoryStub(schemas);
-        gateway = createContentGateway(schemaRepositoryStub, dataRepositoryStub);
+        gateway = createContentGateway({
+            schemaRepository: schemaRepositoryStub,
+            dataRepository: dataRepositoryStub,
+        });
         app.use(
             "/",
             await generateContentGatewayAPI({
@@ -77,7 +80,7 @@ describe("Given a content gateway api", () => {
             .expect(200);
 
         expect(result.status).toBe(200);
-        expect(result.body).toEqual({ result: "ok" });
+        expect(result.body).toEqual({});
     });
 
     it("When an invalid schema is sent, Then it fails", async () => {
@@ -87,9 +90,20 @@ describe("Given a content gateway api", () => {
             .expect(500);
 
         expect(result.status).toBe(500);
+
         expect(result.body).toEqual({
-            result: "failure",
-            error: "The supplied schema was invalid",
+            message: "JSON Schema validation failed.",
+            _tag: "CodecValidationError",
+            details: {
+                errorReport: [
+                    "undefined was invalid: Schema information is invalid",
+                    "undefined was invalid: A schema must have additional properties disabled. Did you add @AdditionalProperties(false)?",
+                    "undefined was invalid: undefined",
+                    "undefined was invalid: undefined",
+                    "undefined was invalid: undefined",
+                ],
+            },
+            cause: undefined,
         });
     });
 
@@ -105,7 +119,7 @@ describe("Given a content gateway api", () => {
             .expect(200);
 
         expect(result.status).toBe(200);
-        expect(result.body).toEqual({ result: "ok" });
+        expect(result.body).toEqual({});
     });
 
     it("When an invalid payload is sent, Then it fails", async () => {
@@ -115,9 +129,16 @@ describe("Given a content gateway api", () => {
             .expect(500);
 
         expect(result.status).toBe(500);
+
         expect(result.body).toEqual({
-            result: "failure",
-            error: "Validating payload failed",
+            message: "Validating json payload failed",
+            _tag: "CodecValidationError",
+            details: {
+                errorReport: [
+                    "undefined was invalid: Schema information is invalid",
+                    "undefined was invalid: Data is not a valid json object",
+                ],
+            },
         });
     });
 
@@ -134,7 +155,7 @@ describe("Given a content gateway api", () => {
             .expect(200);
 
         expect(result.status).toBe(200);
-        expect(result.body).toEqual({ result: "ok" });
+        expect(result.body).toEqual({});
     });
 
     it("When an invalid batch payload is sent, Then it fails", async () => {
@@ -149,9 +170,15 @@ describe("Given a content gateway api", () => {
             .expect(500);
 
         expect(result.status).toBe(500);
+
         expect(result.body).toEqual({
-            result: "failure",
-            error: "The supplied payload batch was invalid",
+            message: "Validating json payload failed",
+            _tag: "CodecValidationError",
+            details: {
+                errorReport: [
+                    "[object Object] was invalid: Data is not a valid json array",
+                ],
+            },
         });
     });
 });

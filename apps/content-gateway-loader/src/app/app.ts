@@ -35,7 +35,9 @@ export const createApp = async (prisma: PrismaClient) => {
         adapter: adapter,
     });
 
-    const scheduler = createJobScheduler(jobRepository, contentGatewayClient);
+    const scheduler = createJobScheduler({
+        jobRepository, contentGatewayClient
+    });
 
     await scheduler.start()();
 

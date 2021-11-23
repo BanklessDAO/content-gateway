@@ -1,14 +1,17 @@
-import { jsonBatchPayloadCodec, jsonPayloadCodec } from "@shared/util-dto";
 import { ContentGateway } from "@domain/feature-gateway";
+import {
+    jsonBatchPayloadCodec,
+    jsonPayloadCodec,
+    mapCodecValidationError,
+    ProgramError,
+    programErrorCodec
+} from "@shared/util-dto";
 import { createLogger } from "@shared/util-fp";
 import { createSchemaFromObject } from "@shared/util-schema";
 import * as express from "express";
-import * as E from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/lib/Task";
 import * as TE from "fp-ts/lib/TaskEither";
-import { Errors } from "io-ts";
-import { formatValidationErrors } from "io-ts-reporters";
 
 const logger = createLogger("ContentGatewayAPI");
 
@@ -37,24 +40,19 @@ export const generateContentGatewayAPI = async ({
     router.post("/register", async (req, res) => {
         await pipe(
             createSchemaFromObject(req.body),
-            mapErrors("The supplied schema was invalid"),
             TE.fromEither,
-            TE.chain((schema) => {
-                return contentGateway.register(schema);
-            }),
-            createResponseTask(res, "Schema registration")
+            TE.chainW(contentGateway.register),
+            sendResponse(res, "Schema registration")
         )();
     });
 
     router.post("/receive", async (req, res) => {
-        await pipe(
+        return pipe(
             jsonPayloadCodec.decode(req.body),
-            mapErrors("Validating payload failed"),
+            mapCodecValidationError("Validating json payload failed"),
             TE.fromEither,
-            TE.chain((data) => {
-                return contentGateway.receive(data);
-            }),
-            createResponseTask(res, "Payload receiving ")
+            TE.chainW(contentGateway.receive),
+            sendResponse(res, "Payload receiving ")
         )();
     });
 
@@ -62,39 +60,25 @@ export const generateContentGatewayAPI = async ({
         logger.info("Receiving batch...");
         await pipe(
             jsonBatchPayloadCodec.decode(req.body),
-            mapErrors("The supplied payload batch was invalid"),
+            mapCodecValidationError("Validating json payload failed"),
             TE.fromEither,
-            TE.chain((data) => {
-                logger.info("Batch was valid, sending to gateway...");
-                return contentGateway.receiveBatch(data);
-            }),
-            createResponseTask(res, "Batch payload receiving")
+            TE.chainW(contentGateway.receiveBatch),
+            sendResponse(res, "Batch payload receiving")
         )();
     });
 
     return router;
 };
 
-const mapErrors = (msg: string) =>
-    E.mapLeft((e: Errors) => {
-        logger.warn(msg, formatValidationErrors(e));
-        return new Error(msg);
-    });
-
-const createResponseTask = (res: express.Response, operation: string) =>
+const sendResponse = (res: express.Response, operation: string) =>
     TE.fold(
-        (e: Error) => {
-            res.status(500).json({
-                result: "failure",
-                error: e.message,
-            });
+        (e: ProgramError) => {
             logger.warn(`${operation} failed`, e);
+            res.status(500).json(programErrorCodec.encode(e));
             return T.of(undefined);
         },
         () => {
-            res.status(200).json({
-                result: "ok",
-            });
+            res.status(200).send({});
             return T.of(undefined);
         }
     );

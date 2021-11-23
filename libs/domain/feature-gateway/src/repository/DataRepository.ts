@@ -4,7 +4,7 @@ import * as A from "fp-ts/Array";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
-import { DataRepositoryError } from "./Errors";
+import { DatabaseError, MissingSchemaError, SchemaValidationError } from ".";
 
 export type SinglePayload = {
     info: SchemaInfo;
@@ -68,20 +68,27 @@ export type Query = {
     orderBy?: OrderBy;
 };
 
+export type DataStorageError =
+    | MissingSchemaError
+    | SchemaValidationError
+    | DatabaseError;
+
 /**
  * The [[DataRepository]] is a server-side component of the content gateway.
  * It is responsible for storing the data received from the SDK.
  */
 export type DataRepository = {
-    store: (entry: SinglePayload) => TE.TaskEither<DataRepositoryError, EntryWithInfo>;
+    store: (
+        entry: SinglePayload
+    ) => TE.TaskEither<DataStorageError, EntryWithInfo>;
     storeBulk: (
         entryList: ListPayload
-    ) => TE.TaskEither<DataRepositoryError, EntryList>;
+    ) => TE.TaskEither<DataStorageError, EntryList>;
     findById: (id: bigint) => TO.TaskOption<EntryWithInfo>;
     findBySchema: (
         filter: SchemaFilter
-    ) => TE.TaskEither<DataRepositoryError, EntryList>;
-    findByQuery: (query: Query) => TE.TaskEither<DataRepositoryError, EntryList>;
+    ) => TE.TaskEither<DatabaseError, EntryList>;
+    findByQuery: (query: Query) => TE.TaskEither<DatabaseError, EntryList>;
 };
 
 export type DataRepositoryStub = {
@@ -99,7 +106,7 @@ export const createDataRepositoryStub = (
 
     const store = (
         singlePayload: SinglePayload
-    ): TE.TaskEither<DataRepositoryError, EntryWithInfo> => {
+    ): TE.TaskEither<DataStorageError, EntryWithInfo> => {
         const keyStr = schemaInfoToString(singlePayload.info);
         if (!map.has(keyStr)) {
             map.set(keyStr, []);
@@ -119,7 +126,7 @@ export const createDataRepositoryStub = (
         store: store,
         storeBulk: (
             listPayload: ListPayload
-        ): TE.TaskEither<DataRepositoryError, EntryList> => {
+        ): TE.TaskEither<DataStorageError, EntryList> => {
             const { info, records } = listPayload;
             return pipe(
                 records,

@@ -50,6 +50,9 @@
         "domain-feature-loaders": {
             "tags": []
         },
+        "shared-util-auth": {
+            "tags": []
+        },
         "shared-util-dto": {
             "tags": []
         },

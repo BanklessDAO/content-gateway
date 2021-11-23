@@ -1,12 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { schemaCodec, SupportedJSONSchema } from "@shared/util-dto";
+import {
+    CodecValidationError,
+    mapCodecValidationError,
+    schemaCodec,
+    SupportedJSONSchema,
+} from "@shared/util-dto";
 import { Type } from "@tsed/core";
 import { getJsonSchema } from "@tsed/schema";
 import Ajv from "ajv/dist/ajv";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
-import { Errors } from "io-ts";
 import * as difftool from "json-schema-diff-validator";
+import { SchemaValidationError } from ".";
 import { SchemaInfo } from "..";
 
 const ajv = new Ajv({
@@ -48,7 +53,7 @@ export type Schema = {
      */
     validate: (
         data: Record<string, unknown>
-    ) => E.Either<ValidationError[], Record<string, unknown>>;
+    ) => E.Either<SchemaValidationError, Record<string, unknown>>;
 
     /**
      * Tells whether this schema has breaking changes compared to
@@ -67,7 +72,7 @@ export type Schema = {
 export const createSchemaFromType: <T>(
     info: SchemaInfo,
     type: Type<T>
-) => E.Either<Errors, Schema> = (info, type) => {
+) => E.Either<CodecValidationError, Schema> = (info, type) => {
     return createSchemaFromObject({
         info: info,
         jsonSchema: getJsonSchema(type),
@@ -80,10 +85,11 @@ export const createSchemaFromType: <T>(
  */
 export const createSchemaFromObject = (
     schema: SchemaJson
-): E.Either<Errors, Schema> => {
+): E.Either<CodecValidationError, Schema> => {
     return pipe(
         E.Do,
         E.bind("validSchema", () => schemaCodec.decode(schema)),
+        mapCodecValidationError("JSON Schema validation failed."),
         E.bind("validator", ({ validSchema }) =>
             E.right(ajv.compile(validSchema.jsonSchema))
         ),
@@ -101,14 +107,21 @@ export const createSchemaFromObject = (
                     } else {
                         return E.left(
                             // ❗ Take a look at what is actually produced by ajv here
-                            validator.errors?.map((e) => ({
-                                field: e.instancePath ?? "unknown field",
-                                message: e.message ?? "The value is invalid",
-                            })) ?? []
+                            // TODO: took a look...how can we extract the field name?
+                            new SchemaValidationError({
+                                validationErrors:
+                                    validator.errors?.map((err) =>
+                                        err.instancePath
+                                            ? `Field ${err.instancePath.substring(
+                                                  1
+                                              )} ${err.message}`
+                                            : err.message
+                                    ) ?? [],
+                            })
                         );
                     }
                 },
-                isBackwardCompatibleWith: (other) => {
+                isBackwardCompatibleWith: (other: Schema) => {
                     try {
                         difftool.validateSchemaCompatibility(
                             other.jsonSchema,

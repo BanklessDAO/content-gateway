@@ -2,14 +2,23 @@ import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
-import { SchemaRepositoryError } from ".";
+import {
+    DatabaseError,
+    RegisteredSchemaIncompatibleError,
+    UnknownError
+} from ".";
+
+export type SchemaRegistrationError =
+    | UnknownError
+    | DatabaseError
+    | RegisteredSchemaIncompatibleError;
 
 /**
  * The [[SchemaRepository]] is a server-side component of the content gateway.
  * It is responsible for storing the schemas sent from the SDK.
  */
 export type SchemaRepository = {
-    register: (schema: Schema) => TE.TaskEither<SchemaRepositoryError, void>;
+    register: (schema: Schema) => TE.TaskEither<SchemaRegistrationError, void>;
     find: (key: SchemaInfo) => TO.TaskOption<Schema>;
     // TODO: make this a Task instead
     findAll: () => T.Task<Array<Schema>>;
@@ -30,7 +39,7 @@ export const createSchemaRepositoryStub = (
         storage: map,
         register: (
             schema: Schema
-        ): TE.TaskEither<SchemaRepositoryError, void> => {
+        ): TE.TaskEither<SchemaRegistrationError, void> => {
             const keyStr = schemaInfoToString(schema.info);
             map.set(keyStr, schema);
             return TE.right(undefined);

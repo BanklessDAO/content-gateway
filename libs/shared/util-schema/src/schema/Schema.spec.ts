@@ -1,7 +1,8 @@
-import { extractRight } from "@shared/util-fp";
+import { extractLeft, extractRight } from "@shared/util-fp";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import { createSchemaFromObject, createSchemaFromType } from ".";
+import { SchemaValidationError } from "..";
 import { User as UserWithBackwardsCompatibleNestedAddress } from "./test/UserWithBackwardsCompatibleAddress";
 
 class Comment {
@@ -177,24 +178,23 @@ describe("Given a Schema", () => {
         });
 
         it("When validating a bad object it is invalid", () => {
-            expect(
-                schema.validate({
-                    id: 1,
-                    name: "Jane",
-                    comments: [{ text: "Hey" }],
-                    skills: ["programming", "drinking"],
-                    address: {
-                        address: "Some Street 1",
-                        city: { name: "London" },
-                    },
-                })
-            ).toEqual(
-                E.left([
-                    {
-                        field: "/id",
-                        message: "must be string",
-                    },
-                ])
+            const result = schema.validate({
+                id: 1,
+                name: "Jane",
+                comments: [{ text: "Hey" }],
+                skills: ["programming", "drinking"],
+                address: {
+                    address: "Some Street 1",
+                    city: { name: "London" },
+                },
+            });
+
+            expect(result).toEqual(
+                E.left(
+                    new SchemaValidationError({
+                        validationErrors: ["Field id must be string"],
+                    })
+                )
             );
         });
 

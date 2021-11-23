@@ -1,8 +1,9 @@
-import { createLogger } from "@shared/util-fp";
 import { Payload, Schema } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
-import { DataRepository, SchemaRepository } from "../repository";
+import { BatchDataReceivingError } from ".";
+import { DataRepository, SchemaRegistrationError, SchemaRepository } from "..";
+import { DataReceivingError } from "./errors";
 
 /**
  * Represents the public API of the Content Gateway.
@@ -11,36 +12,36 @@ export type ContentGateway = {
     /**
      * Registers a new schema shapshot with the Content Gateway.
      */
-    register: (schema: Schema) => TE.TaskEither<Error, void>;
+    register: (schema: Schema) => TE.TaskEither<SchemaRegistrationError, void>;
     /**
      * Ingests a new payload into the Content Gateway. The payload is validated
      * and it must correspond to a registered schema. If either the schema doesn't
      * exist or the payload is invalid according to the schema an error will be
      * returned.
      */
-    receive: <T>(payload: Payload<T>) => TE.TaskEither<Error, string>;
+    receive: <T>(
+        payload: Payload<T>
+    ) => TE.TaskEither<DataReceivingError, void>;
     /**
      * Same as {@link receive} but for a batch of items.
      */
     receiveBatch: <T>(
         payload: Payload<Array<T>>
-    ) => TE.TaskEither<Error, string>;
+    ) => TE.TaskEither<BatchDataReceivingError, void>;
 };
 
-export type ContentGatewayFactory = (
-    schemaRepository: SchemaRepository,
-    dataRepository: DataRepository
-) => ContentGateway;
+export type Deps = {
+    schemaRepository: SchemaRepository;
+    dataRepository: DataRepository;
+};
 
 /**
- * Creates a new [[ContentGateway]] instance using the supplied
- * [[schemaRepository]] and [[dataRepository]].
+ * Creates a new {@link ContentGateway} instance.
  */
-export const createContentGateway: ContentGatewayFactory = (
-    schemaRepository: SchemaRepository,
-    dataRepository: DataRepository
-) => {
-    const logger = createLogger("ContentGateway");
+export const createContentGateway = ({
+    schemaRepository,
+    dataRepository,
+}: Deps): ContentGateway => {
     return {
         register: (schema: Schema) => {
             return schemaRepository.register(schema);
@@ -53,10 +54,9 @@ export const createContentGateway: ContentGatewayFactory = (
                     record: data as Record<string, unknown>,
                 }),
                 TE.mapLeft((err) => {
-                    logger.warn(`Failed to store batch of data:`, err);
-                    return new Error(`Failed to store batch of data: ${err}`);
+                    return new DataReceivingError(err);
                 }),
-                TE.map(() => "OK")
+                TE.map(() => undefined)
             );
         },
         receiveBatch: <T>(payload: Payload<Array<T>>) => {
@@ -68,10 +68,9 @@ export const createContentGateway: ContentGatewayFactory = (
                     records: data as Record<string, unknown>[],
                 }),
                 TE.mapLeft((err) => {
-                    logger.warn(`Failed to store batch of data:`, err);
-                    return new Error(`Failed to store batch of data: ${err}`);
+                    return new BatchDataReceivingError(err);
                 }),
-                TE.map(() => "OK")
+                TE.map(() => undefined)
             );
         },
     };
