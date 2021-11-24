@@ -1,3 +1,4 @@
+import { UnknownError } from "@shared/util-dto";
 import { createLogger, notEmpty } from "@shared/util-fp";
 import { DataLoader } from "@shared/util-loaders";
 import axios from "axios";
@@ -120,7 +121,7 @@ export const bountyLoader: DataLoader<Bounty> = {
                     data: data,
                 };
             },
-            (err: unknown) => new Error(String(err))
+            (e: unknown) => new UnknownError(e)
         );
     },
     save: ({ client, loadingResult }) => {

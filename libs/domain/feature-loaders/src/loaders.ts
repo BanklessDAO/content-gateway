@@ -14,8 +14,8 @@ import {
  * 📗 Note for developers: this is where you should add your loader(s).
  */
 export const loaders = [
-    courseLoader,
-    banklessTokenLoader,
-    bountyLoader,
+    // courseLoader,
+    // banklessTokenLoader,
+    // bountyLoader,
     poapTokenLoader,
 ] as DataLoader<unknown>[];

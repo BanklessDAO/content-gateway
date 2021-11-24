@@ -51,6 +51,19 @@ export class GenericProgramError extends ProgramErrorBase<string> {
         super(e);
     }
 }
+export class UnknownError extends ProgramErrorBase<"UnknownError"> {
+    private e: unknown;
+    constructor(e: unknown) {
+        super({
+            _tag: "UnknownError",
+            message:
+                e instanceof Error
+                    ? e.message
+                    : `An unknown error happened: ${e}`,
+        });
+        this.e = e;
+    }
+}
 
 export class CodecValidationError extends ProgramErrorBase<"CodecValidationError"> {
     constructor(message: string, e: t.Errors) {

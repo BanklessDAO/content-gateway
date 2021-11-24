@@ -16,11 +16,12 @@ export const createApp = async (prisma: PrismaClient) => {
 
     const env = process.env.NODE_ENV ?? programError("NODE_ENV not set");
     const isProd = env === "production";
-    const resetDb = process.env.RESET_DB === "false";
+    const resetDb = process.env.RESET_DB === "true";
     const logger = createLogger("ContentGatewayLoaderApp");
     const addFrontend = process.env.ADD_FRONTEND === "true";
 
     if (resetDb) {
+        logger.info("Database reset requested. Resetting...")
         await prisma.jobLog.deleteMany({});
         await prisma.jobSchedule.deleteMany({});
     }

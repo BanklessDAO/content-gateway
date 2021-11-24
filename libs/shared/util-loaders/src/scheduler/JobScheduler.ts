@@ -1,20 +1,22 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
+import { ProgramError } from "@shared/util-dto";
 import { createLogger } from "@shared/util-fp";
 import { schemaInfoToString } from "@shared/util-schema";
+import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
+import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
 import { AsyncTask, SimpleIntervalJob, ToadScheduler } from "toad-scheduler";
 import { JobDescriptor } from ".";
 import { DataLoader } from "../DataLoader";
 import {
-    JobCreationFailedError,
+    JobCreationError as JobUpsertError,
     LoaderInitializationError,
     NoLoaderForJobError,
-    NoLoaderFoundError,
     RegistrationError,
     SchedulerNotRunningError,
     SchedulerStartupError,
-    SchedulingError,
+    SchedulingError
 } from "./errors";
 import { Job } from "./Job";
 import { JobRepository } from "./JobRepository";
@@ -35,7 +37,7 @@ export type JobScheduler = {
     register: (
         loader: DataLoader<unknown>
     ) => TE.TaskEither<RegistrationError, void>;
-    remove: (name: string) => TE.TaskEither<SchedulerNotRunningError, void>;
+    remove: (name: string) => E.Either<RegistrationError, void>;
     /**
      * Schedules a new job. The given job must have a corresponding loader
      * registered with the scheduler.
@@ -46,7 +48,7 @@ export type JobScheduler = {
     /**
      * Stops this scheduler. It can't be used after this.
      */
-    stop: () => TE.TaskEither<Error, void>;
+    stop: () => void;
 };
 
 export type Deps = {
@@ -58,11 +60,6 @@ export const createJobScheduler = (deps: Deps): JobScheduler =>
     new DefaultJobScheduler(deps);
 
 class DefaultJobScheduler implements JobScheduler {
-    // TODO: this implementation does way too much and it is also
-    // TODO: suspectible to race conditions (because we can't adomically)
-    // TODO: read and write the database
-    // TODO: store an in-memory representation of the state too, to avoid
-    // TODO: being suspended because of async/await
     private loaders = new Map<string, DataLoader<unknown>>();
     private running = false;
     private client: ContentGatewayClient;
@@ -93,23 +90,14 @@ class DefaultJobScheduler implements JobScheduler {
                         this.logger.info("Job execution failed", err);
                     }
                 );
-                const job = new SimpleIntervalJob({ seconds: 5 }, task);
-                this.scheduler.addSimpleIntervalJob(job);
+                this.scheduler.addSimpleIntervalJob(
+                    new SimpleIntervalJob({ seconds: 5 }, task)
+                );
             },
             (e: unknown) => {
                 return new SchedulerStartupError(e);
             }
         );
-    }
-
-    stop() {
-        if (!this.running) {
-            return TE.of(undefined);
-        }
-        this.logger.info("Stopping job scheduler.");
-        this.running = false;
-        this.scheduler.stop();
-        return TE.of(undefined);
     }
 
     register(
@@ -136,16 +124,6 @@ class DefaultJobScheduler implements JobScheduler {
         );
     }
 
-    remove(name: string): TE.TaskEither<SchedulerNotRunningError, void> {
-        if (!this.running) {
-            return TE.left(new SchedulerNotRunningError());
-        }
-        if (this.loaders.has(name)) {
-            this.loaders.delete(name);
-        }
-        return TE.right(undefined);
-    }
-
     schedule(
         jobDescriptor: JobDescriptor
     ): TE.TaskEither<SchedulingError, Job> {
@@ -153,114 +131,150 @@ class DefaultJobScheduler implements JobScheduler {
         if (!this.running) {
             return TE.left(new SchedulerNotRunningError());
         }
-        const job = { ...jobDescriptor, state: JobState.SCHEDULED };
         if (!this.loaders.has(key)) {
-            this.logger.warn(`There is no loader with key ${key}`);
-            // TODO: save it as failed?
-            return TE.left(new NoLoaderForJobError(key));
+            return this.cancelJob(jobDescriptor);
         }
-        // TODO: check if job is already scheduled
-        return pipe(
-            this.jobRepository.upsertJob(
-                job,
-                "Scheduling new job for execution."
-            ),
-            TE.mapLeft((e) => {
-                this.logger.warn(`Job scheduling failed:`, e);
-                return new JobCreationFailedError(key, e);
-            }),
-            TE.map(() => job)
-        );
+        return this.scheduleJob(jobDescriptor);
+    }
+
+    stop() {
+        if (!this.running) {
+            return;
+        }
+        this.logger.info("Stopping job scheduler.");
+        this.running = false;
+        this.scheduler.stop();
+    }
+
+    remove(name: string): E.Either<SchedulerNotRunningError, void> {
+        if (!this.running) {
+            return E.left(new SchedulerNotRunningError());
+        }
+        if (this.loaders.has(name)) {
+            this.loaders.delete(name);
+        }
+        return E.right(undefined);
     }
 
     private async executeScheduledJobs() {
-        try {
-            this.logger.info(`Scanning for jobs. Current time: ${new Date()}`);
-            const jobs = await this.jobRepository.loadNextJobs()();
-            this.logger.info(`Found ${jobs.length} jobs.`);
-            for (const job of jobs) {
-                try {
-                    this.logger.info(`Executing job for:`, job.info);
-                    // TODO: Consider using Bree later down the road
-                    // TODO: for offloading jobs => https://github.com/breejs/bree
-                    await this.executeJob(job);
-                } catch (e) {
-                    this.logger.warn("Failed to start job:", e);
-                }
-            }
-        } catch (error: unknown) {
-            this.logger.warn("Job execution error", error);
+        this.logger.info(`Scanning for jobs. Current time: ${new Date()}`);
+        const jobs = await this.jobRepository.loadNextJobs()();
+        this.logger.info(`Found ${jobs.length} jobs.`);
+        for (const job of jobs) {
+            this.logger.info(`Executing job for:`, job.info);
+            // TODO: Consider using Bree later down the road
+            // TODO: for offloading jobs => https://github.com/breejs/bree
+            this.executeJob(job)();
         }
     }
 
-    private async executeJob(job: Job) {
-        // TODO: maybe run this in a transaction for consistency?
-        const loader = this.loaders.get(schemaInfoToString(job.info));
+    private executeJob(job: Job): TE.TaskEither<ProgramError, void> {
         job.state = JobState.RUNNING;
-        if (loader) {
-            try {
-                await this.jobRepository.upsertJob(
-                    job,
-                    `Job execution started.`
-                )();
+        const key = schemaInfoToString(job.info);
+        return pipe(
+            TE.Do,
+            TE.bind("loader", () =>
                 pipe(
-                    loader.load({
-                        limit: job.limit,
-                        cursor: job.cursor,
-                    }),
-                    TE.chain((result) =>
-                        loader.save({
-                            currentJob: job,
-                            client: this.client,
-                            jobScheduler: this,
-                            loadingResult: result,
-                        })
-                    ),
+                    O.fromNullable(this.loaders.get(key)),
+                    TE.fromOption(() => new NoLoaderForJobError(job)),
                     TE.mapLeft((e) => {
-                        const msg = `Loader ${schemaInfoToString(
-                            job.info
-                        )} failed`;
-                        this.jobRepository.upsertJob(
-                            { ...job, state: JobState.FAILED },
-                            `${msg}: ${e.message}`
-                        )();
+                        this.cancelJob(job)();
                         return e;
-                    }),
-                    TE.map((nextJob) => {
-                        if (nextJob) {
-                            this.logger.info(
-                                "A next job was returned, scheduling..."
-                            );
-                            this.schedule(nextJob)();
-                        } else {
-                            this.jobRepository.upsertJob(
-                                { ...job, state: JobState.COMPLETED },
-                                `Job ${schemaInfoToString(
-                                    job.info
-                                )} completed successfully.`
-                            )();
-                        }
                     })
-                )();
-            } catch (e: unknown) {
-                this.logger.error(
-                    "Job failed. This shouldn't have happened. There is probably a bug.",
-                    e
+                )
+            ),
+            TE.bind("result", ({ loader }) =>
+                loader.load({
+                    limit: job.limit,
+                    cursor: job.cursor,
+                })
+            ),
+            TE.chain(({ loader, result }) =>
+                loader.save({
+                    currentJob: job,
+                    client: this.client,
+                    jobScheduler: this,
+                    loadingResult: result,
+                })
+            ),
+            TE.mapLeft((e) => {
+                return this.failJob(job, e);
+            }),
+            this.scheduleOrCompleteJobOnSuccess(job)
+        );
+    }
+
+    private scheduleOrCompleteJobOnSuccess(job: JobDescriptor) {
+        return TE.map((nextJob: JobDescriptor | undefined) => {
+            if (nextJob) {
+                this.logger.info(
+                    "A next job was returned, scheduling...",
+                    nextJob
                 );
+                this.schedule(nextJob)();
+            } else {
+                this.logger.info(
+                    "No next job was returned, completing job",
+                    job
+                );
+                this.upsertJob(
+                    job,
+                    `Job ${schemaInfoToString(
+                        job.info
+                    )} completed successfully.`,
+                    JobState.COMPLETED
+                )();
             }
-        } else {
-            const msg = `Job was canceled because no loader with key ${schemaInfoToString(
-                job.info
-            )} was found.`;
-            this.jobRepository.upsertJob(
-                {
-                    ...job,
-                    state: JobState.CANCELED,
-                },
-                msg
-            )();
-            this.logger.warn(msg);
-        }
+        });
+    }
+
+    private failJob<E>(jobDescriptor: JobDescriptor, e: E) {
+        const msg = `Loader ${schemaInfoToString(jobDescriptor.info)} failed`;
+        this.logger.warn(msg, e);
+        pipe(
+            this.upsertJob(
+                jobDescriptor,
+                `${msg}: ${
+                    e instanceof Error
+                        ? e.message
+                        : "Unknown error happened. This is probably a bug."
+                }`,
+                JobState.FAILED
+            ),
+            TE.chainW((job) => {
+                return this.jobRepository.rescheduleFailedJob(job);
+            })
+        )();
+        return e;
+    }
+
+    private cancelJob(job: JobDescriptor): TE.TaskEither<JobUpsertError, Job> {
+        const msg = `Job was canceled because no loader with key ${schemaInfoToString(
+            job.info
+        )} was found.`;
+        return this.upsertJob(job, msg, JobState.CANCELED);
+    }
+
+    private scheduleJob(
+        job: JobDescriptor
+    ): TE.TaskEither<JobUpsertError, Job> {
+        const msg = "Scheduling new job for execution.";
+        return this.upsertJob(job, msg, JobState.SCHEDULED);
+    }
+
+    private upsertJob(
+        jobDescriptor: JobDescriptor,
+        note: string,
+        state: JobState
+    ): TE.TaskEither<JobUpsertError, Job> {
+        const job = { ...jobDescriptor, state };
+        return pipe(
+            this.jobRepository.upsertJob(job, note),
+            TE.mapLeft((e) => {
+                this.logger.warn(`Job upsert failed:`, e);
+                return new JobUpsertError(job, e);
+            })
+        );
     }
 }
 
@@ -281,9 +295,9 @@ export class JobSchedulerStub implements JobScheduler {
         this.loaders.push(loader);
         return TE.right(undefined);
     }
-    remove(name: string): TE.TaskEither<SchedulerNotRunningError, void> {
+    remove(name: string): E.Either<SchedulerNotRunningError, void> {
         this.removedLoaders.push(name);
-        return TE.right(undefined);
+        return E.right(undefined);
     }
     schedule(
         jobDescriptor: JobDescriptor
@@ -292,9 +306,8 @@ export class JobSchedulerStub implements JobScheduler {
         this.scheduledJobs.push(job);
         return TE.right(job);
     }
-    stop(): TE.TaskEither<Error, void> {
+    stop(): void {
         this.stops.push(true);
-        return TE.of(undefined);
     }
 }
 

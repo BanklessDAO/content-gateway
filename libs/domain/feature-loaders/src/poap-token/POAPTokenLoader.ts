@@ -1,3 +1,4 @@
+import { UnknownError } from "@shared/util-dto";
 import { createLogger, notEmpty } from "@shared/util-fp";
 import { createGraphQLAPIClient, DataLoader } from "@shared/util-loaders";
 import { pipe } from "fp-ts/lib/function";
@@ -84,6 +85,7 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
     load: ({ cursor, limit }) => {
         return TE.tryCatch(
             async () => {
+                throw new Error("Test error");
                 logger.info("Loading POAP Token data:", {
                     cursor,
                     limit,
@@ -127,7 +129,7 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
                     cursor: nextCursor,
                 };
             },
-            (error: unknown) => new Error(String(error))
+            (e: unknown) => new UnknownError(e)
         );
     },
     save: ({ client, loadingResult }) => {

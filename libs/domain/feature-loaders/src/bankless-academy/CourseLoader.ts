@@ -1,3 +1,4 @@
+import { UnknownError } from "@shared/util-dto";
 import { createLogger } from "@shared/util-fp";
 import { DataLoader } from "@shared/util-loaders";
 import axios from "axios";
@@ -103,7 +104,7 @@ export const courseLoader: DataLoader<Course> = {
                     data: data,
                 };
             },
-            (err: unknown) => new Error(String(err))
+            (e: unknown) => new UnknownError(e)
         );
     },
     save: ({ client, loadingResult }) => {

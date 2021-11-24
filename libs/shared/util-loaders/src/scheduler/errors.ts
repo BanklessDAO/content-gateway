@@ -1,10 +1,14 @@
-import { ProgramErrorBase } from "@shared/util-dto";
+import { ProgramError, ProgramErrorBase } from "@shared/util-dto";
+import { schemaInfoToString } from "@shared/util-schema";
+import { Job } from ".";
 
 export class NoLoaderForJobError extends ProgramErrorBase<"NoLoaderForJobError"> {
-    constructor(name: string) {
+    constructor(job: Job) {
         super({
             _tag: "NoLoaderForJobError",
-            message: `No loader found for name: ${name}`,
+            message: `No loader found for name: ${schemaInfoToString(
+                job.info
+            )}`,
         });
     }
 }
@@ -18,11 +22,13 @@ export class NoLoaderFoundError extends ProgramErrorBase<"NoLoaderFoundError"> {
     }
 }
 
-export class JobCreationFailedError extends ProgramErrorBase<"JobCreationFailedError"> {
-    constructor(name: string, cause: Error) {
+export class JobCreationError extends ProgramErrorBase<"JobUpsertFailedError"> {
+    constructor(job: Job, cause: Error) {
         super({
-            _tag: "JobCreationFailedError",
-            message: `Creation of job with name: ${name} failed. Cause: ${cause}`,
+            _tag: "JobUpsertFailedError",
+            message: `Upsert of job with name: ${schemaInfoToString(
+                job.info
+            )} failed. Cause: ${cause}`,
         });
     }
 }
@@ -47,8 +53,8 @@ export class SchedulerNotRunningError extends ProgramErrorBase<"SchedulerNotRunn
 }
 
 export class LoaderInitializationError extends ProgramErrorBase<"LoaderInitializationError"> {
-    public error: Error;
-    constructor(error: Error) {
+    public error: ProgramError;
+    constructor(error: ProgramError) {
         super({
             _tag: "LoaderInitializationError",
             message: `Loader failed to initialize: ${error.message}`,
@@ -57,9 +63,25 @@ export class LoaderInitializationError extends ProgramErrorBase<"LoaderInitializ
     }
 }
 
+export class DatabaseError extends ProgramErrorBase<"DatabaseError"> {
+    public error: unknown;
+    constructor(cause: unknown) {
+        super({
+            _tag: "DatabaseError",
+            message:
+                cause instanceof Error
+                    ? cause.message
+                    : "Unknown error happened. This is probably a bug.",
+        });
+    }
+}
+
 export type SchedulingError =
+    | DatabaseError
     | NoLoaderForJobError
-    | JobCreationFailedError
+    | JobCreationError
     | SchedulerNotRunningError;
 
-export type RegistrationError = SchedulerNotRunningError | LoaderInitializationError;
+export type RegistrationError =
+    | SchedulerNotRunningError
+    | LoaderInitializationError;

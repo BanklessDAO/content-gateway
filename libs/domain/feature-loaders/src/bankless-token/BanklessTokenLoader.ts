@@ -1,3 +1,4 @@
+import { UnknownError } from "@shared/util-dto";
 import { createLogger, notEmpty } from "@shared/util-fp";
 import { createGraphQLAPIClient, DataLoader } from "@shared/util-loaders";
 import { pipe } from "fp-ts/lib/function";
@@ -124,7 +125,7 @@ export const banklessTokenLoader: DataLoader<BanklessToken> = {
                         }
                     );
                 },
-                (err: unknown) => new Error(String(err))
+                (e: unknown) => new UnknownError(e)
             ),
             TE.map((data) => {
                 const nextCursor =

@@ -1,4 +1,5 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
+import { ProgramError } from "@shared/util-dto";
 import { SchemaInfo } from "@shared/util-schema";
 import * as TE from "fp-ts/TaskEither";
 import { Job, JobDescriptor, JobScheduler } from ".";
@@ -34,15 +35,15 @@ export type DataLoader<T> = {
      * Initializes this loader. This will be called once each time
      * the application starts.
      */
-    initialize: (deps: InitContext) => TE.TaskEither<Error, void>;
+    initialize: (deps: InitContext) => TE.TaskEither<ProgramError, void>;
     /**
      * Loads data from the data source asynchronously.
      */
-    load: (deps: LoadContext) => TE.TaskEither<Error, LoadingResult<T>>;
+    load: (deps: LoadContext) => TE.TaskEither<ProgramError, LoadingResult<T>>;
     /**
      * Sends the data to the Content Gateway API asynchronously.
      */
     save: (
         deps: SaveContext<T>
-    ) => TE.TaskEither<Error, JobDescriptor | undefined>;
+    ) => TE.TaskEither<ProgramError, JobDescriptor | undefined>;
 };
