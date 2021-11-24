@@ -85,7 +85,6 @@ export const poapTokenLoader: DataLoader<POAPToken> = {
     load: ({ cursor, limit }) => {
         return TE.tryCatch(
             async () => {
-                throw new Error("Test error");
                 logger.info("Loading POAP Token data:", {
                     cursor,
                     limit,

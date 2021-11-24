@@ -108,6 +108,7 @@ const anonymousPermissions: AnyPermission[] = [
     allowFindPublishedTodosForAnon,
     allowFindTodoForAnybody,
 ];
+
 const userPermissions: AnyPermission[] = [
     allowFindPublishedTodosForUser,
     allowFindTodoForAnybody,

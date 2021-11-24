@@ -4,20 +4,21 @@ import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
 import { AuthorizationError } from "..";
 import { authorize } from "../Authorization";
-import Context from "../Context";
+import {Context} from "../Context";
 import { authorization } from "./authorization";
 import { anonUser, todos, userJane, userJohn } from "./fixtures";
 import { deleteTodo, findAllTodos, findTodo } from "./operations";
 
 describe("Given some authorized operations", () => {
-    const authorizedFind = authorize(findTodo, authorization);
-    const authorizedDelete = authorize(deleteTodo, authorization);
+const authorizedFind = authorize(findTodo, authorization);
+const authorizedDelete = authorize(deleteTodo, authorization);
     const authorizedFindAll = authorize(findAllTodos, authorization);
 
     const anonContext: Context<number> = {
         user: anonUser,
         data: 1,
     };
+
     const janesContext: Context<number> = {
         user: userJane,
         data: 2,

@@ -26,3 +26,4 @@ export const deleteTodo = (input: Todo) => {
     input.completed = O.some(true);
     return TE.right(undefined);
 };
+

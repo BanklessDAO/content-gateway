@@ -8,3 +8,4 @@ export class AuthorizationError extends ProgramErrorBase<"AuthorizationError"> {
         });
     }
 }
+

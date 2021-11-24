@@ -11,5 +11,3 @@ export interface Context<I> {
     user: AnyUser;
     data: I;
 }
-
-export default Context;

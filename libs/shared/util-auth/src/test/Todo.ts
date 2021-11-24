@@ -7,3 +7,4 @@ export interface Todo extends Entity<number> {
     completed: O.Option<boolean>;
     published: O.Option<boolean>;
 }
+

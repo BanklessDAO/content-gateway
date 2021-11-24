@@ -28,7 +28,7 @@ export const userJane: User<number> = {
 export const adminBob: User<number> = {
     id: 4,
     name: "Bob Doe",
-    roles: [roles.user, roles.admin],
+    roles: [roles.admin],
 };
 
 export const todos: TodoMap = {
@@ -61,3 +61,4 @@ export const todos: TodoMap = {
         published: O.some(false),
     },
 };
+

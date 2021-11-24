@@ -3,7 +3,7 @@ import * as A from "fp-ts/Array";
 import { pipe } from "fp-ts/function";
 import * as TE from "fp-ts/TaskEither";
 import { AnyUser } from ".";
-import Context from "./Context";
+import {Context} from "./Context";
 import { AuthorizationError } from "./errors";
 import { Filter } from "./Filter";
 import { Operation } from "./Operation";

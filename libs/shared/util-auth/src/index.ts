@@ -8,4 +8,3 @@ export * from "./Permission";
 export * from "./Policy";
 export * from "./Role";
 export * from "./User";
-
