@@ -20,7 +20,7 @@ export const toGraphQLType = (schema: Schema): g.GraphQLObjectType => {
     for (const [name, type] of Object.entries(jsonSchema?.definitions ?? {})) {
         types.set(name, type);
     }
-    types.forEach((type, name) => {
+    types.forEach((_, name) => {
         extractType(name, jsonSchema, types, result);
     });
     return result.get(schema.info.name)!;

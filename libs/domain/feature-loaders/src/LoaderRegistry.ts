@@ -1,7 +1,7 @@
 import { DataLoader } from "@shared/util-loaders";
 import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import * as O from "fp-ts/lib/Option";
-import { loaders as defaultLoaders } from "./loaders";
+import { createLoaders } from "./loaders";
 
 export type LoaderRegistry = {
     loaders: readonly DataLoader<unknown>[];
@@ -9,7 +9,7 @@ export type LoaderRegistry = {
 };
 
 export const createLoaderRegistry = (
-    loaders: readonly DataLoader<unknown>[] = defaultLoaders
+    loaders: readonly DataLoader<unknown>[] = createLoaders()
 ): LoaderRegistry => {
     const lookup = loaders.reduce((map, obj) => {
         const key = schemaInfoToString(obj.info);

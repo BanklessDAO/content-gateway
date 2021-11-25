@@ -1,1 +1,1 @@
-export * from "./GraphQLAPIClient"
+export * from "./GraphQLClient"

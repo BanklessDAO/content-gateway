@@ -1,21 +1,14 @@
 import { DataLoader } from "@shared/util-loaders";
-import {
-    banklessTokenLoader,
-    bountyLoader,
-    courseLoader
-} from ".";
-// TODO: if I import this 👇 like the others there 👆 then poapTokenLoader is undefined! 😐
-import {
-    poapTokenLoader
-} from "./poap-token/POAPTokenLoader";
-
+import { createPOAPAccountLoader, createPOAPTokenLoader } from ".";
 
 /**
  * 📗 Note for developers: this is where you should add your loader(s).
  */
-export const loaders = [
-    // courseLoader,
-    // banklessTokenLoader,
-    // bountyLoader,
-    poapTokenLoader,
-] as DataLoader<unknown>[];
+export const createLoaders = () =>
+    [
+        // courseLoader,
+        // banklessTokenLoader,
+        // bountyLoader,
+        // createPOAPTokenLoader(),
+        createPOAPAccountLoader(),
+    ] as DataLoader<unknown>[];

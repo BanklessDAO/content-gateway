@@ -1,8 +1,8 @@
-import { UnknownError } from "@shared/util-dto";
 import { createLogger, notEmpty } from "@shared/util-fp";
-import { createGraphQLAPIClient, DataLoader } from "@shared/util-loaders";
+import { createGraphQLClient, DataLoader } from "@shared/util-loaders";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
+import * as t from "io-ts";
 import { DateTime } from "luxon";
 import { BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS } from "./queries";
 import { BanklessToken, banklessTokenInfo } from "./types";
@@ -11,29 +11,35 @@ const logger = createLogger("BanklessTokenLoader");
 
 const subgraphURI =
     "https://api.thegraph.com/subgraphs/name/0xnshuman/bank-subgraph";
-const graphAPIClient = createGraphQLAPIClient(subgraphURI);
+const graphAPIClient = createGraphQLClient(subgraphURI);
 
-type Event = {
-    value: string;
-    from: {
-        id: string;
-    };
-    to: {
-        id: string;
-    };
-};
+const Event = t.strict({
+    value: t.string,
+    from: t.strict({
+        id: t.string,
+    }),
+    to: t.strict({
+        id: t.string,
+    }),
+});
 
-type Balance = {
-    value: string;
-    transferToEvent: Event[];
-    transferFromEvent: Event[];
-};
+type Event = t.TypeOf<typeof Event>;
 
-type Account = {
-    id: string;
-    ERC20balances: Balance[];
-    lastTransactionTimestamp: string;
-};
+const Balance = t.strict({
+    value: t.string,
+    transferToEvent: t.array(Event),
+    transferFromEvent: t.array(Event),
+});
+
+type Balance = t.TypeOf<typeof Balance>;
+
+const Account = t.strict({
+    id: t.string,
+    ERC20balances: t.array(Balance),
+    lastTransactionTimestamp: t.string,
+});
+
+type Account = t.TypeOf<typeof Account>;
 
 const mapAccounts = (accounts: Account[]): BanklessToken[] =>
     accounts
@@ -100,33 +106,13 @@ export const banklessTokenLoader: DataLoader<BanklessToken> = {
         );
     },
     load: ({ cursor, limit }) => {
-        // TODO: start using loadFrom / limit once we have the dates in place
         return pipe(
-            TE.tryCatch(
-                () => {
-                    logger.info("Loading Bankless Token data:", {
-                        cursor,
-                        limit,
-                    });
-
-                    const ts = cursor ?? "0";
-
-                    return graphAPIClient.query(
-                        BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS,
-                        { limit: limit, cursor: ts },
-                        (data) => {
-                            logger.info(
-                                `Loaded data chunk from the original source:`
-                            );
-                            logger.info(
-                                `Total count: ${data.accounts.length}; cursor: ${cursor} `
-                            );
-                            return mapAccounts(data.accounts);
-                        }
-                    );
-                },
-                (e: unknown) => new UnknownError(e)
+            graphAPIClient.query(
+                BANKLESS_TOKEN_SUBGRAPH_ACCOUNTS,
+                { limit: limit, cursor: cursor ?? "0" },
+                t.array(Account)
             ),
+            TE.map(mapAccounts),
             TE.map((data) => {
                 const nextCursor =
                     data.length > 0

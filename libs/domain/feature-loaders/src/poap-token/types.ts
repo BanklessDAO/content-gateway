@@ -11,7 +11,25 @@ export class POAPToken {
     @Required(true)
     id: string;
     @Required(true)
-    owner: string;
+    transferCount: number;
     @Required(true)
     mintedAt: number;
+    @Required(true)
+    ownerId: string;
+    @Required(true)
+    eventId: string;
+}
+
+export const poapAccountInfo = {
+    namespace: "poap",
+    name: "POAPAccount",
+    version: "V1",
+};
+
+@AdditionalProperties(false)
+export class POAPAccount {
+    @Required(true)
+    id: string;
+    @Required(true)
+    tokensOwned: number;
 }

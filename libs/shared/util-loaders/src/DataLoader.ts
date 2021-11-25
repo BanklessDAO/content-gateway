@@ -29,7 +29,7 @@ export type SaveContext<T> = {
     loadingResult: LoadingResult<T>;
 };
 
-export type DataLoader<T> = {
+export interface DataLoader<T> {
     info: SchemaInfo;
     /**
      * Initializes this loader. This will be called once each time
@@ -46,4 +46,4 @@ export type DataLoader<T> = {
     save: (
         deps: SaveContext<T>
     ) => TE.TaskEither<ProgramError, JobDescriptor | undefined>;
-};
+}
