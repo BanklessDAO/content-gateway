@@ -86,6 +86,9 @@ export const createSchemaFromType: <T>(
 export const createSchemaFromObject = (
     schema: SchemaJson
 ): E.Either<CodecValidationError, Schema> => {
+    if (schema.jsonSchema._id) {
+        return E.left(new CodecValidationError("_id is a reserved field", []));
+    }
     return pipe(
         E.Do,
         E.bind("validSchema", () => schemaCodec.decode(schema)),

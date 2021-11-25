@@ -142,7 +142,7 @@ const createGraphQLMiddleware = async ({
                             notes: notes,
                             data: entries.map((entry) => ({
                                 ...entry.record,
-                                id: entry.id.toString(),
+                                _id: entry.id.toString(),
                             })),
                         };
                     }),
@@ -174,6 +174,7 @@ const createGraphQLMiddleware = async ({
                 },
                 [`${pluralize.plural(name)}`]: {
                     type: createResultsType(type),
+                    description: `Returns a list of ${name}s. Supports pagination and filtering.`,
                     args: {
                         first: { type: g.GraphQLInt, defaultValue: MAX_ITEMS },
                         after: { type: g.GraphQLString, defaultValue: "0" },
