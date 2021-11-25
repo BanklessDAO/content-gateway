@@ -14,8 +14,8 @@ model JobSchedule {
   name             String    @id @db.VarChar(255)
   state            JobState  @default(SCHEDULED)
   /// The cursor that points to the last data entry that was saved.
-  /// This can be a timestamp or a block number too.
-  cursor           BigInt    @db.BigInt
+  /// This can be anything that supports order by
+  cursor           String    @db.VarChar(255)
   /// The amount of items to load in the next run
   limit            Int       @db.Integer
   /// The next time this job should run

@@ -1,7 +1,8 @@
+import { ProgramError } from "@shared/util-dto";
 import {
     DataLoaderBase,
     GraphQLClient,
-    LoadContext
+    LoadContext,
 } from "@shared/util-loaders";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
@@ -28,6 +29,12 @@ export abstract class GraphQLDataLoaderBase<G, T> extends DataLoaderBase<T> {
         loadContext: LoadContext
     ): string;
 
+    protected preLoad(
+        context: LoadContext
+    ): TE.TaskEither<ProgramError, LoadContext> {
+        return TE.right(context);
+    }
+
     public load(context: LoadContext) {
         const { cursor, limit } = context;
         const params: Record<string, unknown> = {
@@ -42,7 +49,10 @@ export abstract class GraphQLDataLoaderBase<G, T> extends DataLoaderBase<T> {
                 break;
         }
         return pipe(
-            this.client.query(this.graphQLQuery, params, this.codec),
+            this.preLoad(context),
+            TE.chain(() =>
+                this.client.query(this.graphQLQuery, params, this.codec)
+            ),
             TE.map(this.mapGraphQLResult),
             TE.map((data) => {
                 return {

@@ -173,7 +173,8 @@ class DefaultJobScheduler implements JobScheduler {
         const key = schemaInfoToString(job.info);
         return pipe(
             TE.Do,
-            TE.bind("loader", () =>
+            TE.bind("job", () => this.jobRepository.upsertJob(job, "Starting job.")),
+            TE.bindW("loader", () =>
                 pipe(
                     O.fromNullable(this.loaders.get(key)),
                     TE.fromOption(() => new NoLoaderForJobError(job)),

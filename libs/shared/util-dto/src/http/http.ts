@@ -17,13 +17,13 @@ import {
 
 export type GetParams<T> = {
     url: string;
-    codec: t.Type<T, unknown>;
+    codec: t.Type<T>;
 };
 
 export type PostParams<T> = {
     url: string;
     input: Record<string, unknown>;
-    codec: t.Type<T, unknown>;
+    codec: t.Type<T>;
 };
 
 const handleError = (error: unknown): DataTransferError => {
@@ -50,7 +50,7 @@ const handleError = (error: unknown): DataTransferError => {
     }
 };
 
-const decodeResponse = <T>(codec: t.Type<T, unknown>) => {
+const decodeResponse = <T>(codec: t.Type<T>) => {
     return TE.chainW((data: unknown) => {
         return TE.fromEither(
             pipe(

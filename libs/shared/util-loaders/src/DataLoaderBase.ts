@@ -5,7 +5,7 @@ import {
     InitContext,
     LoadContext,
     LoadingResult,
-    SaveContext
+    SaveContext,
 } from "@shared/util-loaders";
 import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import { Type } from "@tsed/core";
@@ -37,17 +37,27 @@ export abstract class DataLoaderBase<T> implements DataLoader<T> {
         deps: LoadContext
     ): TE.TaskEither<ProgramError, LoadingResult<T>>;
 
-    public initialize({ client, jobScheduler }: InitContext) {
+    protected preInizialize(
+        context: InitContext
+    ): TE.TaskEither<ProgramError, InitContext> {
+        return TE.right(context);
+    }
+
+    public initialize(context: InitContext) {
         this.logger.info("Initializing POAP loader...");
         return pipe(
-            client.register({ info: this.info, type: this.type }),
+            TE.Do,
+            TE.bind("ctx", () => this.preInizialize(context)),
+            TE.bindW("registrationResult", ({ ctx }) =>
+                ctx.client.register({ info: this.info, type: this.type })
+            ),
             TE.mapLeft((error) => {
                 this.logger.error("Client registration failed", error);
                 return error;
             }),
-            TE.chainW(() =>
+            TE.chainW(({ ctx }) =>
                 // TODO: we don't want to restart everything when the loader is restarted 👇
-                jobScheduler.schedule({
+                ctx.jobScheduler.schedule({
                     info: this.info,
                     scheduledAt: new Date(),
                     cursor: "0",
@@ -68,6 +78,7 @@ export abstract class DataLoaderBase<T> implements DataLoader<T> {
             })
         );
     }
+
     /**
      * Saves the given data to the Content Gateway API and schedules a next job
      * based on the size of the batch.

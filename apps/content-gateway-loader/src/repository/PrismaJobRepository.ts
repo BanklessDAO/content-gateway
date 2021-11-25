@@ -40,7 +40,7 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
                 async () => {
                     const jobSchedule = {
                         name: key,
-                        cursor: BigInt(job.cursor),
+                        cursor: job.cursor,
                         limit: job.limit,
                         state: state,
                         scheduledAt: job.scheduledAt,
@@ -85,6 +85,7 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
                                         in: [
                                             PrismaJobState.RUNNING,
                                             PrismaJobState.FAILED,
+                                            PrismaJobState.CANCELED,
                                         ],
                                     },
                                 },

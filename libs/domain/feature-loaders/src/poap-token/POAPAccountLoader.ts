@@ -1,20 +1,26 @@
 import {
     createGraphQLClient,
     GraphQLClient,
-    LoadContext
+    LoadContext,
 } from "@shared/util-loaders";
-import { DocumentNode } from "graphql";
+import { AdditionalProperties, Required } from "@tsed/schema";
+import gql from "graphql-tag";
 import * as t from "io-ts";
 import { GraphQLDataLoaderBase } from "../base/GraphQLDataLoaderBase";
 import { BATCH_SIZE } from "../defaults";
-import { POAP_TOKEN_SUBGRAPH_ACCOUNTS } from "./queries";
-import { POAPAccount, poapAccountInfo } from "./types";
 
-const graphQLURL = "https://api.thegraph.com/subgraphs/name/poap-xyz/poap-xdai";
+const URL = "https://api.thegraph.com/subgraphs/name/poap-xyz/poap-xdai";
+
+const QUERY = gql`
+    query poapAccounts($limit: Int, $cursor: String) {
+        accounts(first: $limit, orderBy: id, where: { id_gt: $cursor }) {
+            id
+        }
+    }
+`;
 
 const Account = t.strict({
     id: t.string,
-    tokensOwned: t.string,
 });
 
 const Accounts = t.strict({
@@ -23,13 +29,25 @@ const Accounts = t.strict({
 
 type Accounts = t.TypeOf<typeof Accounts>;
 
+const INFO = {
+    namespace: "poap",
+    name: "POAPAccount",
+    version: "V1",
+};
+
+@AdditionalProperties(false)
+class POAPAccount {
+    @Required(true)
+    id: string;
+}
+
 export class POAPAccountLoader extends GraphQLDataLoaderBase<
     Accounts,
     POAPAccount
 > {
-    public info = poapAccountInfo;
+    public info = INFO;
 
-    protected cursorMode = "skip" as const;
+    protected cursorMode = "cursor" as const;
     protected batchSize = BATCH_SIZE;
     protected type = POAPAccount;
     protected cadenceConfig = {
@@ -37,7 +55,7 @@ export class POAPAccountLoader extends GraphQLDataLoaderBase<
         partialBatch: { minutes: 5 },
     };
 
-    protected graphQLQuery: DocumentNode = POAP_TOKEN_SUBGRAPH_ACCOUNTS;
+    protected graphQLQuery = QUERY;
     protected codec = Accounts;
 
     constructor(client: GraphQLClient) {
@@ -47,17 +65,15 @@ export class POAPAccountLoader extends GraphQLDataLoaderBase<
     protected mapGraphQLResult(result: Accounts): Array<POAPAccount> {
         return result.accounts.map((account) => ({
             id: account.id,
-            tokensOwned: parseInt(account.tokensOwned),
         }));
     }
 
-    protected getNextCursor(
-        result: Array<POAPAccount>,
-        { cursor }: LoadContext
-    ) {
-        return (parseInt(cursor ?? "0") + result.length).toString();
+    protected getNextCursor(result: Array<POAPAccount>) {
+        return result.length > 0
+            ? result[result.length - 1].id.toString()
+            : "0";
     }
 }
 
 export const createPOAPAccountLoader: () => POAPAccountLoader = () =>
-    new POAPAccountLoader(createGraphQLClient(graphQLURL));
+    new POAPAccountLoader(createGraphQLClient(URL));

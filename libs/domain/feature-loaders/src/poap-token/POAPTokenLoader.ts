@@ -1,17 +1,35 @@
 import { createGraphQLClient, GraphQLClient } from "@shared/util-loaders";
+import { AdditionalProperties, Required } from "@tsed/schema";
 import { DocumentNode } from "graphql";
+import gql from "graphql-tag";
 import * as t from "io-ts";
 import { GraphQLDataLoaderBase } from "../base/GraphQLDataLoaderBase";
 import { BATCH_SIZE } from "../defaults";
-import { POAP_TOKEN_SUBGRAPH_TOKENS } from "./queries";
-import { POAPToken, poapTokenInfo } from "./types";
 
-const graphQLURL = "https://api.thegraph.com/subgraphs/name/poap-xyz/poap-xdai";
+const URL = "https://api.thegraph.com/subgraphs/name/poap-xyz/poap-xdai";
+
+const QUERY: DocumentNode = gql`
+    query poapTokens($limit: Int, $cursor: String) {
+        tokens(
+            first: $limit
+            orderBy: created
+            where: { created_gt: $cursor }
+        ) {
+            id
+            created
+            owner {
+                id
+            }
+            event {
+                id
+            }
+        }
+    }
+`;
 
 const Token = t.strict({
     id: t.string,
     created: t.string,
-    transferCount: t.string,
     owner: t.strict({
         id: t.string,
     }),
@@ -26,8 +44,26 @@ const Tokens = t.strict({
 
 type Tokens = t.TypeOf<typeof Tokens>;
 
-export class PoapTokenLoader extends GraphQLDataLoaderBase<Tokens, POAPToken> {
-    public info = poapTokenInfo;
+const INFO = {
+    namespace: "poap",
+    name: "POAPToken",
+    version: "V1",
+};
+
+@AdditionalProperties(false)
+class POAPToken {
+    @Required(true)
+    id: string;
+    @Required(true)
+    ownerId: string;
+    @Required(true)
+    eventId: string;
+    @Required(true)
+    createdAt: number;
+}
+
+export class POAPTokenLoader extends GraphQLDataLoaderBase<Tokens, POAPToken> {
+    public info = INFO;
 
     protected cursorMode = "cursor" as const;
     protected batchSize = BATCH_SIZE;
@@ -37,7 +73,7 @@ export class PoapTokenLoader extends GraphQLDataLoaderBase<Tokens, POAPToken> {
         partialBatch: { minutes: 5 },
     };
 
-    protected graphQLQuery: DocumentNode = POAP_TOKEN_SUBGRAPH_TOKENS;
+    protected graphQLQuery: DocumentNode = QUERY;
     protected codec = Tokens;
 
     constructor(client: GraphQLClient) {
@@ -47,8 +83,7 @@ export class PoapTokenLoader extends GraphQLDataLoaderBase<Tokens, POAPToken> {
     protected mapGraphQLResult(result: Tokens): Array<POAPToken> {
         return result.tokens.map((token) => ({
             id: token.id,
-            transferCount: parseInt(token.transferCount),
-            mintedAt: parseInt(token.created),
+            createdAt: parseInt(token.created),
             ownerId: token.owner.id,
             eventId: token.event.id,
         }));
@@ -56,10 +91,10 @@ export class PoapTokenLoader extends GraphQLDataLoaderBase<Tokens, POAPToken> {
 
     protected getNextCursor(result: Array<POAPToken>) {
         return result.length > 0
-            ? result[result.length - 1].mintedAt.toString()
+            ? result[result.length - 1].createdAt.toString()
             : "0";
     }
 }
 
-export const createPOAPTokenLoader: () => PoapTokenLoader = () =>
-    new PoapTokenLoader(createGraphQLClient(graphQLURL));
+export const createPOAPTokenLoader: () => POAPTokenLoader = () =>
+    new POAPTokenLoader(createGraphQLClient(URL));

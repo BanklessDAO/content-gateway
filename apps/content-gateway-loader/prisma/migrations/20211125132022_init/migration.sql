@@ -5,9 +5,11 @@ CREATE TYPE "JobState" AS ENUM ('SCHEDULED', 'CANCELED', 'RUNNING', 'COMPLETED',
 CREATE TABLE "JobSchedule" (
     "name" VARCHAR(255) NOT NULL,
     "state" "JobState" NOT NULL DEFAULT E'SCHEDULED',
-    "cursor" INTEGER NOT NULL,
+    "cursor" VARCHAR(255) NOT NULL,
     "limit" INTEGER NOT NULL,
     "scheduledAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "ranPreviouslyAt" TIMESTAMP(6),
+    "currentFailCount" INTEGER NOT NULL DEFAULT 0,
     "updatedAt" TIMESTAMP(6) NOT NULL,
 
     CONSTRAINT "JobSchedule_pkey" PRIMARY KEY ("name")
