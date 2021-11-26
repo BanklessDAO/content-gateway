@@ -1,7 +1,6 @@
 import {
     createGraphQLClient,
-    GraphQLClient,
-    LoadContext,
+    GraphQLClient
 } from "@shared/util-loaders";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import gql from "graphql-tag";
@@ -47,11 +46,10 @@ export class POAPAccountLoader extends GraphQLDataLoaderBase<
 > {
     public info = INFO;
 
-    protected cursorMode = "cursor" as const;
     protected batchSize = BATCH_SIZE;
     protected type = POAPAccount;
     protected cadenceConfig = {
-        fullBatch: { minutes: 1 },
+        fullBatch: { seconds: 5 },
         partialBatch: { minutes: 5 },
     };
 
@@ -62,16 +60,14 @@ export class POAPAccountLoader extends GraphQLDataLoaderBase<
         super(client);
     }
 
-    protected mapGraphQLResult(result: Accounts): Array<POAPAccount> {
+    protected mapResult(result: Accounts): Array<POAPAccount> {
         return result.accounts.map((account) => ({
             id: account.id,
         }));
     }
 
-    protected getNextCursor(result: Array<POAPAccount>) {
-        return result.length > 0
-            ? result[result.length - 1].id.toString()
-            : "0";
+    protected extractCursor(accounts: Accounts) {
+        return accounts.accounts[accounts.accounts.length - 1].id;
     }
 }
 

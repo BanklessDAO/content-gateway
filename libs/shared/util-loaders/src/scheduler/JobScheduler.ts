@@ -119,6 +119,7 @@ class DefaultJobScheduler implements JobScheduler {
             loader.initialize({
                 client: this.client,
                 jobScheduler: this,
+                jobRepository: this.jobRepository
             }),
             TE.mapLeft((e) => new LoaderInitializationError(e))
         );

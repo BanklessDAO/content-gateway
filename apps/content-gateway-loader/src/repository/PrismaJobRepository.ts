@@ -10,10 +10,15 @@ import {
     JobRepository,
     JobState
 } from "@shared/util-loaders";
-import { schemaInfoToString, stringToSchemaInfo } from "@shared/util-schema";
+import {
+    SchemaInfo,
+    schemaInfoToString,
+    stringToSchemaInfo
+} from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
+import * as TO from "fp-ts/TaskOption";
 import { DateTime } from "luxon";
 
 const FIRST_FAIL_RETRY_DELAY_MINUTES = 2;
@@ -73,6 +78,21 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
     };
 
     return {
+        findJob: (info: SchemaInfo) => {
+            return pipe(
+                TO.tryCatch(async () => {
+                    const key = schemaInfoToString(info);
+                    return prisma.jobSchedule.findUnique({
+                        where: {
+                            name: key,
+                        },
+                    });
+                }),
+                TO.map((data) => {
+                    return data ? jobScheduleToJobDescriptor(data) : null;
+                })
+            );
+        },
         upsertJob: upsertJob,
         cleanStaleJobs: () => {
             return pipe(

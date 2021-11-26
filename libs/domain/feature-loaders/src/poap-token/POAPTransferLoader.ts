@@ -94,7 +94,7 @@ export class POAPTransferLoader extends GraphQLDataLoaderBase<
     protected batchSize = BATCH_SIZE;
     protected type = POAPTransfer;
     protected cadenceConfig = {
-        fullBatch: { minutes: 1 },
+        fullBatch: { seconds: 5 },
         partialBatch: { minutes: 5 },
     };
 
@@ -105,7 +105,7 @@ export class POAPTransferLoader extends GraphQLDataLoaderBase<
         super(client);
     }
 
-    protected mapGraphQLResult(result: Transfers): Array<POAPTransfer> {
+    protected mapResult(result: Transfers): Array<POAPTransfer> {
         return result.transfers.map((transfer) => ({
             id: transfer.id,
             transaction: transfer.transaction,
@@ -116,10 +116,10 @@ export class POAPTransferLoader extends GraphQLDataLoaderBase<
         }));
     }
 
-    protected getNextCursor(result: Array<POAPTransfer>) {
-        return result.length > 0
-            ? result[result.length - 1].createdAt.toString()
-            : "0";
+    protected extractCursor(transfers: Transfers) {
+        return `${
+            transfers.transfers[transfers.transfers.length - 1].timestamp
+        }`;
     }
 }
 

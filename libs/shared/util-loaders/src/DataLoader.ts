@@ -2,7 +2,7 @@ import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
 import { ProgramError } from "@shared/util-dto";
 import { SchemaInfo } from "@shared/util-schema";
 import * as TE from "fp-ts/TaskEither";
-import { Job, JobDescriptor, JobScheduler } from ".";
+import { Job, JobDescriptor, JobRepository, JobScheduler } from ".";
 
 /**
  * Contains the necessary information for initializing.
@@ -10,6 +10,7 @@ import { Job, JobDescriptor, JobScheduler } from ".";
 export type InitContext = {
     client: ContentGatewayClient;
     jobScheduler: JobScheduler;
+    jobRepository: JobRepository;
 };
 
 export type LoadContext = {

@@ -12,7 +12,7 @@ export const createLoaders = () =>
         // banklessTokenLoader,
         // bountyLoader,
         createPOAPEventLoader(),
-        // createPOAPTokenLoader(),
-        // createPOAPAccountLoader(),
-        // createPOAPTransferLoader(),
+        createPOAPTokenLoader(),
+        createPOAPAccountLoader(),
+        createPOAPTransferLoader(),
     ] as DataLoader<unknown>[];

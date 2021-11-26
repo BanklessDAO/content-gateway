@@ -69,7 +69,7 @@ export class POAPTokenLoader extends GraphQLDataLoaderBase<Tokens, POAPToken> {
     protected batchSize = BATCH_SIZE;
     protected type = POAPToken;
     protected cadenceConfig = {
-        fullBatch: { minutes: 1 },
+        fullBatch: { seconds: 5 },
         partialBatch: { minutes: 5 },
     };
 
@@ -80,7 +80,7 @@ export class POAPTokenLoader extends GraphQLDataLoaderBase<Tokens, POAPToken> {
         super(client);
     }
 
-    protected mapGraphQLResult(result: Tokens): Array<POAPToken> {
+    protected mapResult(result: Tokens): Array<POAPToken> {
         return result.tokens.map((token) => ({
             id: token.id,
             createdAt: parseInt(token.created),
@@ -89,10 +89,8 @@ export class POAPTokenLoader extends GraphQLDataLoaderBase<Tokens, POAPToken> {
         }));
     }
 
-    protected getNextCursor(result: Array<POAPToken>) {
-        return result.length > 0
-            ? result[result.length - 1].createdAt.toString()
-            : "0";
+    protected extractCursor(tokens: Tokens) {
+        return `${tokens.tokens[tokens.tokens.length - 1].created}`;
     }
 }
 

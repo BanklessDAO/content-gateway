@@ -1,35 +1,12 @@
-import { get, UnknownError } from "@shared/util-dto";
-import {
-    createGraphQLClient,
-    GraphQLClient,
-    InitContext,
-    LoadContext,
-} from "@shared/util-loaders";
-import { AdditionalProperties, Required } from "@tsed/schema";
-import * as E from "fp-ts/Either";
-import { pipe } from "fp-ts/lib/function";
-import * as TE from "fp-ts/TaskEither";
-import { DocumentNode } from "graphql";
-import gql from "graphql-tag";
+import { notEmpty } from "@shared/util-fp";
+import { LoadContext } from "@shared/util-loaders";
+import { AdditionalProperties, Allow, Required } from "@tsed/schema";
 import * as t from "io-ts";
-import { withMessage } from "io-ts-types";
-import { GraphQLDataLoaderBase } from "../base/GraphQLDataLoaderBase";
+import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
 import { BATCH_SIZE } from "../defaults";
-
-const URL = "https://api.thegraph.com/subgraphs/name/poap-xyz/poap-xdai";
-
-export const QUERY: DocumentNode = gql`
-    query poapEvents($limit: Int, $cursor: String) {
-        events(
-            first: $limit
-            orderBy: created
-            where: { created_gt: $cursor }
-        ) {
-            id
-            created
-        }
-    }
-`;
+import * as TE from "fp-ts/TaskEither";
+import { pipe } from "fp-ts/lib/function";
+import { get } from "@shared/util-dto";
 
 export const INFO = {
     namespace: "poap",
@@ -41,20 +18,43 @@ export const INFO = {
 export class POAPEvent {
     @Required(true)
     id: string;
+    @Allow("")
+    fancyId: string;
+    @Allow("")
+    name: string;
+    @Allow("")
+    eventUrl: string;
+    @Allow("")
+    imageUrl: string;
+    @Allow("")
+    country: string;
+    @Allow("")
+    city: string;
+    @Allow("")
+    description: string;
+    @Required(true)
+    year: number;
+    @Required(true)
+    fromAdmin: boolean;
+    @Required(true)
+    virtualEvent: boolean;
+    @Required(true)
+    privateEvent: boolean;
+    @Required(true)
+    eventTemplateId: number;
+    @Required(true)
+    eventHostId: number;
+    @Required(true)
+    startsAt: number;
+    @Required(true)
+    endsAt: number;
+    @Required(true)
+    expiresAt: number;
     @Required(true)
     createdAt: number;
 }
 
 const Event = t.strict({
-    id: withMessage(t.string, () => "id is required"),
-    created: withMessage(t.string, () => "created is required"),
-});
-
-const Events = t.strict({
-    events: t.array(Event),
-});
-
-const POAPAPIEvent = t.strict({
     id: t.number,
     fancy_id: t.string,
     name: t.string,
@@ -74,10 +74,10 @@ const POAPAPIEvent = t.strict({
     private_event: t.boolean,
 });
 
-const POAPAPIEventResult = t.strict({
+const Events = t.strict({
     items: t.array(
         t.intersection([
-            POAPAPIEvent,
+            Event,
             t.partial({
                 created_date: t.string,
             }),
@@ -88,72 +88,65 @@ const POAPAPIEventResult = t.strict({
     limit: t.number,
 });
 
-type POAPAPIEvent = t.TypeOf<typeof POAPAPIEvent>;
+type Event = t.TypeOf<typeof Event>;
 
 type Events = t.TypeOf<typeof Events>;
 
-export class POAPEventLoader extends GraphQLDataLoaderBase<Events, POAPEvent> {
+export class POAPEventLoader extends HTTPDataLoaderBase<Events, POAPEvent> {
     public info = INFO;
 
-    protected cursorMode = "cursor" as const;
     protected batchSize = BATCH_SIZE;
     protected type = POAPEvent;
     protected cadenceConfig = {
-        fullBatch: { minutes: 1 },
+        fullBatch: { seconds: 5 },
         partialBatch: { minutes: 5 },
     };
 
-    protected graphQLQuery = QUERY;
     protected codec = Events;
 
-    private poapApiEvents = [] as POAPAPIEvent[];
-
-    constructor(client: GraphQLClient) {
-        super(client);
+    protected getUrlFor({ limit, cursor }: LoadContext) {
+        return `http://api.poap.xyz/paginated-events?sort_field=id&sort_dir=asc&limit=${limit}&offset=${cursor}`;
     }
 
-    protected preInizialize(context: InitContext) {
-        return pipe(
-            TE.tryCatch(
-                async () => {
-                    const limit = BATCH_SIZE;
-                    let offset = 0;
-                    let lastCount = Infinity;
-                    while (lastCount >= limit) {
-                        const result = await get({
-                            url: `http://api.poap.xyz/paginated-events?sort_field=id&sort_dir=asc&limit=${limit}&offset=${offset}`,
-                            codec: POAPAPIEventResult,
-                        })();
-                        if (E.isLeft(result)) {
-                            throw result.left;
-                        }
-                        this.poapApiEvents.push(...result.right.items);
-                        lastCount = result.right.items.length;
-                        offset += lastCount;
-                    }
-                    this.logger.info(
-                        `Pre-loaded a total of ${this.poapApiEvents.length} events.`
-                    );
-                    return context;
-                },
-                (e) => new UnknownError(e)
-            )
-        );
+    protected mapResult(result: Events): Array<POAPEvent> {
+        return result.items
+            .map((event) => {
+                try {
+                    return {
+                        id: `${event.id}`,
+                        fancyId: event.fancy_id,
+                        name: event.name,
+                        eventUrl: event.event_url,
+                        imageUrl: event.image_url,
+                        country: event.country,
+                        city: event.city,
+                        description: event.description,
+                        year: event.year,
+                        fromAdmin: event.from_admin,
+                        virtualEvent: event.virtual_event,
+                        privateEvent: event.private_event,
+                        eventHostId: event.event_host_id,
+                        eventTemplateId: event.event_template_id,
+                        startsAt: Date.parse(event.start_date),
+                        endsAt: Date.parse(event.end_date),
+                        expiresAt: Date.parse(event.expiry_date),
+                        // TODO: this shouldn't be nullable, but the API doesn't return it
+                        createdAt: event.created_date
+                            ? parseInt(event.created_date)
+                            : -1,
+                    };
+                } catch (e) {
+                    console.error(`Processing POAP event failed`, e, event);
+                    return undefined;
+                }
+            })
+            .filter(notEmpty);
     }
 
-    protected mapGraphQLResult(result: Events): Array<POAPEvent> {
-        return result.events.map((event) => ({
-            id: event.id,
-            createdAt: parseInt(event.created),
-        }));
-    }
-
-    protected getNextCursor(result: Array<POAPEvent>) {
-        return result.length > 0
-            ? result[result.length - 1].createdAt.toString()
-            : "0";
+    protected extractCursor(result: Events) {
+        return `${result.offset + result.limit}`;
     }
 }
 
 export const createPOAPEventLoader: () => POAPEventLoader = () =>
-    new POAPEventLoader(createGraphQLClient(URL));
+    new POAPEventLoader();
