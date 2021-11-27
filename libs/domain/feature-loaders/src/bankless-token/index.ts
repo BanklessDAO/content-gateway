@@ -1,1 +1,1 @@
-export * from "./BanklessTokenLoader";
+export * from "./BanklessTokenAccountLoader";

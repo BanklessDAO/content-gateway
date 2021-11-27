@@ -14,6 +14,7 @@ import {
     InitContext,
     LoadContext,
     SaveContext,
+    DEFAULT_CURSOR
 } from ".";
 
 export type CadenceConfig = {
@@ -98,7 +99,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
     }) {
         const { rawResult, mappedResult, loadContext } = params;
         const nextCursor = this.extractCursor(rawResult);
-        return mappedResult.length > 0 ? nextCursor : loadContext.cursor ?? "0";
+        return mappedResult.length > 0 ? nextCursor : loadContext.cursor ?? DEFAULT_CURSOR;
     }
 
     // * implementation of the {@link DataLoader} interface. You're not supposed
@@ -131,7 +132,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
                             maybeJob ?? {
                                 info: this.info,
                                 scheduledAt: new Date(),
-                                cursor: "0",
+                                cursor: DEFAULT_CURSOR,
                                 limit: this.batchSize,
                             }
                         );

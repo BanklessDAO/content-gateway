@@ -1,130 +1,171 @@
-import { UnknownError } from "@shared/util-dto";
-import { createLogger } from "@shared/util-fp";
-import { DataLoader } from "@shared/util-loaders";
-import axios from "axios";
-import { pipe } from "fp-ts/lib/function";
-import * as TE from "fp-ts/TaskEither";
-import { DateTime } from "luxon";
-import { Course, courseInfo } from "./types";
+import { notEmpty } from "@shared/util-fp";
+import { LoadContext } from "@shared/util-loaders";
+import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
+import * as t from "io-ts";
+import { withMessage } from "io-ts-types";
+import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
+import { BATCH_SIZE } from "../defaults";
 
-const logger = createLogger("BanklessAcademyLoader");
+const INFO = {
+    namespace: "bankless-academy",
+    name: "Course",
+    version: "V1",
+};
 
-// TODO: use discriminated unions (discriminator is type)
-type Slide = {
+class Quiz {
+    @Required(true)
+    @CollectionOf(String)
+    answers: string[];
+    @Required(true)
+    rightAnswerNumber: number;
+    @Required(true)
+    id: string;
+}
+
+class Slide {
+    @Required(true)
     type: string;
+    @Required(true)
     title: string;
+    @Required(false)
     content?: string;
-    quiz?: Record<string, unknown>;
+    @Required(false)
+    quiz?: Quiz;
+    @Required(false)
     component?: string;
-};
+}
 
-type ResponseItem = {
+@AdditionalProperties(false)
+class Course {
+    @Required(true)
+    id: string;
+    @Required(true)
     poapImageLink: string;
+    @Required(true)
     learningActions: string;
+    @Required(true)
     knowledgeRequirements: string;
+    @Required(true)
     poapEventId: number;
+    @Required(true)
     duration: number;
+    @Required(true)
     learnings: string;
+    @Required(true)
     difficulty: string;
+    @Required(true)
     description: string;
+    @Required(true)
     name: string;
+    @Required(true)
     notionId: string;
+    @Required(true)
     slug: string;
+    @CollectionOf(Slide)
+    @Required(true)
     slides: Slide[];
-};
+}
 
-export const courseLoader: DataLoader<Course> = {
-    info: courseInfo,
-    initialize: ({ client, jobScheduler }) => {
-        logger.info("Initializing Bankless Academy loader...");
-        return pipe(
-            client.register({ info: courseInfo, type: Course }),
-            TE.chainW(() =>
-                // TODO: we don't want to restart everything when the loader is restarted 👇
-                jobScheduler.schedule({
-                    info: courseInfo,
-                    scheduledAt: new Date(),
-                    cursor: "0",
-                    limit: 1000,
-                })
-            ),
-            TE.map((result) => {
-                logger.info("Scheduled job", result);
-            }),
-            TE.mapLeft((error) => {
-                logger.error(
-                    "Error while initializing Bankless Academy loader:",
-                    error
-                );
-                return error;
-            })
-        );
-    },
-    load: ({ cursor, limit }) => {
-        // TODO: use loadFrom & limit
-        logger.info("Loading Bankless Academy data:", {
-            cursor,
-            limit,
-        });
-        return TE.tryCatch(
-            async () => {
-                const response = await axios.request<ResponseItem[]>({
-                    url: "https://bankless-academy-cg-lab.vercel.app/api/courses",
-                });
-                const data = response.data.map((item: ResponseItem) => {
-                    const course: Course = {
-                        id: item.slug,
-                        name: item.name,
-                        slug: item.slug,
-                        notionId: item.notionId,
-                        poapEventId: item.poapEventId,
-                        description: item.description,
-                        duration: item.duration,
-                        difficulty: item.difficulty,
-                        poapImageLink: item.poapImageLink,
-                        learnings: item.learnings,
-                        learningActions: item.learningActions,
-                        knowledgeRequirements: item.knowledgeRequirements,
-                        sections: item.slides
-                            .filter((slide) => slide.content)
-                            .map((slide) => {
-                                return {
-                                    type: slide.type,
-                                    title: slide.title,
-                                    content: slide.content,
-                                    // TODO: Add quiz support
-                                    component: slide.component,
-                                };
-                            }),
+const APIQuiz = t.intersection([
+    t.strict({
+        rightAnswerNumber: t.number,
+        id: t.string,
+    }),
+    t.partial({
+        answer_1: t.string,
+        answer_2: t.string,
+        answer_3: t.string,
+        answer_4: t.string,
+    }),
+]);
+
+const APISlide = t.union([
+    t.strict({
+        type: t.literal("LEARN"),
+        title: withMessage(t.string, () => "Title is required"),
+        content: withMessage(t.string, () => "Content is required"),
+    }),
+    t.strict({
+        type: t.literal("QUIZ"),
+        title: withMessage(t.string, () => "Title is required"),
+        quiz: withMessage(APIQuiz, () => "Quiz is required"),
+    }),
+    t.strict({
+        type: t.literal("QUEST"),
+        title: withMessage(t.string, () => "Title is required"),
+        component: withMessage(t.string, () => "Component is required"),
+    }),
+    t.strict({
+        type: t.literal("POAP"),
+        title: withMessage(t.string, () => "Title is required"),
+    }),
+]);
+
+const APICourse = t.strict({
+    poapImageLink: t.string,
+    learningActions: t.string,
+    knowledgeRequirements: t.string,
+    poapEventId: t.number,
+    duration: t.number,
+    learnings: t.string,
+    difficulty: t.string,
+    description: t.string,
+    name: t.string,
+    notionId: t.string,
+    slug: t.string,
+    slides: t.array(APISlide),
+});
+
+const APICourses = t.array(APICourse);
+
+type APICourses = t.TypeOf<typeof APICourses>;
+
+export class CourseLoader extends HTTPDataLoaderBase<APICourses, Course> {
+    public info = INFO;
+
+    protected batchSize = BATCH_SIZE;
+    protected type = Course;
+    protected cadenceConfig = {
+        fullBatch: { seconds: 5 },
+        partialBatch: { minutes: 5 },
+    };
+
+    protected codec = APICourses;
+
+    protected getUrlFor({ limit, cursor }: LoadContext) {
+        return `https://bankless-academy-cg-lab.vercel.app/api/courses`;
+    }
+
+    protected mapResult(result: APICourses): Array<Course> {
+        return result
+            .map((course) => {
+                try {
+                    return {
+                        id: course.notionId,
+                        poapImageLink: course.poapImageLink,
+                        learningActions: course.learningActions,
+                        knowledgeRequirements: course.knowledgeRequirements,
+                        poapEventId: course.poapEventId,
+                        duration: course.duration,
+                        learnings: course.learnings,
+                        difficulty: course.difficulty,
+                        description: course.description,
+                        name: course.name,
+                        notionId: course.notionId,
+                        slug: course.slug,
+                        slides: [],
                     };
-                    return course;
-                });
-                return {
-                    cursor: "0", // TODO: 👈 use proper timestamps
-                    data: data,
-                };
-            },
-            (e: unknown) => new UnknownError(e)
-        );
-    },
-    save: ({ client, loadingResult }) => {
-        const { cursor, data } = loadingResult;
-        const nextJob = {
-            info: courseInfo,
-            scheduledAt: DateTime.now().plus({ minutes: 1 }).toJSDate(),
-            cursor: cursor,
-            limit: 1000,
-        };
-        return pipe(
-            client.saveBatch({
-                info: courseInfo,
-                data: data,
-            }),
-            TE.chain(() => TE.right(nextJob)),
-            TE.mapLeft((error) => {
-                logger.error("Bankless Academy data loading failed:", error);
-                return error;
+                } catch (e) {
+                    this.logger.warn(`Processing Course failed`, e, course);
+                    return undefined;
+                }
             })
-        );
-    },
-};
+            .filter(notEmpty);
+    }
+
+    protected extractCursor(result: APICourses) {
+        return `0`;
+    }
+}
+
+export const createCourseLoader: () => CourseLoader = () => new CourseLoader();

@@ -4,9 +4,10 @@ import {
     createDataRepositoryStub,
     createSchemaRepositoryStub,
     DataRepositoryStub,
-    SchemaRepositoryStub,
+    SchemaRepositoryStub
 } from "@domain/feature-gateway";
 import { extractRight } from "@shared/util-fp";
+import { DEFAULT_CURSOR } from "@shared/util-loaders";
 import { createSchemaFromType, Schema } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as express from "express";
@@ -112,7 +113,7 @@ describe("Given a content gateway api", () => {
             .post("/receive")
             .send({
                 info: userInfo,
-                cursor: "0",
+                cursor: DEFAULT_CURSOR,
                 data: generateUser(),
             })
             .accept("text/plain")
@@ -148,7 +149,7 @@ describe("Given a content gateway api", () => {
             .post("/receive-batch")
             .send({
                 info: userInfo,
-                cursor: "0",
+                cursor: DEFAULT_CURSOR,
                 data: users,
             })
             .accept("text/plain")

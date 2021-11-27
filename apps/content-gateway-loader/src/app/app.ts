@@ -1,6 +1,6 @@
 import {
     createContentGatewayClient,
-    createRESTAdapter
+    createRESTAdapter,
 } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cgl/prisma";
 import { createLoaderRegistry } from "@domain/feature-loaders";
@@ -13,22 +13,32 @@ import { createJobRepository } from "../repository/PrismaJobRepository";
 export const createApp = async (prisma: PrismaClient) => {
     const CGA_URL =
         process.env.CGA_URL || programError("You must specify CGA_URL");
+    const YOUTUBE_API_KEY =
+        process.env.YOUTUBE_API_KEY ||
+        programError("You must specify YOUTUBE_API_KEY");
+    const GHOST_API_KEY =
+        process.env.GHOST_API_KEY ||
+        programError("You must specify GHOST_API_KEY");
+    const env =
+        process.env.NODE_ENV ?? programError("You must specify NODE_ENV");
 
-    const env = process.env.NODE_ENV ?? programError("NODE_ENV not set");
     const isProd = env === "production";
     const resetDb = process.env.RESET_DB === "true";
     const logger = createLogger("ContentGatewayLoaderApp");
     const addFrontend = process.env.ADD_FRONTEND === "true";
 
     if (resetDb) {
-        logger.info("Database reset requested. Resetting...")
+        logger.info("Database reset requested. Resetting...");
         await prisma.jobLog.deleteMany({});
         await prisma.jobSchedule.deleteMany({});
     }
 
     logger.info(`Running in ${env} mode`);
 
-    const loaderRegistry = createLoaderRegistry();
+    const loaderRegistry = createLoaderRegistry({
+        ghostApiKey: GHOST_API_KEY,
+        youtubeApiKey: YOUTUBE_API_KEY,
+    });
     const jobRepository = createJobRepository(prisma);
     const adapter = createRESTAdapter(CGA_URL);
 
@@ -37,7 +47,8 @@ export const createApp = async (prisma: PrismaClient) => {
     });
 
     const scheduler = createJobScheduler({
-        jobRepository, contentGatewayClient
+        jobRepository,
+        contentGatewayClient,
     });
 
     await scheduler.start()();

@@ -4,18 +4,15 @@ import { AdditionalProperties, Allow, Required } from "@tsed/schema";
 import * as t from "io-ts";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
 import { BATCH_SIZE } from "../defaults";
-import * as TE from "fp-ts/TaskEither";
-import { pipe } from "fp-ts/lib/function";
-import { get } from "@shared/util-dto";
 
-export const INFO = {
+const INFO = {
     namespace: "poap",
     name: "POAPEvent",
     version: "V1",
 };
 
 @AdditionalProperties(false)
-export class POAPEvent {
+class POAPEvent {
     @Required(true)
     id: string;
     @Allow("")
@@ -88,8 +85,6 @@ const Events = t.strict({
     limit: t.number,
 });
 
-type Event = t.TypeOf<typeof Event>;
-
 type Events = t.TypeOf<typeof Events>;
 
 export class POAPEventLoader extends HTTPDataLoaderBase<Events, POAPEvent> {
@@ -136,7 +131,7 @@ export class POAPEventLoader extends HTTPDataLoaderBase<Events, POAPEvent> {
                             : -1,
                     };
                 } catch (e) {
-                    console.error(`Processing POAP event failed`, e, event);
+                    this.logger.warn(`Processing POAP event failed`, e, event);
                     return undefined;
                 }
             })
@@ -144,7 +139,7 @@ export class POAPEventLoader extends HTTPDataLoaderBase<Events, POAPEvent> {
     }
 
     protected extractCursor(result: Events) {
-        return `${result.offset + result.limit}`;
+        return `${result.offset + result.items.length}`;
     }
 }
 
