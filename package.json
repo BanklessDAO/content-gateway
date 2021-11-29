@@ -108,5 +108,8 @@
         "supertest": "^6.1.6",
         "ts-jest": "27.0.3",
         "typescript": "~4.3.5"
+    },
+    "optionalDependencies": {
+        "fsevents": "^2.3.2"
     }
 }
