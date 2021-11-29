@@ -93,7 +93,7 @@ describe("Given a http", () => {
         it("When the response is invalid Then an error is returned", async () => {
             const mock = new MockAdapter(axios);
 
-            mock.onGet(EVENTS_URL).reply(200, {
+            mock.onGet(EVENTS_URL).reply(500, {
                 data: notEvents,
             });
             const result = await get({
@@ -104,7 +104,7 @@ describe("Given a http", () => {
             expect(result).toEqual(
                 E.left(
                     new CodecValidationError(
-                        "Decoding HTTP response failed",
+                        "HTTP data transfer failed.",
                         extractLeft(Events.decode(notEvents))
                     )
                 )
