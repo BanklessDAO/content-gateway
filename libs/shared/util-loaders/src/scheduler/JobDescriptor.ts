@@ -1,19 +1,21 @@
 import { SchemaInfo } from "@shared/util-schema";
+import { ScheduleMode } from "./ScheduleMode";
 
 /**
  * Contains the metadata for a scheduled job.
  */
 export type JobDescriptor = {
-    info: SchemaInfo;
+    readonly info: SchemaInfo;
     /**
      * The date and time when the job should run
      */
-    scheduledAt: Date;
+    readonly scheduledAt: Date;
+    readonly scheduleMode: ScheduleMode,
     /**
      * The cursor is an opaque string (a timestamp or a block time in our case)
      * that represents the point where we "left off" since the last batch was loaded.
      * More info [here](http://mysql.rjweb.org/doc.php/pagination).
      */
-    cursor: string;
-    limit: number;
+    readonly cursor: string;
+    readonly limit: number;
 };

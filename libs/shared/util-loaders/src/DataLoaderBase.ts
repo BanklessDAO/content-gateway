@@ -9,23 +9,17 @@ import * as t from "io-ts";
 import { DateTime, DurationLike } from "luxon";
 import { Logger } from "tslog";
 import {
-    DatabaseError,
     DataLoader,
+    DEFAULT_CURSOR,
     InitContext,
+    JobDescriptor,
     LoadContext,
     SaveContext,
-    DEFAULT_CURSOR
 } from ".";
+import { ScheduleMode } from "./scheduler/ScheduleMode";
 
 export type CadenceConfig = {
-    /**
-     * The next cadence when a full batch is received.
-     */
-    fullBatch: DurationLike;
-    /**
-     * The next cadence when a partial batch is received.
-     */
-    partialBatch: DurationLike;
+    [key in ScheduleMode]: DurationLike;
 };
 
 /**
@@ -99,7 +93,9 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
     }) {
         const { rawResult, mappedResult, loadContext } = params;
         const nextCursor = this.extractCursor(rawResult);
-        return mappedResult.length > 0 ? nextCursor : loadContext.cursor ?? DEFAULT_CURSOR;
+        return mappedResult.length > 0
+            ? nextCursor
+            : loadContext.cursor ?? DEFAULT_CURSOR;
     }
 
     // * implementation of the {@link DataLoader} interface. You're not supposed
@@ -112,7 +108,6 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
         return pipe(
             TE.Do,
             TE.bind("ctx", () => this.preInizialize(context)),
-
             TE.mapLeft((error) => {
                 this.logger.error("preInitialize failed", error);
                 return error;
@@ -134,6 +129,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
                                 scheduledAt: new Date(),
                                 cursor: DEFAULT_CURSOR,
                                 limit: this.batchSize,
+                                scheduleMode: ScheduleMode.BACKFILL,
                             }
                         );
                     }),
@@ -169,7 +165,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
             ),
             TE.bindW("mappedResult", ({ rawResult }) => {
                 return TE.tryCatch(
-                    () => Promise.resolve(this.mapResult(rawResult)),
+                    async () => this.mapResult(rawResult),
                     (e) => new UnknownError(e)
                 );
             }),
@@ -184,15 +180,17 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
 
     public save({ client, loadingResult }: SaveContext<M>) {
         const { cursor, data } = loadingResult;
-        const cadence =
+        const scheduleMode =
             data.length == this.batchSize
-                ? this.cadenceConfig.fullBatch
-                : this.cadenceConfig.partialBatch;
-        const nextJob = {
+                ? ScheduleMode.BACKFILL
+                : ScheduleMode.INCREMENTAL;
+        const cadence = this.cadenceConfig[scheduleMode];
+        const nextJob: JobDescriptor = {
             info: this.info,
             scheduledAt: DateTime.now().plus(cadence).toJSDate(),
-            cursor: cursor,
             limit: this.batchSize,
+            cursor,
+            scheduleMode,
         };
         return pipe(
             client.saveBatch({ info: this.info, data: data }),

@@ -1,59 +1,66 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     JobSchedule,
-    JobState as PrismaJobState,
-    PrismaClient
+    JobState,
+    ScheduleMode,
+    Prisma,
+    PrismaClient,
 } from "@cgl/prisma";
-import { createLogger, programError } from "@shared/util-fp";
-import {
-    DatabaseError,
-    Job,
-    JobRepository,
-    JobState
-} from "@shared/util-loaders";
+import { createLogger } from "@shared/util-fp";
+import { DatabaseError, Job, JobRepository } from "@shared/util-loaders";
 import {
     SchemaInfo,
     schemaInfoToString,
-    stringToSchemaInfo
+    stringToSchemaInfo,
 } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
-import { DateTime } from "luxon";
-
-const FIRST_FAIL_RETRY_DELAY_MINUTES = 2;
 
 export const createJobRepository = (prisma: PrismaClient): JobRepository => {
     const logger = createLogger("PrismaJobRepository");
 
-    const jobScheduleToJobDescriptor = (jobSchedule: JobSchedule): Job => ({
+    const jobScheduleToJob = (jobSchedule: JobSchedule): Job => ({
         cursor: jobSchedule.cursor.toString(),
         limit: jobSchedule.limit,
         info: stringToSchemaInfo(jobSchedule.name),
-        scheduledAt: jobSchedule.scheduledAt,
         state: JobState[jobSchedule.state],
+        scheduleMode: ScheduleMode[jobSchedule.scheduleMode],
+        scheduledAt: jobSchedule.scheduledAt,
+        updatedAt: jobSchedule.updatedAt,
+        previousScheduledAt: jobSchedule.previousScheduledAt ?? undefined,
+        currentFailCount: jobSchedule.currentFailCount,
     });
 
-    const upsertJob = (job: Job, note: string) => {
+    const upsertJob = (
+        job: Job,
+        note: string,
+        info: Record<string, unknown> = {}
+    ) => {
         const key = schemaInfoToString(job.info);
         logger.info(
             `Updating job ${key} with state ${job.state} and note '${note}'.`
         );
-        const state = PrismaJobState[job.state];
+        const state = job.state;
         return pipe(
             TE.tryCatch(
                 async () => {
                     const jobSchedule = {
                         name: key,
+                        state: state,
+                        scheduleMode: job.scheduleMode,
                         cursor: job.cursor,
                         limit: job.limit,
-                        state: state,
+                        previousScheduledAt: job.previousScheduledAt,
+                        currentFailCount: job.currentFailCount,
                         scheduledAt: job.scheduledAt,
                         updatedAt: new Date(),
                         log: {
                             create: {
                                 state: state,
-                                log: note,
+                                note: note,
+                                info: info as Prisma.JsonObject,
                             },
                         },
                     };
@@ -73,7 +80,7 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
                     return new DatabaseError(String(err));
                 }
             ),
-            TE.map(jobScheduleToJobDescriptor)
+            TE.map(jobScheduleToJob)
         );
     };
 
@@ -89,140 +96,23 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
                     });
                 }),
                 TO.map((data) => {
-                    return data ? jobScheduleToJobDescriptor(data) : null;
+                    return data ? jobScheduleToJob(data) : null;
                 })
             );
         },
         upsertJob: upsertJob,
-        cleanStaleJobs: () => {
-            return pipe(
-                TE.tryCatch(
-                    async () => {
-                        return prisma.$transaction(async (tx) => {
-                            const staleJobs = await tx.jobSchedule.findMany({
-                                where: {
-                                    state: {
-                                        in: [
-                                            PrismaJobState.RUNNING,
-                                            PrismaJobState.FAILED,
-                                            PrismaJobState.CANCELED,
-                                        ],
-                                    },
-                                },
-                            });
-                            for (const staleJob of staleJobs) {
-                                const updatedJob = {
-                                    ...staleJob,
-                                    scheduledAt: DateTime.now()
-                                        .plus({ minutes: 1 })
-                                        .toJSDate(),
-                                    state: PrismaJobState.SCHEDULED,
-                                    updatedAt: new Date(),
-                                    log: {
-                                        create: {
-                                            state: PrismaJobState.SCHEDULED,
-                                            log: "Rescheduling previously stale job.",
-                                        },
-                                    },
-                                };
-                                await prisma.jobSchedule.update({
-                                    where: {
-                                        name: staleJob.name,
-                                    },
-                                    data: updatedJob,
-                                });
-                            }
-                        });
-                    },
-                    (err) => {
-                        return new DatabaseError(err);
-                    }
-                ),
-                TE.map(() => undefined)
-            );
-        },
-        rescheduleFailedJob: (job: Job) => {
-            return pipe(
-                TE.tryCatch(
-                    async () => {
-                        logger.info(`Rescheduling failed job`, job);
-                        return prisma.$transaction(async (tx) => {
-                            const name = schemaInfoToString(job.info);
-                            const jobSchedule =
-                                (await tx.jobSchedule.findUnique({
-                                    where: { name },
-                                })) ??
-                                programError(`Couldn't find job ${name}.`);
-                            const nextFailCount =
-                                (jobSchedule?.currentFailCount ?? 0) + 1;
-
-                            let scheduledAt: Date;
-                            let note: string;
-
-                            if (jobSchedule?.currentFailCount === 0) {
-                                scheduledAt = DateTime.now()
-                                    .plus({
-                                        seconds: FIRST_FAIL_RETRY_DELAY_MINUTES,
-                                    })
-                                    .toJSDate();
-                                note = `Job hasn't failed before. New fail count is ${nextFailCount}`;
-                                logger.info(note);
-                            } else {
-                                const previousTime =
-                                    jobSchedule?.ranPreviouslyAt ??
-                                    programError(
-                                        "ranPreviouslyAt should have had a value. This is a bug!"
-                                    );
-                                const lastTime = jobSchedule.scheduledAt;
-                                const diff =
-                                    (lastTime.getTime() -
-                                        previousTime.getTime()) *
-                                    2;
-                                scheduledAt = DateTime.now()
-                                    .plus({ milliseconds: diff })
-                                    .toJSDate();
-                                note = `Job failed before (${nextFailCount}), applying exponential backoff. previous time: ${previousTime.toISOString()}, last time: ${lastTime.toISOString()}, diff: ${diff} next time: ${scheduledAt.toISOString()}`;
-                                logger.info(note);
-                            }
-                            await prisma.jobSchedule.update({
-                                where: { name },
-                                data: {
-                                    cursor: jobSchedule.cursor,
-                                    limit: jobSchedule.limit,
-                                    updatedAt: new Date(),
-                                    state: PrismaJobState.SCHEDULED,
-                                    ranPreviouslyAt: jobSchedule.scheduledAt,
-                                    scheduledAt: scheduledAt,
-                                    currentFailCount: nextFailCount,
-                                    log: {
-                                        create: {
-                                            state: PrismaJobState.SCHEDULED,
-                                            log: note,
-                                        },
-                                    },
-                                },
-                            });
-                        });
-                    },
-                    (err) => {
-                        return new DatabaseError(err);
-                    }
-                ),
-                TE.map(() => undefined)
-            );
-        },
         loadNextJobs: () => {
             return pipe(
                 () =>
                     prisma.jobSchedule.findMany({
                         where: {
-                            state: PrismaJobState.SCHEDULED,
+                            state: JobState.SCHEDULED,
                             scheduledAt: {
                                 lte: new Date(),
                             },
                         },
                     }),
-                T.map((schedules) => schedules.map(jobScheduleToJobDescriptor))
+                T.map((schedules) => schedules.map(jobScheduleToJob))
             );
         },
     };

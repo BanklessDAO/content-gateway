@@ -1,4 +1,4 @@
-import { createGraphQLClient, GraphQLClient } from "@shared/util-loaders";
+import { createGraphQLClient, GraphQLClient, ScheduleMode } from "@shared/util-loaders";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import { DocumentNode } from "graphql";
 import gql from "graphql-tag";
@@ -69,8 +69,8 @@ export class POAPTokenLoader extends GraphQLDataLoaderBase<Tokens, POAPToken> {
     protected batchSize = BATCH_SIZE;
     protected type = POAPToken;
     protected cadenceConfig = {
-        fullBatch: { seconds: 5 },
-        partialBatch: { minutes: 5 },
+        [ScheduleMode.BACKFILL]: { seconds: 5 },
+        [ScheduleMode.INCREMENTAL]: { minutes: 5 },
     };
 
     protected graphQLQuery: DocumentNode = QUERY;

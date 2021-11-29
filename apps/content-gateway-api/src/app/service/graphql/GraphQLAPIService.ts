@@ -16,6 +16,7 @@ import { MAX_ITEMS } from "./constants";
 import { ObservableSchemaRepository } from "./decorator";
 import { AnyFilter, createFiltersFor } from "./types/Filters";
 import { createResultsType, Results } from "./types/Results";
+import { pascalCase } from "pascal-case";
 
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
 
@@ -72,6 +73,153 @@ const createGraphQLMiddleware = async ({
     const schemas = await schemaRepository.findAll()();
     const str = schemas.map((schema) => schemaInfoToString(schema.info)).join();
     logger.info(`Current schemas are: ${str}`);
+
+    const findById = async (id: bigint) => {
+        return pipe(
+            dataRepository.findById(id),
+            TO.map((data) => data.record),
+            TO.getOrElse(() => T.of({} as Record<string, unknown>))
+        )();
+    };
+
+    const findByFilters = async (
+        schema: Schema,
+        first: number,
+        after: string,
+        where: Filter[]
+    ): Promise<Results> => {
+        const notes = [] as string[];
+        let limit = first;
+        if (limit > MAX_ITEMS) {
+            limit = MAX_ITEMS;
+            notes.push(
+                `The requested amount of items (${first}) is greater than the allowed maximum (${MAX_ITEMS}). Setting after to ${MAX_ITEMS}.`
+            );
+        }
+        // 👇 We do this to determine whether there is a next page or not.
+        limit++;
+
+        return pipe(
+            dataRepository.findByQuery({
+                info: schema.info,
+                cursor: after ? BigInt(after) : undefined,
+                limit: limit,
+                where: where ?? [],
+            }),
+            TE.map((entryList) => {
+                // TODO: write tests for this paging stuff
+                const entries = entryList.entries;
+                const hasNextPage = entries.length === limit;
+                const hasEntries = entries.length > 0;
+                let startCursor: string;
+                let endCursor: string;
+                if (hasNextPage) {
+                    // 👇 We only needed this for hasNextPage.
+                    entries.pop();
+                }
+                if (hasEntries) {
+                    startCursor = entries[0].id.toString();
+                    endCursor = entries[entries.length - 1].id.toString();
+                } else {
+                    startCursor = after ?? "";
+                    endCursor = startCursor;
+                }
+                return {
+                    pageInfo: {
+                        hasNextPage,
+                        startCursor: startCursor,
+                        endCursor: endCursor,
+                    },
+                    errors: [],
+                    notes: notes,
+                    data: entries.map((entry) => ({
+                        ...entry.record,
+                        _id: entry.id.toString(),
+                    })),
+                };
+            }),
+            TE.getOrElse((e) =>
+                T.of({
+                    pageInfo: {
+                        hasNextPage: false,
+                        startCursor: "0",
+                        endCursor: "0",
+                    },
+                    errors: [e.message],
+                    notes: [] as string[],
+                    data: [] as Record<string, unknown>[],
+                })
+            )
+        )();
+    };
+
+    const createOperations = (
+        schema: Schema,
+        type: g.GraphQLObjectType<unknown, unknown>
+    ): g.GraphQLFieldConfigMap<string, unknown> => {
+        const namespaceKey = pascalCase(schema.info.namespace) + schema.info.version;
+        return {
+            [namespaceKey]: {
+                type: new g.GraphQLNonNull(
+                    new g.GraphQLObjectType({
+                        name: namespaceKey,
+                        fields: {
+                            [type.name]: {
+                                type: type,
+                                args: {
+                                    id: { type: g.GraphQLInt },
+                                },
+                                resolve: async (_, args) => {
+                                    const { id } = args as {
+                                        id: bigint;
+                                    };
+                                    return findById(id);
+                                },
+                            },
+                            [pluralize.plural(type.name)]: {
+                                type: createResultsType(type),
+                                description: `Returns a list of ${type.name}s. Supports pagination and filtering.`,
+                                args: {
+                                    first: {
+                                        type: g.GraphQLInt,
+                                        defaultValue: MAX_ITEMS,
+                                    },
+                                    after: {
+                                        type: g.GraphQLString,
+                                        defaultValue: "0",
+                                    },
+                                    where: {
+                                        type: createFiltersFor(
+                                            type.name,
+                                            schema.jsonSchema
+                                        ),
+                                        defaultValue: {},
+                                    },
+                                },
+                                resolve: (_, args) => {
+                                    const { first, after, where } = args as {
+                                        first: number;
+                                        after: string;
+                                        where: Record<string, AnyFilter>;
+                                    };
+                                    return findByFilters(
+                                        schema,
+                                        first,
+                                        after,
+                                        mapFilters(where)
+                                    );
+                                },
+                            },
+                        },
+                    })
+                ),
+                resolve: () => {
+                    return {};
+                },
+            },
+        };
+    };
+
     return pipe(
         schemas,
         A.map(
@@ -79,134 +227,34 @@ const createGraphQLMiddleware = async ({
                 [schema, toGraphQLType(schema)] as SchemaGQLTypePair
         ),
         A.map(([schema, type]): g.GraphQLFieldConfigMap<string, unknown> => {
-            const name = schema.info.name;
-
-            const findById = async (id: bigint) => {
-                return pipe(
-                    dataRepository.findById(id),
-                    TO.map((data) => data.record),
-                    TO.getOrElse(() => T.of({} as Record<string, unknown>))
-                )();
-            };
-
-            const findByFilters = async (
-                first: number,
-                after: string,
-                where: Filter[]
-            ): Promise<Results> => {
-                const notes = [] as string[];
-                let limit = first;
-                if (limit > MAX_ITEMS) {
-                    limit = MAX_ITEMS;
-                    notes.push(
-                        `The requested amount of items (${first}) is greater than the allowed maximum (${MAX_ITEMS}). Setting after to ${MAX_ITEMS}.`
-                    );
-                }
-
-                // 👇 We do this to determine whether there is a next page or not.
-                limit++;
-
-                return pipe(
-                    dataRepository.findByQuery({
-                        info: schema.info,
-                        cursor: after ? BigInt(after) : undefined,
-                        limit: limit,
-                        where: where ?? [],
-                    }),
-                    TE.map((entryList) => {
-                        // TODO: write tests for this paging stuff
-                        const entries = entryList.entries;
-                        const hasNextPage = entries.length === limit;
-                        const hasEntries = entries.length > 0;
-                        let startCursor: string;
-                        let endCursor: string;
-                        if (hasNextPage) {
-                            // 👇 We only needed this for hasNextPage.
-                            entries.pop();
-                        }
-                        if (hasEntries) {
-                            startCursor = entries[0].id.toString();
-                            endCursor =
-                                entries[entries.length - 1].id.toString();
-                        } else {
-                            startCursor = after ?? "";
-                            endCursor = startCursor;
-                        }
-                        return {
-                            pageInfo: {
-                                hasNextPage,
-                                startCursor: startCursor,
-                                endCursor: endCursor,
-                            },
-                            errors: [],
-                            notes: notes,
-                            data: entries.map((entry) => ({
-                                ...entry.record,
-                                _id: entry.id.toString(),
-                            })),
-                        };
-                    }),
-                    TE.getOrElse((e) =>
-                        T.of({
-                            pageInfo: {
-                                hasNextPage: false,
-                                startCursor: "0",
-                                endCursor: "0",
-                            },
-                            errors: [e.message],
-                            notes: [] as string[],
-                            data: [] as Record<string, unknown>[],
-                        })
-                    )
-                )();
-            };
-
-            const result: g.GraphQLFieldConfigMap<string, unknown> = {
-                [name]: {
-                    type: type,
-                    args: {
-                        id: { type: g.GraphQLInt },
-                    },
-                    resolve: async (_, args) => {
-                        const { id } = args as { id: bigint };
-                        return findById(id);
-                    },
-                },
-                [`${pluralize.plural(name)}`]: {
-                    type: createResultsType(type),
-                    description: `Returns a list of ${name}s. Supports pagination and filtering.`,
-                    args: {
-                        first: { type: g.GraphQLInt, defaultValue: MAX_ITEMS },
-                        after: { type: g.GraphQLString, defaultValue: "0" },
-                        where: {
-                            type: createFiltersFor(name, schema.jsonSchema),
-                            defaultValue: {},
-                        },
-                    },
-                    resolve: (_, args) => {
-                        const { first, after, where } = args as {
-                            first: number;
-                            after: string;
-                            where: Record<string, AnyFilter>;
-                        };
-                        mapFilters(where);
-                        return findByFilters(first, after, mapFilters(where));
-                    },
-                },
-            };
-            return result;
+            return createOperations(schema, type);
         }),
         A.reduce(
-            {} as g.Thunk<g.GraphQLFieldConfigMap<string, unknown>>,
-            (acc, curr) => ({
-                ...acc,
-                ...curr,
-            })
+            {} as g.GraphQLFieldConfigMap<string, unknown>,
+            (acc, curr) => {
+                return {
+                    ...acc,
+                    ...curr,
+                };
+            }
         ),
         map((fields) => {
             const queryType = new g.GraphQLObjectType({
                 name: "Query",
-                fields: fields,
+                fields: {
+                    historical: {
+                        type: new g.GraphQLNonNull(
+                            new g.GraphQLObjectType({
+                                name: "historical",
+                                fields: fields,
+                            })
+                        ),
+                        description: "Contains all the queries that operate on historical data that might not be up to date",
+                        resolve: () => {
+                            return {};
+                        },
+                    },
+                },
             });
             return new g.GraphQLSchema({ query: queryType });
         }),

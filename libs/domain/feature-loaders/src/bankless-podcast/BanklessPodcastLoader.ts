@@ -1,7 +1,12 @@
 import { notEmpty } from "@shared/util-fp";
-import { DEFAULT_CURSOR, LoadContext } from "@shared/util-loaders";
+import {
+    DEFAULT_CURSOR,
+    LoadContext,
+    ScheduleMode,
+} from "@shared/util-loaders";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as t from "io-ts";
+import { withMessage } from "io-ts-types";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
 import { BATCH_SIZE } from "../defaults";
 
@@ -43,23 +48,25 @@ class Snippet {
     @Required(true)
     channelId: string;
     @Required(true)
-    videoOwnerChannelTitle: string;
-    @Required(true)
-    videoOwnerChannelId: string;
-    @Required(true)
     resourceId: ResourceId;
     @Required(true)
     publishedAt: number;
+
+    @Required(false)
+    videoOwnerChannelTitle?: string;
+    @Required(false)
+    videoOwnerChannelId?: string;
+
     @Required(true)
     @CollectionOf(Thumbnail)
     thumbnails: Thumbnail[];
 }
 
 class ContentDetails {
-    @Required(true)
-    videoId: string;
-    @Required(true)
-    videoPublishedAt: number;
+    @Required(false)
+    videoId?: string;
+    @Required(false)
+    videoPublishedAt?: number;
 }
 
 class Status {
@@ -88,31 +95,62 @@ const ThumbnailCodec = t.strict({
 });
 
 const YoutubePlaylistItemCodec = t.strict({
-    kind: t.literal("youtube#playlistItem"),
-    etag: t.string,
-    id: t.string,
-    snippet: t.strict({
-        publishedAt: t.string,
-        channelId: t.string,
-        title: t.string,
-        description: t.string,
-        thumbnails: t.record(t.string, ThumbnailCodec),
-        channelTitle: t.string,
-        playlistId: t.string,
-        position: t.number,
-        resourceId: t.strict({
-            kind: t.string,
-            videoId: t.string,
+    kind: withMessage(
+        t.literal("youtube#playlistItem"),
+        () => "kind must be 'youtube#playlistItem'"
+    ),
+    etag: withMessage(t.string, () => "etag must be a string"),
+    id: withMessage(t.string, () => "id must be a string"),
+    snippet: t.intersection([
+        t.strict({
+            publishedAt: withMessage(
+                t.string,
+                () => "publishedAt must be a string"
+            ),
+            channelId: withMessage(
+                t.string,
+                () => "channelId must be a string"
+            ),
+            title: withMessage(t.string, () => "title must be a string"),
+            description: withMessage(
+                t.string,
+                () => "description must be a string"
+            ),
+            thumbnails: withMessage(
+                t.record(t.string, ThumbnailCodec),
+                () => "thumbnails are missing"
+            ),
+            channelTitle: withMessage(
+                t.string,
+                () => "channelTitle must be a string"
+            ),
+            playlistId: withMessage(
+                t.string,
+                () => "playlistId must be a string"
+            ),
+            position: withMessage(t.number, () => "position must be a number"),
+            resourceId: withMessage(
+                t.strict({
+                    kind: t.string,
+                    videoId: t.string,
+                }),
+                () => "resourceId is missing"
+            ),
         }),
-        videoOwnerChannelTitle: t.string,
-        videoOwnerChannelId: t.string,
-    }),
-    contentDetails: t.strict({
+        t.partial({
+            videoOwnerChannelId: t.string,
+            videoOwnerChannelTitle: t.string,
+        }),
+    ]),
+    contentDetails: t.partial({
         videoId: t.string,
         videoPublishedAt: t.string,
     }),
     status: t.strict({
-        privacyStatus: t.string,
+        privacyStatus: withMessage(
+            t.string,
+            () => "privacyStatus must be a string"
+        ),
     }),
 });
 
@@ -144,8 +182,8 @@ export class BanklessPodcastLoader extends HTTPDataLoaderBase<
     protected batchSize = 50;
     protected type = PodcastItem;
     protected cadenceConfig = {
-        fullBatch: { seconds: 5 },
-        partialBatch: { minutes: 5 },
+        [ScheduleMode.BACKFILL]: { seconds: 5 },
+        [ScheduleMode.INCREMENTAL]: { minutes: 5 },
     };
 
     protected codec = YoutubePlaylistCodec;

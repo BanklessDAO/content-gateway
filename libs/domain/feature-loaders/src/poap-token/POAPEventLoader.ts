@@ -1,5 +1,5 @@
 import { notEmpty } from "@shared/util-fp";
-import { LoadContext } from "@shared/util-loaders";
+import { LoadContext, ScheduleMode } from "@shared/util-loaders";
 import { AdditionalProperties, Allow, Required } from "@tsed/schema";
 import * as t from "io-ts";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
@@ -93,8 +93,8 @@ export class POAPEventLoader extends HTTPDataLoaderBase<Events, POAPEvent> {
     protected batchSize = BATCH_SIZE;
     protected type = POAPEvent;
     protected cadenceConfig = {
-        fullBatch: { seconds: 5 },
-        partialBatch: { minutes: 5 },
+        [ScheduleMode.BACKFILL]: { seconds: 5 },
+        [ScheduleMode.INCREMENTAL]: { minutes: 5 },
     };
 
     protected codec = Events;

@@ -1,6 +1,7 @@
 import {
     createGraphQLClient,
-    GraphQLClient
+    GraphQLClient,
+    ScheduleMode
 } from "@shared/util-loaders";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import gql from "graphql-tag";
@@ -49,8 +50,8 @@ export class POAPAccountLoader extends GraphQLDataLoaderBase<
     protected batchSize = BATCH_SIZE;
     protected type = POAPAccount;
     protected cadenceConfig = {
-        fullBatch: { seconds: 5 },
-        partialBatch: { minutes: 5 },
+        [ScheduleMode.BACKFILL]: { seconds: 5 },
+        [ScheduleMode.INCREMENTAL]: { minutes: 5 },
     };
 
     protected graphQLQuery = QUERY;

@@ -3,6 +3,7 @@ import {
     createGraphQLClient,
     DEFAULT_CURSOR,
     GraphQLClient,
+    ScheduleMode,
 } from "@shared/util-loaders";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import { DocumentNode } from "graphql";
@@ -94,8 +95,8 @@ export class BANKTransferLoader extends GraphQLDataLoaderBase<
     protected batchSize = BATCH_SIZE;
     protected type = BANKTransfer;
     protected cadenceConfig = {
-        fullBatch: { seconds: 5 },
-        partialBatch: { minutes: 5 },
+        [ScheduleMode.BACKFILL]: { seconds: 5 },
+        [ScheduleMode.INCREMENTAL]: { minutes: 5 },
     };
 
     protected graphQLQuery: DocumentNode = QUERY;

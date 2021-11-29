@@ -57,7 +57,7 @@ const decodeResponse = <T>(codec: t.Type<T>) => {
                 codec.decode(data),
                 E.mapLeft((e: t.Errors) => {
                     return new CodecValidationError(
-                        `Decoding HTTP response failed`,
+                        `Decoding HTTP response failed.`,
                         e
                     );
                 })

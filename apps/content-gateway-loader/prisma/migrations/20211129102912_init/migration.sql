@@ -1,15 +1,19 @@
 -- CreateEnum
 CREATE TYPE "JobState" AS ENUM ('SCHEDULED', 'CANCELED', 'RUNNING', 'COMPLETED', 'FAILED');
 
+-- CreateEnum
+CREATE TYPE "ScheduleMode" AS ENUM ('BACKFILL', 'INCREMENTAL');
+
 -- CreateTable
 CREATE TABLE "JobSchedule" (
     "name" VARCHAR(255) NOT NULL,
     "state" "JobState" NOT NULL DEFAULT E'SCHEDULED',
+    "scheduleMode" "ScheduleMode" NOT NULL,
     "cursor" VARCHAR(255) NOT NULL,
     "limit" INTEGER NOT NULL,
-    "scheduledAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "ranPreviouslyAt" TIMESTAMP(6),
     "currentFailCount" INTEGER NOT NULL DEFAULT 0,
+    "previousScheduledAt" TIMESTAMP(6),
+    "scheduledAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(6) NOT NULL,
 
     CONSTRAINT "JobSchedule_pkey" PRIMARY KEY ("name")
@@ -19,8 +23,9 @@ CREATE TABLE "JobSchedule" (
 CREATE TABLE "JobLog" (
     "id" TEXT NOT NULL,
     "name" VARCHAR(255) NOT NULL,
-    "log" TEXT NOT NULL,
+    "note" TEXT NOT NULL,
     "state" "JobState" NOT NULL,
+    "info" JSONB,
     "createdAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "JobLog_pkey" PRIMARY KEY ("id")

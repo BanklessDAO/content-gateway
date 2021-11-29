@@ -1,13 +1,15 @@
 import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
 import { ProgramError } from "@shared/util-dto";
-import { createLogger } from "@shared/util-fp";
+import { createLogger, programError } from "@shared/util-fp";
 import { schemaInfoToString } from "@shared/util-schema";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
+import { DateTime } from "luxon";
 import { AsyncTask, SimpleIntervalJob, ToadScheduler } from "toad-scheduler";
-import { JobDescriptor } from ".";
+import { DatabaseError, JobDescriptor } from ".";
+import { LoadingResult } from "..";
 import { DataLoader } from "../DataLoader";
 import {
     JobCreationError as JobUpsertError,
@@ -16,11 +18,13 @@ import {
     RegistrationError,
     SchedulerNotRunningError,
     SchedulerStartupError,
-    SchedulingError
+    SchedulingError,
 } from "./errors";
 import { Job } from "./Job";
 import { JobRepository } from "./JobRepository";
 import { JobState } from "./JobState";
+
+const FIRST_FAIL_RETRY_DELAY_MINUTES = 2;
 
 /**
  * A job scheduler can be used to schedule loader {@link Job}s
@@ -80,7 +84,6 @@ class DefaultJobScheduler implements JobScheduler {
         this.running = true;
         return TE.tryCatch(
             async () => {
-                await this.jobRepository.cleanStaleJobs()();
                 const task = new AsyncTask(
                     "Execute Jobs",
                     () => {
@@ -119,7 +122,7 @@ class DefaultJobScheduler implements JobScheduler {
             loader.initialize({
                 client: this.client,
                 jobScheduler: this,
-                jobRepository: this.jobRepository
+                jobRepository: this.jobRepository,
             }),
             TE.mapLeft((e) => new LoaderInitializationError(e))
         );
@@ -132,10 +135,38 @@ class DefaultJobScheduler implements JobScheduler {
         if (!this.running) {
             return TE.left(new SchedulerNotRunningError());
         }
-        if (!this.loaders.has(key)) {
-            return this.cancelJob(jobDescriptor);
-        }
-        return this.scheduleJob(jobDescriptor);
+        return pipe(
+            this.jobRepository.findJob(jobDescriptor.info),
+            TE.fromTaskOption(
+                () =>
+                    new DatabaseError(
+                        "This shouldn't have happened. This is a bug."
+                    )
+            ),
+            TE.chainW((maybeJob) => {
+                let job: Job;
+                if (maybeJob) {
+                    job = {
+                        ...maybeJob,
+                        state: JobState.SCHEDULED,
+                        updatedAt: new Date(),
+                    };
+                } else {
+                    job = {
+                        ...jobDescriptor,
+                        state: JobState.SCHEDULED,
+                        previousScheduledAt: undefined,
+                        currentFailCount: 0,
+                        updatedAt: new Date(),
+                    };
+                }
+                if (!this.loaders.has(key)) {
+                    return this.cancelJob(job);
+                }
+                const msg = "Scheduling new job for execution.";
+                return this.upsertJob(job, msg, {});
+            })
+        );
     }
 
     stop() {
@@ -152,6 +183,7 @@ class DefaultJobScheduler implements JobScheduler {
             return E.left(new SchedulerNotRunningError());
         }
         if (this.loaders.has(name)) {
+            // TODO: we should also remove the job from the job repository
             this.loaders.delete(name);
         }
         return E.right(undefined);
@@ -170,108 +202,192 @@ class DefaultJobScheduler implements JobScheduler {
     }
 
     private executeJob(job: Job): TE.TaskEither<ProgramError, void> {
-        job.state = JobState.RUNNING;
         const key = schemaInfoToString(job.info);
         return pipe(
             TE.Do,
-            TE.bind("job", () => this.jobRepository.upsertJob(job, "Starting job.")),
-            TE.bindW("loader", () =>
+            TE.bind("runningJob", () =>
+                this.jobRepository.upsertJob(
+                    {
+                        ...job,
+                        state: JobState.RUNNING,
+                    },
+                    "Starting job.",
+                    {}
+                )
+            ),
+            TE.bindW("loader", ({ runningJob }) =>
                 pipe(
                     O.fromNullable(this.loaders.get(key)),
-                    TE.fromOption(() => new NoLoaderForJobError(job)),
-                    TE.mapLeft((e) => {
-                        this.cancelJob(job)();
-                        return e;
+                    TE.fromOption(() => {
+                        this.cancelJob(runningJob)();
+                        return new NoLoaderForJobError(runningJob);
                     })
                 )
             ),
-            TE.bind("result", ({ loader }) =>
+            TE.bind("loadingResult", ({ loader, runningJob }) =>
                 loader.load({
-                    limit: job.limit,
-                    cursor: job.cursor,
+                    limit: runningJob.limit,
+                    cursor: runningJob.cursor,
                 })
             ),
-            TE.chain(({ loader, result }) =>
+            TE.bind("nextJob", ({ loader, loadingResult, runningJob }) =>
                 loader.save({
-                    currentJob: job,
+                    currentJob: runningJob,
                     client: this.client,
                     jobScheduler: this,
-                    loadingResult: result,
+                    loadingResult: loadingResult,
                 })
             ),
             TE.mapLeft((e) => {
                 return this.failJob(job, e);
             }),
-            this.scheduleOrCompleteJobOnSuccess(job)
+            TE.bindW("completedJob", ({ loadingResult, runningJob }) => {
+                return this.completeJob(runningJob, loadingResult);
+            }),
+            TE.map(({ nextJob, completedJob }) => {
+                if (nextJob) {
+                    this.logger.info(
+                        "A next job was returned, scheduling...",
+                        nextJob
+                    );
+                    this.rescheduleJob({ ...completedJob, ...nextJob }, {})();
+                }
+                return undefined;
+            })
         );
     }
 
-    private scheduleOrCompleteJobOnSuccess(job: JobDescriptor) {
-        return TE.map((nextJob: JobDescriptor | undefined) => {
-            if (nextJob) {
-                this.logger.info(
-                    "A next job was returned, scheduling...",
-                    nextJob
-                );
-                this.schedule(nextJob)();
-            } else {
-                this.logger.info(
-                    "No next job was returned, completing job",
-                    job
-                );
-                this.upsertJob(
-                    job,
-                    `Job ${schemaInfoToString(
-                        job.info
-                    )} completed successfully.`,
-                    JobState.COMPLETED
-                )();
-            }
-        });
+    private rescheduleJob(
+        previousJob: Job,
+        info: Record<string, unknown> = {}
+    ): TE.TaskEither<JobUpsertError, Job> {
+        const msg = `Rescheduling job.`;
+        return this.upsertJob(
+            {
+                ...previousJob,
+                state: JobState.SCHEDULED,
+                previousScheduledAt: previousJob.scheduledAt,
+                currentFailCount: previousJob.currentFailCount,
+                updatedAt: new Date(),
+            },
+            msg,
+            info
+        );
     }
 
-    private failJob<E>(jobDescriptor: JobDescriptor, e: E) {
-        const msg = `Loader ${schemaInfoToString(jobDescriptor.info)} failed`;
+    private failJob<E>(job: Job, e: E, info: Record<string, unknown> = {}) {
+        const msg = `Loader ${schemaInfoToString(job.info)} failed`;
         this.logger.warn(msg, e);
         pipe(
             this.upsertJob(
-                jobDescriptor,
+                {
+                    ...job,
+                    state: JobState.FAILED,
+                    currentFailCount: job.currentFailCount + 1,
+                },
                 `${msg}: ${
                     e instanceof Error
                         ? e.message
                         : "Unknown error happened. This is probably a bug."
                 }`,
-                JobState.FAILED
+                info
             ),
-            TE.chainW((job) => {
-                return this.jobRepository.rescheduleFailedJob(job);
+            TE.chainW((jobSchedule) => {
+                let nextScheduledAt: Date;
+                let note: string;
+                let extraInfo: Record<string, unknown>;
+                if (jobSchedule?.currentFailCount === 1) {
+                    nextScheduledAt = DateTime.now()
+                        .plus({
+                            minutes: FIRST_FAIL_RETRY_DELAY_MINUTES,
+                        })
+                        .toJSDate();
+                    note = `Job hasn't failed before. New fail count is ${jobSchedule.currentFailCount}`;
+                    this.logger.info(note);
+                    extraInfo = {};
+                } else {
+                    const previousTime =
+                        jobSchedule?.previousScheduledAt ??
+                        programError(
+                            "previousScheduledAt should have had a value. This is a bug!"
+                        );
+                    const lastTime = jobSchedule.scheduledAt;
+                    const diff =
+                        (lastTime.getTime() - previousTime.getTime()) * 2;
+                    nextScheduledAt = DateTime.now()
+                        .plus({ milliseconds: diff })
+                        .toJSDate();
+                    note = `Job failed before (${
+                        jobSchedule.currentFailCount
+                    }), applying exponential backoff. previous time: ${previousTime.toISOString()}, last time: ${lastTime.toISOString()}, diff: ${diff} next time: ${nextScheduledAt.toISOString()}`;
+                    this.logger.info(note);
+                    extraInfo = {
+                        exponentialBackoff: true,
+                        previouslyScheduledAt: previousTime.getTime(),
+                        lastScheduledAt: lastTime.getTime(),
+                        diff: diff,
+                        nextScheduledAt: nextScheduledAt.getTime(),
+                        failCount: jobSchedule.currentFailCount,
+                    };
+                }
+                return this.rescheduleJob(
+                    {
+                        ...jobSchedule,
+                        scheduledAt: nextScheduledAt,
+                    },
+                    extraInfo
+                );
             })
         )();
         return e;
     }
 
-    private cancelJob(job: JobDescriptor): TE.TaskEither<JobUpsertError, Job> {
+    private completeJob(
+        job: Job,
+        loadingResult: LoadingResult<unknown>
+    ): TE.TaskEither<JobUpsertError, Job> {
+        let msg = `Job ${schemaInfoToString(job.info)} completed successfully.`;
+        if (job.currentFailCount > 0) {
+            msg = `${msg} Clearing fail count.`;
+        }
+        return this.upsertJob(
+            { ...job, state: JobState.COMPLETED, currentFailCount: 0 },
+            msg,
+            {
+                recordCount: loadingResult.data.length,
+            }
+        );
+    }
+
+    private cancelJob(
+        job: Job,
+        info: Record<string, unknown> = {}
+    ): TE.TaskEither<JobUpsertError, Job> {
         const msg = `Job was canceled because no loader with key ${schemaInfoToString(
             job.info
         )} was found.`;
-        return this.upsertJob(job, msg, JobState.CANCELED);
-    }
-
-    private scheduleJob(
-        job: JobDescriptor
-    ): TE.TaskEither<JobUpsertError, Job> {
-        const msg = "Scheduling new job for execution.";
-        return this.upsertJob(job, msg, JobState.SCHEDULED);
+        return this.upsertJob(job, msg, info);
     }
 
     private upsertJob(
-        jobDescriptor: JobDescriptor,
+        job: Job,
         note: string,
-        state: JobState
+        info: Record<string, unknown> = {}
     ): TE.TaskEither<JobUpsertError, Job> {
-        const job = { ...jobDescriptor, state };
         return pipe(
-            this.jobRepository.upsertJob(job, note),
+            this.jobRepository.upsertJob(
+                {
+                    ...job,
+                    updatedAt: new Date(),
+                },
+                note,
+                {
+                    scheduledAt: job.scheduledAt,
+                    limit: job.limit,
+                    cursor: job.cursor,
+                    ...info,
+                }
+            ),
             TE.mapLeft((e) => {
                 this.logger.warn(`Job upsert failed:`, e);
                 return new JobUpsertError(job, e);
@@ -304,7 +420,13 @@ export class JobSchedulerStub implements JobScheduler {
     schedule(
         jobDescriptor: JobDescriptor
     ): TE.TaskEither<SchedulingError, Job> {
-        const job = { ...jobDescriptor, state: JobState.SCHEDULED };
+        const job = {
+            ...jobDescriptor,
+            state: JobState.SCHEDULED,
+            previousScheduledAt: undefined,
+            currentFailCount: 0,
+            updatedAt: new Date(),
+        };
         this.scheduledJobs.push(job);
         return TE.right(job);
     }

@@ -1,9 +1,14 @@
 import { JobDescriptor } from ".";
 import { JobState } from "./JobState";
+import { ScheduleMode } from "./ScheduleMode";
 
 /**
- * Contains the metadata for a scheduled job.
+ * Contains the metadata for a job.
  */
 export type Job = {
-    state: JobState;
+    readonly state: JobState;
+    readonly scheduleMode: ScheduleMode;
+    readonly previousScheduledAt?: Date;
+    readonly currentFailCount: number;
+    readonly updatedAt: Date;
 } & JobDescriptor;
