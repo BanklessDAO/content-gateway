@@ -5,13 +5,19 @@ import * as TO from "fp-ts/TaskOption";
 import {
     DatabaseError,
     RegisteredSchemaIncompatibleError,
-    UnknownError
+    UnknownError,
 } from ".";
 
 export type SchemaRegistrationError =
     | UnknownError
     | DatabaseError
     | RegisteredSchemaIncompatibleError;
+
+export type SchemaStat = {
+    info: SchemaInfo;
+    rowCount: number;
+    lastUpdated: number;
+};
 
 /**
  * The [[SchemaRepository]] is a server-side component of the content gateway.
@@ -20,8 +26,8 @@ export type SchemaRegistrationError =
 export type SchemaRepository = {
     register: (schema: Schema) => TE.TaskEither<SchemaRegistrationError, void>;
     find: (key: SchemaInfo) => TO.TaskOption<Schema>;
-    // TODO: make this a Task instead
     findAll: () => T.Task<Array<Schema>>;
+    loadStats(): T.Task<Array<SchemaStat>>;
 };
 
 export type SchemaRepositoryStub = {
@@ -53,5 +59,6 @@ export const createSchemaRepositoryStub = (
             }
         },
         findAll: () => T.of(Array.from(map.values())),
+        loadStats: () => T.of([]),
     };
 };

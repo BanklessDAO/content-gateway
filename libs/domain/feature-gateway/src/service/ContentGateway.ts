@@ -1,14 +1,16 @@
 import { Payload, Schema } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
+import * as T from "fp-ts/Task";
 import { BatchDataReceivingError } from ".";
-import { DataRepository, SchemaRegistrationError, SchemaRepository } from "..";
+import { DataRepository, SchemaRegistrationError, SchemaRepository, SchemaStat } from "..";
 import { DataReceivingError } from "./errors";
 
 /**
  * Represents the public API of the Content Gateway.
  */
 export type ContentGateway = {
+    loadStats: () => T.Task<Array<SchemaStat>>;
     /**
      * Registers a new schema shapshot with the Content Gateway.
      */
@@ -43,6 +45,7 @@ export const createContentGateway = ({
     dataRepository,
 }: Deps): ContentGateway => {
     return {
+        loadStats: () => schemaRepository.loadStats(),
         register: (schema: Schema) => {
             return schemaRepository.register(schema);
         },

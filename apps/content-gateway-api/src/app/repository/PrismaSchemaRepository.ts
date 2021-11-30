@@ -8,6 +8,7 @@ import {
     UnknownError,
 } from "@domain/feature-gateway";
 import { CodecValidationError } from "@shared/util-dto";
+import { createLogger } from "@shared/util-fp";
 import {
     createSchemaFromObject,
     Schema,
@@ -25,6 +26,7 @@ import { wrapPrismaOperation } from ".";
 export const createPrismaSchemaRepository = (
     prisma: PrismaClient
 ): SchemaRepository => {
+    const logger = createLogger("PrismaSchemaRepository");
     const findSchema = (info: SchemaInfo) => {
         return pipe(
             TO.tryCatch(() => {
@@ -118,6 +120,31 @@ export const createPrismaSchemaRepository = (
                         A.filter(E.isRight),
                         A.map((item) => item.right)
                     );
+                })
+            );
+        },
+        loadStats: () => {
+            return pipe(
+                async () => {
+                    return prisma.data.groupBy({
+                        by: ["namespace", "name", "version"],
+                        _count: {
+                            _all: true,
+                        },
+                        _max: {
+                            createdAt: true,
+                        },
+                    });
+                },
+                T.map((stats) => {
+                    return stats.map((stat) => {
+                        const { namespace, name, version } = stat;
+                        return {
+                            info: { namespace, name, version },
+                            rowCount: stat._count._all,
+                            lastUpdated: (stat._max.createdAt ?? new Date()).getTime(),
+                        };
+                    });
                 })
             );
         },

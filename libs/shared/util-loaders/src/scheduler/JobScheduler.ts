@@ -366,7 +366,14 @@ class DefaultJobScheduler implements JobScheduler {
         const msg = `Job was canceled because no loader with key ${schemaInfoToString(
             job.info
         )} was found.`;
-        return this.upsertJob(job, msg, info);
+        return this.upsertJob(
+            {
+                ...job,
+                state: JobState.CANCELED,
+            },
+            msg,
+            info
+        );
     }
 
     private upsertJob(

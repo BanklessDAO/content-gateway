@@ -1,4 +1,3 @@
-import { Container } from "@chakra-ui/react";
 import { FunctionComponent } from "react";
 import Nav from "../sections/Nav";
 
@@ -8,10 +7,10 @@ type Props = {
 
 const Layout: FunctionComponent<Props> = ({ children }) => {
     return (
-        <Container maxW={'3xl'}>
+        <>
             <Nav />
             {children}
-        </Container>
+        </>
     );
 };
 
