@@ -1,7 +1,7 @@
 import { DataRepository, Filter, FilterType } from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import { toGraphQLType } from "@shared/util-graphql";
-import { Schema, schemaInfoToString } from "@shared/util-schema";
+import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import { Request, Response } from "express";
 import { graphqlHTTP } from "express-graphql";
 import * as A from "fp-ts/Array";
@@ -32,6 +32,10 @@ export type Deps = {
 
 export type GraphQLAPIService = {
     readonly middleware: Middleware;
+};
+
+type QueryMapping = {
+    [namespace: string]: g.GraphQLFieldConfigMap<string, unknown>;
 };
 
 /**
@@ -156,68 +160,58 @@ const createGraphQLMiddleware = async ({
     const createOperations = (
         schema: Schema,
         type: g.GraphQLObjectType<unknown, unknown>
-    ): g.GraphQLFieldConfigMap<string, unknown> => {
-        const namespaceKey = pascalCase(schema.info.namespace) + schema.info.version;
-        return {
-            [namespaceKey]: {
-                type: new g.GraphQLNonNull(
-                    new g.GraphQLObjectType({
-                        name: namespaceKey,
-                        fields: {
-                            [type.name]: {
-                                type: type,
-                                args: {
-                                    id: { type: g.GraphQLInt },
-                                },
-                                resolve: async (_, args) => {
-                                    const { id } = args as {
-                                        id: bigint;
-                                    };
-                                    return findById(id);
-                                },
-                            },
-                            [pluralize.plural(type.name)]: {
-                                type: createResultsType(type),
-                                description: `Returns a list of ${type.name}s. Supports pagination and filtering.`,
-                                args: {
-                                    first: {
-                                        type: g.GraphQLInt,
-                                        defaultValue: MAX_ITEMS,
-                                    },
-                                    after: {
-                                        type: g.GraphQLString,
-                                        defaultValue: "0",
-                                    },
-                                    where: {
-                                        type: createFiltersFor(
-                                            type.name,
-                                            schema.jsonSchema
-                                        ),
-                                        defaultValue: {},
-                                    },
-                                },
-                                resolve: (_, args) => {
-                                    const { first, after, where } = args as {
-                                        first: number;
-                                        after: string;
-                                        where: Record<string, AnyFilter>;
-                                    };
-                                    return findByFilters(
-                                        schema,
-                                        first,
-                                        after,
-                                        mapFilters(where)
-                                    );
-                                },
-                            },
+    ): [SchemaInfo, g.GraphQLFieldConfigMap<string, unknown>] => {
+        return [
+            schema.info,
+            {
+                [type.name]: {
+                    type: type,
+                    args: {
+                        id: { type: g.GraphQLInt },
+                    },
+                    resolve: async (_, args) => {
+                        const { id } = args as {
+                            id: bigint;
+                        };
+                        return findById(id);
+                    },
+                },
+                [pluralize.plural(type.name)]: {
+                    type: createResultsType(type),
+                    description: `Returns a list of ${type.name}s. Supports pagination and filtering.`,
+                    args: {
+                        first: {
+                            type: g.GraphQLInt,
+                            defaultValue: MAX_ITEMS,
                         },
-                    })
-                ),
-                resolve: () => {
-                    return {};
+                        after: {
+                            type: g.GraphQLString,
+                            defaultValue: "0",
+                        },
+                        where: {
+                            type: createFiltersFor(
+                                type.name,
+                                schema.jsonSchema
+                            ),
+                            defaultValue: {},
+                        },
+                    },
+                    resolve: (_, args) => {
+                        const { first, after, where } = args as {
+                            first: number;
+                            after: string;
+                            where: Record<string, AnyFilter>;
+                        };
+                        return findByFilters(
+                            schema,
+                            first,
+                            after,
+                            mapFilters(where)
+                        );
+                    },
                 },
             },
-        };
+        ];
     };
 
     return pipe(
@@ -226,37 +220,62 @@ const createGraphQLMiddleware = async ({
             (schema: Schema) =>
                 [schema, toGraphQLType(schema)] as SchemaGQLTypePair
         ),
-        A.map(([schema, type]): g.GraphQLFieldConfigMap<string, unknown> => {
-            return createOperations(schema, type);
-        }),
-        A.reduce(
-            {} as g.GraphQLFieldConfigMap<string, unknown>,
-            (acc, curr) => {
-                return {
-                    ...acc,
-                    ...curr,
-                };
+        A.map(
+            ([schema, type]): [
+                SchemaInfo,
+                g.GraphQLFieldConfigMap<string, unknown>
+            ] => {
+                return createOperations(schema, type);
             }
         ),
-        map((fields) => {
-            const queryType = new g.GraphQLObjectType({
-                name: "Query",
-                fields: {
-                    historical: {
-                        type: new g.GraphQLNonNull(
-                            new g.GraphQLObjectType({
-                                name: "historical",
-                                fields: fields,
-                            })
-                        ),
-                        description: "Contains all the queries that operate on historical data that might not be up to date",
-                        resolve: () => {
-                            return {};
-                        },
+        A.reduce({} as QueryMapping, (acc, curr) => {
+            const [info, fields] = curr;
+            const namespaceKey = pascalCase(info.namespace) + info.version;
+            return {
+                ...acc,
+                ...{
+                    [namespaceKey]: {
+                        ...acc[namespaceKey],
+                        ...fields,
                     },
                 },
+            };
+        }),
+        map((mapping) => {
+            const fields = {} as g.GraphQLFieldConfigMap<string, unknown>;
+            for (const [namespace, operations] of Object.entries(mapping)) {
+                fields[namespace] = {
+                    type: new g.GraphQLNonNull(
+                        new g.GraphQLObjectType({
+                            name: namespace,
+                            fields: operations,
+                        })
+                    ),
+                    resolve: () => {
+                        return {};
+                    },
+                };
+            }
+            return new g.GraphQLSchema({
+                query: new g.GraphQLObjectType({
+                    name: "Query",
+                    fields: {
+                        historical: {
+                            type: new g.GraphQLNonNull(
+                                new g.GraphQLObjectType({
+                                    name: "historical",
+                                    fields: fields,
+                                })
+                            ),
+                            description:
+                                "Contains all the queries that operate on historical data that might not be up to date",
+                            resolve: () => {
+                                return {};
+                            },
+                        },
+                    },
+                }),
             });
-            return new g.GraphQLSchema({ query: queryType });
         }),
         map((schema) => {
             return graphqlHTTP({

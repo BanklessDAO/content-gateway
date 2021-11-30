@@ -23,15 +23,15 @@ export type ApiKeys = {
  */
 export const createLoaders = (apiKeys: ApiKeys) =>
     [
-        // createCourseLoader(),
-        // createBountyLoader(),
-        // createBanklessPodcastLoader(apiKeys.youtubeApiKey),
-        // createBanklessWebsitePostLoader(apiKeys.ghostApiKey),
-        // createBANKAccountLoader(),
-        // createBANKTransactionLoader(),
-        // createBANKTransferLoader(),
-        // createPOAPEventLoader(),
-        // createPOAPTokenLoader(),
-        // createPOAPAccountLoader(),
-        // createPOAPTransferLoader(),
+        createCourseLoader(),
+        createBountyLoader(),
+        createBanklessPodcastLoader(apiKeys.youtubeApiKey),
+        createBanklessWebsitePostLoader(apiKeys.ghostApiKey),
+        createBANKAccountLoader(),
+        createBANKTransactionLoader(),
+        createBANKTransferLoader(),
+        createPOAPEventLoader(),
+        createPOAPTokenLoader(),
+        createPOAPAccountLoader(),
+        createPOAPTransferLoader(),
     ] as DataLoader<unknown>[];
