@@ -44,4 +44,4 @@ CREATE INDEX "JobSchedule_state_idx" ON "JobSchedule"("state");
 CREATE INDEX "JobLog_name_idx" ON "JobLog"("name");
 
 -- AddForeignKey
-ALTER TABLE "JobLog" ADD CONSTRAINT "JobLog_name_fkey" FOREIGN KEY ("name") REFERENCES "JobSchedule"("name") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "JobLog" ADD CONSTRAINT "JobLog_name_fkey" FOREIGN KEY ("name") REFERENCES "JobSchedule"("name") ON DELETE CASCADE ON UPDATE CASCADE;

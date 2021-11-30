@@ -6,7 +6,10 @@ import { Job } from ".";
 import { DatabaseError } from "./errors";
 
 export type JobRepository = {
+    findAll: () => T.Task<Array<Job>>;
     findJob: (info: SchemaInfo) => TO.TaskOption<Job | null>;
+    remove: (name: string) => TE.TaskEither<DatabaseError, void>;
+    removeAll: () => TE.TaskEither<DatabaseError, void>;
     upsertJob: (
         job: Job,
         note: string,

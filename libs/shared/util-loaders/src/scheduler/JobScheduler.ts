@@ -8,7 +8,7 @@ import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
 import { DateTime } from "luxon";
 import { AsyncTask, SimpleIntervalJob, ToadScheduler } from "toad-scheduler";
-import { DatabaseError, JobDescriptor } from ".";
+import { DatabaseError, JobDescriptor, RemoveError } from ".";
 import { LoadingResult } from "..";
 import { DataLoader } from "../DataLoader";
 import {
@@ -41,7 +41,7 @@ export type JobScheduler = {
     register: (
         loader: DataLoader<unknown>
     ) => TE.TaskEither<RegistrationError, void>;
-    remove: (name: string) => E.Either<RegistrationError, void>;
+    remove: (name: string) => TE.TaskEither<RemoveError, void>;
     /**
      * Schedules a new job. The given job must have a corresponding loader
      * registered with the scheduler.
@@ -178,15 +178,15 @@ class DefaultJobScheduler implements JobScheduler {
         this.scheduler.stop();
     }
 
-    remove(name: string): E.Either<SchedulerNotRunningError, void> {
+    remove(name: string): TE.TaskEither<RemoveError, void> {
         if (!this.running) {
-            return E.left(new SchedulerNotRunningError());
+            return TE.left(new SchedulerNotRunningError());
         }
         if (this.loaders.has(name)) {
             // TODO: we should also remove the job from the job repository
             this.loaders.delete(name);
         }
-        return E.right(undefined);
+        return this.jobRepository.remove(name);
     }
 
     private async executeScheduledJobs() {
@@ -420,9 +420,9 @@ export class JobSchedulerStub implements JobScheduler {
         this.loaders.push(loader);
         return TE.right(undefined);
     }
-    remove(name: string): E.Either<SchedulerNotRunningError, void> {
+    remove(name: string): TE.TaskEither<RemoveError, void> {
         this.removedLoaders.push(name);
-        return E.right(undefined);
+        return TE.right(undefined);
     }
     schedule(
         jobDescriptor: JobDescriptor

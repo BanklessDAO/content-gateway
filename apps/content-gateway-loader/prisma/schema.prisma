@@ -45,7 +45,7 @@ model JobLog {
   /// Additional freeform information
   info      Json?       @db.JsonB
   createdAt DateTime    @default(now()) @db.Timestamp(6)
-  job       JobSchedule @relation(fields: [name], references: [name])
+  job       JobSchedule @relation(fields: [name], references: [name], onDelete: Cascade)
 
   @@index([name])
 }

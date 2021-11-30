@@ -37,7 +37,7 @@ model Data {
   namespace  String    @db.VarChar(50)
   name       String    @db.VarChar(50)
   version    String    @db.VarChar(50)
-  schema     Schema    @relation(fields: [namespace, name, version], references: [namespace, name, version])
+  schema     Schema    @relation(fields: [namespace, name, version], references: [namespace, name, version], onDelete: Cascade)
 
   // upstreamId needs to be unique only within a specific version of a model
   @@unique([namespace, name, version, upstreamId])

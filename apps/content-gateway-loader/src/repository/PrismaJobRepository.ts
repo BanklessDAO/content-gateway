@@ -17,6 +17,7 @@ import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
+import { unknown } from "io-ts";
 
 export const createJobRepository = (prisma: PrismaClient): JobRepository => {
     const logger = createLogger("PrismaJobRepository");
@@ -85,6 +86,12 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
     };
 
     return {
+        findAll: () => {
+            return pipe(
+                async () => prisma.jobSchedule.findMany(),
+                T.map((jobSchedules) => jobSchedules.map(jobScheduleToJob))
+            );
+        },
         findJob: (info: SchemaInfo) => {
             return pipe(
                 TO.tryCatch(async () => {
@@ -98,6 +105,31 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
                 TO.map((data) => {
                     return data ? jobScheduleToJob(data) : null;
                 })
+            );
+        },
+        remove: (name: string) => {
+            return pipe(
+                TE.tryCatch(
+                    async () =>
+                        prisma.jobSchedule.delete({
+                            where: {
+                                name,
+                            },
+                        }),
+                    (err: unknown) => new DatabaseError(err)
+                ),
+                TE.map(() => undefined)
+            );
+        },
+        removeAll: () => {
+            return pipe(
+                TE.tryCatch(
+                    async () => {
+                        return prisma.jobSchedule.deleteMany({});
+                    },
+                    (err: unknown) => new DatabaseError(err)
+                ),
+                TE.map(() => undefined)
             );
         },
         upsertJob: upsertJob,

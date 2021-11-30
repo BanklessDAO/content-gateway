@@ -5,15 +5,24 @@ import {
 import { PrismaClient } from "@cgl/prisma";
 import { createLoaderRegistry } from "@domain/feature-loaders";
 import { createLogger, programError } from "@shared/util-fp";
-import { createJobScheduler, ScheduleMode } from "@shared/util-loaders";
+import {
+    createJobScheduler,
+    DEFAULT_CURSOR,
+    DEFAULT_LIMIT,
+    Job,
+    ScheduleMode,
+} from "@shared/util-loaders";
 import * as express from "express";
 import * as E from "fp-ts/Either";
+import * as TO from "fp-ts/TaskOption";
+import * as TE from "fp-ts/TaskEither";
 import { pipe } from "fp-ts/lib/function";
 import * as t from "io-ts";
 import { withMessage } from "io-ts-types";
 import { join } from "path";
 import { createJobRepository } from "../repository/PrismaJobRepository";
 import * as bodyParser from "body-parser";
+import { schemaInfoToString } from "@shared/util-schema";
 
 export const createApp = async (prisma: PrismaClient) => {
     const CGA_URL =
@@ -94,28 +103,29 @@ export const createApp = async (prisma: PrismaClient) => {
         limit: withMessage(t.number, () => "Limit must be a number"),
     });
 
+    const mapJobToJson = (job: Job) => ({
+        name: schemaInfoToString(job.info),
+        state: job.state,
+        scheduleMode: job.scheduleMode,
+        cursor: job.cursor,
+        limit: job.limit,
+        currentFailCount: job.currentFailCount,
+        scheduledAt: job.scheduledAt.getTime(),
+        previousScheduledAt: job.previousScheduledAt?.getTime(),
+        updatedAt: job.updatedAt.getTime(),
+    });
+
     // TODO: move these to the repo
     app.get("/api/rest/jobs", async (_, res) => {
-        const jobs = await prisma.jobSchedule.findMany({});
+        const jobs = await jobRepository.findAll()();
         res.send(
             jobs.map((job) => {
-                return {
-                    name: job.name,
-                    state: job.state,
-                    scheduleMode: job.scheduleMode,
-                    cursor: job.cursor,
-                    limit: job.limit,
-                    currentFailCount: job.currentFailCount,
-                    scheduledAt: job.scheduledAt.getTime(),
-                    previousScheduledAt: job.previousScheduledAt?.getTime(),
-                    updatedAt: job.updatedAt.getTime(),
-                };
+                return mapJobToJson(job);
             })
         );
     });
 
     app.post("/api/rest/jobs/", (req, res) => {
-        console.log(req.body);
         pipe(
             JobDescriptorParam.decode(req.body),
             E.fold(
@@ -127,23 +137,60 @@ export const createApp = async (prisma: PrismaClient) => {
                     );
                 },
                 (params) => {
-                    scheduler
-                        .schedule({
+                    return pipe(
+                        scheduler.schedule({
                             info: params.info,
                             scheduledAt: new Date(params.scheduledAt),
                             scheduleMode: params.scheduleMode,
                             cursor: params.cursor,
                             limit: params.limit,
-                        })()
-                        .then(() => {
-                            res.send("OK");
-                        })
-                        .catch((e) => {
-                            res.status(500).send(e);
-                        });
+                        }),
+                        TE.fold(
+                            (e) => async () => {
+                                res.status(500).send(e);
+                            },
+                            (job) => async () => {
+                                res.send(mapJobToJson(job));
+                            }
+                        )
+                    )();
                 }
             )
         );
+    });
+
+    app.get("/api/rest/jobs/reset", (req, res) => {
+        return pipe(
+            jobRepository.findAll(),
+            TE.fromTask,
+            TE.chainW((jobs) => {
+                return pipe(
+                    jobs.map((job) => {
+                        return pipe(
+                            scheduler.remove(schemaInfoToString(job.info)),
+                            TE.chain(() =>
+                                scheduler.schedule({
+                                    info: job.info,
+                                    scheduledAt: new Date(),
+                                    scheduleMode: ScheduleMode.BACKFILL,
+                                    cursor: DEFAULT_CURSOR,
+                                    limit: DEFAULT_LIMIT,
+                                })
+                            )
+                        );
+                    }),
+                    TE.sequenceArray
+                );
+            }),
+            TE.fold(
+                (e) => async () => {
+                    res.status(500).send(e);
+                },
+                (jobs) => async () => {
+                    res.send(jobs.map(mapJobToJson));
+                }
+            )
+        )();
     });
 
     app.get("/api/rest/jobs/:name", async (req, res) => {
@@ -193,6 +240,46 @@ export const createApp = async (prisma: PrismaClient) => {
                         .catch((e) => {
                             res.status(500).send(e);
                         });
+                }
+            )
+        );
+    });
+
+    app.get("/api/rest/jobs/:name/reset", async (req, res) => {
+        pipe(
+            NameParam.decode(req.params),
+            E.fold(
+                (errors) => {
+                    res.status(400).send(errors);
+                },
+                (params) => {
+                    const parts = params.name.split(".");
+                    return pipe(
+                        jobRepository.findJob({
+                            namespace: parts[0],
+                            name: parts[1],
+                            version: parts[2],
+                        }),
+                        TO.chain(TO.fromNullable),
+                        TE.fromTaskOption(() => new Error("Not found")),
+                        TE.chainW((job) =>
+                            scheduler.schedule({
+                                info: job.info,
+                                scheduledAt: new Date(),
+                                scheduleMode: ScheduleMode.BACKFILL,
+                                cursor: DEFAULT_CURSOR,
+                                limit: DEFAULT_LIMIT,
+                            })
+                        ),
+                        TE.fold(
+                            (e) => async () => {
+                                res.status(500).send(e);
+                            },
+                            (job) => async () => {
+                                res.send(mapJobToJson(job));
+                            }
+                        )
+                    )();
                 }
             )
         );

@@ -4,7 +4,7 @@ import {
     createBountyLoader,
     createCourseLoader,
     createPOAPAccountLoader,
-    createPOAPTokenLoader,
+    createPOAPTokenLoader
 } from ".";
 import { createBanklessPodcastLoader } from "./bankless-podcast";
 import { createBANKTransactionLoader } from "./bankless-token/BanklessTokenTransactionLoader";

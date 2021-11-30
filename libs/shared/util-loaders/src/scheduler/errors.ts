@@ -85,3 +85,5 @@ export type SchedulingError =
 export type RegistrationError =
     | SchedulerNotRunningError
     | LoaderInitializationError;
+
+export type RemoveError = SchedulerNotRunningError | DatabaseError;
