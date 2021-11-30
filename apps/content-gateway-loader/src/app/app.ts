@@ -166,18 +166,13 @@ export const createApp = async (prisma: PrismaClient) => {
             TE.chainW((jobs) => {
                 return pipe(
                     jobs.map((job) => {
-                        return pipe(
-                            scheduler.remove(schemaInfoToString(job.info)),
-                            TE.chain(() =>
-                                scheduler.schedule({
-                                    info: job.info,
-                                    scheduledAt: new Date(),
-                                    scheduleMode: ScheduleMode.BACKFILL,
-                                    cursor: DEFAULT_CURSOR,
-                                    limit: DEFAULT_LIMIT,
-                                })
-                            )
-                        );
+                        return scheduler.schedule({
+                            info: job.info,
+                            scheduledAt: new Date(),
+                            scheduleMode: ScheduleMode.BACKFILL,
+                            cursor: DEFAULT_CURSOR,
+                            limit: DEFAULT_LIMIT,
+                        });
                     }),
                     TE.sequenceArray
                 );

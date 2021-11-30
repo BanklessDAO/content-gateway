@@ -148,6 +148,7 @@ class DefaultJobScheduler implements JobScheduler {
                 if (maybeJob) {
                     job = {
                         ...maybeJob,
+                        ...jobDescriptor,
                         state: JobState.SCHEDULED,
                         updatedAt: new Date(),
                     };
