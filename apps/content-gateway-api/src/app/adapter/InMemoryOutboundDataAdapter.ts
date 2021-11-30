@@ -6,7 +6,7 @@ import {
     jsonPayloadCodec,
     mapCodecValidationError,
 } from "@shared/util-dto";
-import { createSchemaFromObject } from "@shared/util-schema";
+import { createSchemaFromObject, SchemaInfo } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 
@@ -29,6 +29,14 @@ export const createInMemoryOutboundDataAdapter = ({
                 createSchemaFromObject(schema),
                 TE.fromEither,
                 TE.chainW(contentGateway.register),
+                TE.chain(() => TE.of({}))
+            );
+        },
+        remove: (
+            info: SchemaInfo
+        ): TE.TaskEither<DataTransferError, Record<string, unknown>> => {
+            return pipe(
+                contentGateway.remove(info),
                 TE.chain(() => TE.of({}))
             );
         },

@@ -106,6 +106,19 @@ export const createPrismaSchemaRepository = (
                 TE.map(() => undefined)
             );
         },
+        remove: (info: SchemaInfo) => {
+            return pipe(
+                TE.tryCatch(
+                    () => {
+                        return prisma.schema.delete({
+                            where: { namespace_name_version: info },
+                        });
+                    },
+                    (e) => new UnknownError(e)
+                ),
+                TE.map(() => undefined)
+            );
+        },
         find: findSchema,
         findAll: () => {
             return pipe(
@@ -142,7 +155,9 @@ export const createPrismaSchemaRepository = (
                         return {
                             info: { namespace, name, version },
                             rowCount: stat._count._all,
-                            lastUpdated: (stat._max.createdAt ?? new Date()).getTime(),
+                            lastUpdated: (
+                                stat._max.createdAt ?? new Date()
+                            ).getTime(),
                         };
                     });
                 })

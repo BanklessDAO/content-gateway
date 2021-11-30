@@ -120,7 +120,10 @@ const APICourses = t.array(APICourse);
 
 type APICourses = t.TypeOf<typeof APICourses>;
 
-export class CourseLoader extends HTTPDataLoaderBase<APICourses, Course> {
+export class BanklessAcademyCourseLoader extends HTTPDataLoaderBase<
+    APICourses,
+    Course
+> {
     public info = INFO;
 
     protected batchSize = BATCH_SIZE;
@@ -139,6 +142,43 @@ export class CourseLoader extends HTTPDataLoaderBase<APICourses, Course> {
     protected mapResult(result: APICourses): Array<Course> {
         return result
             .map((course) => {
+                const slides = course.slides.map((slide) => {
+                    switch (slide.type) {
+                        case "LEARN":
+                            return {
+                                type: slide.type,
+                                title: slide.title,
+                                content: slide.content,
+                            };
+                        case "QUIZ":
+                            return {
+                                type: slide.type,
+                                title: slide.title,
+                                quiz: {
+                                    id: slide.quiz.id,
+                                    rightAnswerNumber:
+                                        slide.quiz.rightAnswerNumber,
+                                    answers: [
+                                        slide.quiz.answer_1,
+                                        slide.quiz.answer_2,
+                                        slide.quiz.answer_3,
+                                        slide.quiz.answer_4,
+                                    ].filter(notEmpty),
+                                },
+                            };
+                        case "QUEST":
+                            return {
+                                type: slide.type,
+                                title: slide.title,
+                                component: slide.component,
+                            };
+                        case "POAP":
+                            return {
+                                type: slide.type,
+                                title: slide.title,
+                            };
+                    }
+                });
                 try {
                     return {
                         id: course.notionId,
@@ -153,7 +193,7 @@ export class CourseLoader extends HTTPDataLoaderBase<APICourses, Course> {
                         name: course.name,
                         notionId: course.notionId,
                         slug: course.slug,
-                        slides: [],
+                        slides: slides,
                     };
                 } catch (e) {
                     this.logger.warn(`Processing Course failed`, e, course);
@@ -168,4 +208,5 @@ export class CourseLoader extends HTTPDataLoaderBase<APICourses, Course> {
     }
 }
 
-export const createCourseLoader: () => CourseLoader = () => new CourseLoader();
+export const createBanklessAcademyCourseLoader: () => BanklessAcademyCourseLoader =
+    () => new BanklessAcademyCourseLoader();

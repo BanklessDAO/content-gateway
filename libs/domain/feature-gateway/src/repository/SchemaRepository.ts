@@ -13,6 +13,8 @@ export type SchemaRegistrationError =
     | DatabaseError
     | RegisteredSchemaIncompatibleError;
 
+export type SchemaRemovalError = UnknownError | DatabaseError;
+
 export type SchemaStat = {
     info: SchemaInfo;
     rowCount: number;
@@ -25,6 +27,7 @@ export type SchemaStat = {
  */
 export type SchemaRepository = {
     register: (schema: Schema) => TE.TaskEither<SchemaRegistrationError, void>;
+    remove: (info: SchemaInfo) => TE.TaskEither<SchemaRemovalError, void>;
     find: (key: SchemaInfo) => TO.TaskOption<Schema>;
     findAll: () => T.Task<Array<Schema>>;
     loadStats(): T.Task<Array<SchemaStat>>;
@@ -48,6 +51,11 @@ export const createSchemaRepositoryStub = (
         ): TE.TaskEither<SchemaRegistrationError, void> => {
             const keyStr = schemaInfoToString(schema.info);
             map.set(keyStr, schema);
+            return TE.right(undefined);
+        },
+        remove: (info: SchemaInfo): TE.TaskEither<SchemaRemovalError, void> => {
+            const keyStr = schemaInfoToString(info);
+            map.delete(keyStr);
             return TE.right(undefined);
         },
         find: (key: SchemaInfo): TO.TaskOption<Schema> => {

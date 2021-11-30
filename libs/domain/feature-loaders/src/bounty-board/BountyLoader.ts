@@ -127,7 +127,7 @@ const APIBounty = t.intersection([
         submittedBy: APIDiscordUser,
         reviewedAt: t.string,
         reviewedBy: APIDiscordUser,
-        clamiedAt: t.string,
+        claimedAt: t.string,
         claimedBy: APIDiscordUser,
     }),
 ]);
@@ -184,8 +184,8 @@ export class BountyLoader extends HTTPDataLoaderBase<APIBounties, Bounty> {
                         status: bounty.status,
                         dueAt: Date.parse(bounty.dueAt),
                         discordMessageId: bounty.discordMessageId,
-                        claimedAt: bounty.clamiedAt
-                            ? Date.parse(bounty.clamiedAt)
+                        claimedAt: bounty.claimedAt
+                            ? Date.parse(bounty.claimedAt)
                             : undefined,
                         claimedBy: bounty.claimedBy
                             ? {

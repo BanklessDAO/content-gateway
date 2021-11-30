@@ -4,7 +4,7 @@ import {
     JsonPayload,
     post,
 } from "@shared/util-dto";
-import { SchemaJson } from "@shared/util-schema";
+import { SchemaInfo, SchemaJson } from "@shared/util-schema";
 import * as TE from "fp-ts/TaskEither";
 import * as t from "io-ts";
 
@@ -14,6 +14,9 @@ import * as t from "io-ts";
 export type OutboundDataAdapter = {
     register: (
         schema: SchemaJson
+    ) => TE.TaskEither<DataTransferError, Record<string, unknown>>;
+    remove: (
+        info: SchemaInfo
     ) => TE.TaskEither<DataTransferError, Record<string, unknown>>;
     send: (
         payload: JsonPayload
@@ -27,21 +30,28 @@ export const createRESTAdapter = (url: string): OutboundDataAdapter => {
     return {
         register: (schema: SchemaJson) => {
             return post({
-                url: `${url}/api/rest/register`,
+                url: `${url}/api/rest/schema/register`,
                 input: schema,
+                codec: t.UnknownRecord,
+            });
+        },
+        remove: (info: SchemaInfo) => {
+            return post({
+                url: `${url}/api/rest/schema/remove`,
+                input: info,
                 codec: t.UnknownRecord,
             });
         },
         send: (payload: JsonPayload) => {
             return post({
-                url: `${url}/api/rest/receive`,
+                url: `${url}/api/rest/schema/receive`,
                 input: payload,
                 codec: t.UnknownRecord,
             });
         },
         sendBatch: (payload: JsonBatchPayload) => {
             return post({
-                url: `${url}/api/rest/receive-batch`,
+                url: `${url}/api/rest/schema/receive-batch`,
                 input: payload,
                 codec: t.UnknownRecord,
             });
@@ -66,6 +76,9 @@ export const createOutboundAdapterStub = (): OutboundDataAdapterStub => {
         payloads,
         register: (schema) => {
             schemas.push(schema);
+            return TE.right({});
+        },
+        remove: (info) => {
             return TE.right({});
         },
         send: (payload) => {

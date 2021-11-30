@@ -45,7 +45,7 @@ export const createGraphQLAPIService = async (
     deps: Deps
 ): Promise<Middleware> => {
     let currentMiddleware = await createGraphQLMiddleware(deps);
-    deps.schemaRepository.onRegister(() => {
+    deps.schemaRepository.onChange(() => {
         createGraphQLMiddleware(deps).then((middleware) => {
             currentMiddleware = middleware;
         });

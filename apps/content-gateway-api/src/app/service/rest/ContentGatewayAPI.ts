@@ -5,6 +5,7 @@ import {
     mapCodecValidationError,
     ProgramError,
     programErrorCodec,
+    schemaInfoCodec,
 } from "@shared/util-dto";
 import { createLogger } from "@shared/util-fp";
 import { createSchemaFromObject } from "@shared/util-schema";
@@ -12,6 +13,7 @@ import * as express from "express";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/lib/Task";
 import * as TE from "fp-ts/lib/TaskEither";
+import * as E from "fp-ts/Either";
 
 const logger = createLogger("ContentGatewayAPI");
 
@@ -37,7 +39,7 @@ export const generateContentGatewayAPI = async ({
 
     const router = express.Router();
 
-    router.get("/stats", async (_, res) => {
+    router.get("/schema/stats", async (_, res) => {
         await pipe(
             contentGateway.loadStats(),
             TE.fromTask,
@@ -45,7 +47,28 @@ export const generateContentGatewayAPI = async ({
         )();
     });
 
-    router.post("/register", async (req, res) => {
+    router.post("/schema/remove/", async (req, res) => {
+        pipe(
+            schemaInfoCodec.decode(req.body),
+            E.fold(
+                (errors) => {
+                    res.status(400).send(
+                        errors.map(
+                            (e) => `${e.value} was invalid: ${e.message}`
+                        )
+                    );
+                },
+                (params) => {
+                    return pipe(
+                        contentGateway.remove(params),
+                        sendResponse(res, "Remove schema")
+                    )();
+                }
+            )
+        );
+    });
+
+    router.post("/schema/register", async (req, res) => {
         await pipe(
             createSchemaFromObject(req.body),
             TE.fromEither,
@@ -55,7 +78,7 @@ export const generateContentGatewayAPI = async ({
         )();
     });
 
-    router.post("/receive", async (req, res) => {
+    router.post("/schema/receive", async (req, res) => {
         return pipe(
             jsonPayloadCodec.decode(req.body),
             mapCodecValidationError("Validating json payload failed"),
@@ -66,7 +89,7 @@ export const generateContentGatewayAPI = async ({
         )();
     });
 
-    router.post("/receive-batch", async (req, res) => {
+    router.post("/schema/receive-batch", async (req, res) => {
         logger.info("Receiving batch...");
         await pipe(
             jsonBatchPayloadCodec.decode(req.body),

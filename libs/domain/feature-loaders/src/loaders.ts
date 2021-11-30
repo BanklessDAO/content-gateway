@@ -2,7 +2,7 @@ import { DataLoader } from "@shared/util-loaders";
 import {
     createBANKAccountLoader,
     createBountyLoader,
-    createCourseLoader,
+    createBanklessAcademyCourseLoader,
     createPOAPAccountLoader,
     createPOAPTokenLoader
 } from ".";
@@ -23,7 +23,7 @@ export type ApiKeys = {
  */
 export const createLoaders = (apiKeys: ApiKeys) =>
     [
-        createCourseLoader(),
+        createBanklessAcademyCourseLoader(),
         createBountyLoader(),
         createBanklessPodcastLoader(apiKeys.youtubeApiKey),
         createBanklessWebsitePostLoader(apiKeys.ghostApiKey),

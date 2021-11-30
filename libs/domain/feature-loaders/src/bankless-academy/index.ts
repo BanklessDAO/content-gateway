@@ -1,1 +1,1 @@
-export * from "./CourseLoader";
+export * from "./BanklessAcademyCourseLoader";

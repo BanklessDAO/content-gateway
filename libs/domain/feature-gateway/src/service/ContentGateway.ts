@@ -1,9 +1,9 @@
-import { Payload, Schema } from "@shared/util-schema";
+import { Payload, Schema, SchemaInfo } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import * as T from "fp-ts/Task";
 import { BatchDataReceivingError } from ".";
-import { DataRepository, SchemaRegistrationError, SchemaRepository, SchemaStat } from "..";
+import { DataRepository, SchemaRegistrationError, SchemaRemovalError, SchemaRepository, SchemaStat } from "..";
 import { DataReceivingError } from "./errors";
 
 /**
@@ -11,6 +11,10 @@ import { DataReceivingError } from "./errors";
  */
 export type ContentGateway = {
     loadStats: () => T.Task<Array<SchemaStat>>;
+    /**
+     * Removes a schema and **deletes all data** associated with it.
+     */
+    remove: (info: SchemaInfo) => TE.TaskEither<SchemaRemovalError, void>;
     /**
      * Registers a new schema shapshot with the Content Gateway.
      */
@@ -48,6 +52,9 @@ export const createContentGateway = ({
         loadStats: () => schemaRepository.loadStats(),
         register: (schema: Schema) => {
             return schemaRepository.register(schema);
+        },
+        remove: (info: SchemaInfo) => {
+            return schemaRepository.remove(info);
         },
         receive: <T>(payload: Payload<T>) => {
             const { info, data } = payload;
