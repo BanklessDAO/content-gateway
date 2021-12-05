@@ -1,25 +1,31 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     ContentGatewayClient,
-    createContentGatewayClient
+    createContentGatewayClient,
 } from "@banklessdao/content-gateway-client";
 import { PrismaClient } from "@cga/prisma";
 import {
     ContentGateway,
     createContentGateway,
-    DataRepository
+    DataRepository,
+    SchemaRepository,
 } from "@domain/feature-gateway";
 import { createLogger, programError } from "@shared/util-fp";
 import * as express from "express";
+import { graphqlHTTP } from "express-graphql";
 import { join } from "path";
 import { Logger } from "tslog";
 import {
     createGraphQLAPIService,
     createInMemoryOutboundDataAdapter,
     ObservableSchemaRepository,
-    toObservableSchemaRepository
+    toObservableSchemaRepository,
 } from ".";
 import { createPrismaDataRepository, createPrismaSchemaRepository } from "./";
 import { generateContentGatewayAPI } from "./service";
+import * as g from "graphql";
+import { LiveLoader } from "./live-loaders/LiveLoader";
+import { liveLoaders } from "./live-loaders";
 
 export type ApplicationContext = {
     logger: Logger;
@@ -79,7 +85,13 @@ export const createApp = async (prisma: PrismaClient) => {
     };
 
     app.use("/api/rest/", await generateContentGatewayAPI(context));
-    app.use("/api/graphql/", await createGraphQLAPIService(context));
+    app.use("/api/graphql/historical", await createGraphQLAPIService(context));
+    app.use(
+        "/api/graphql/live",
+        createGraphQLLiveService({
+            liveLoaders: liveLoaders,
+        })
+    );
 
     const clientBuildPath = join(__dirname, "../content-gateway-api-frontend");
     if (addFrontend || isProd) {
@@ -90,4 +102,25 @@ export const createApp = async (prisma: PrismaClient) => {
     }
 
     return app;
+};
+
+type Deps = {
+    readonly liveLoaders: LiveLoader<any, any>[];
+};
+
+export const createGraphQLLiveService = (deps: Deps) => {
+    const fields = deps.liveLoaders
+        .map((loader) => loader.configure())
+        .reduce((acc, next) => {
+            return { ...acc, ...next };
+        }, {} as g.GraphQLFieldConfigMap<string, unknown>);
+    return graphqlHTTP({
+        schema: new g.GraphQLSchema({
+            query: new g.GraphQLObjectType({
+                name: "Query",
+                fields: fields,
+            }),
+        }),
+        graphiql: true,
+    });
 };

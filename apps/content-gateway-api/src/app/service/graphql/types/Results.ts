@@ -2,7 +2,8 @@ import * as g from "graphql";
 
 const pageInfo = new g.GraphQLObjectType({
     name: "PageInfo",
-    description: "Pagination uses the _id field to paginate startCursor and endCursor point to the first and last element's _id in the result set.",
+    description:
+        "Pagination uses the _id field to paginate startCursor and endCursor point to the first and last element's _id in the result set.",
     fields: {
         hasNextPage: {
             type: new g.GraphQLNonNull(g.GraphQLBoolean),
@@ -25,27 +26,55 @@ export type PageInfo = {
     endCursor: string;
 };
 
-export const createResultsType = (type: g.GraphQLObjectType) =>
+export const createResultType = (type: g.GraphQLObjectType) =>
     new g.GraphQLNonNull(
         new g.GraphQLObjectType({
-            name: `${type.name}Results`,
-            description: "Wrapper object that contains the results of the query and also the possible errors, notes, and a page info object. Check PageInfo to learn how to perform pagination.",
+            name: `${type.name}Result`,
+            description:
+                "Wrapper object that contains the result of the query and also the possible errors and notes.",
             fields: () => ({
-                pageInfo: {
-                    type: g.GraphQLNonNull(pageInfo),
-                    description: "Contains information necessary for pagination"
-                },
                 data: {
-                    type: new g.GraphQLNonNull(
-                        new g.GraphQLList(new g.GraphQLNonNull(type))
-                    ),
-                    description: "Contains the results of the query."
+                    type: type,
+                    description: "Contains the result of the query.",
                 },
                 notes: {
                     type: new g.GraphQLNonNull(
                         new g.GraphQLList(g.GraphQLString)
                     ),
-                    description: "Additional information about the query"
+                    description: "Additional information about the query",
+                },
+                errors: {
+                    type: new g.GraphQLNonNull(
+                        new g.GraphQLList(g.GraphQLString)
+                    ),
+                },
+            }),
+        })
+    );
+
+export const createResultsType = (type: g.GraphQLObjectType) =>
+    new g.GraphQLNonNull(
+        new g.GraphQLObjectType({
+            name: `${type.name}Results`,
+            description:
+                "Wrapper object that contains the results of the query and also the possible errors, notes, and a page info object. Check PageInfo to learn how to perform pagination.",
+            fields: () => ({
+                pageInfo: {
+                    type: g.GraphQLNonNull(pageInfo),
+                    description:
+                        "Contains information necessary for pagination",
+                },
+                data: {
+                    type: new g.GraphQLNonNull(
+                        new g.GraphQLList(new g.GraphQLNonNull(type))
+                    ),
+                    description: "Contains the results of the query.",
+                },
+                notes: {
+                    type: new g.GraphQLNonNull(
+                        new g.GraphQLList(g.GraphQLString)
+                    ),
+                    description: "Additional information about the query",
                 },
                 errors: {
                     type: new g.GraphQLNonNull(

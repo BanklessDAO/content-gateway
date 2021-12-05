@@ -75,7 +75,7 @@ describe("Given a content gateway api", () => {
     it("When a valid schema is sent, Then it registers", async () => {
         const schema = extractRight(createSchemaFromType(userInfo, User));
         const result = await request(app)
-            .post("/register")
+            .post("/schema/register")
             .send(schema.toJson())
             .accept("text/plain")
             .expect(200);
@@ -86,7 +86,7 @@ describe("Given a content gateway api", () => {
 
     it("When an invalid schema is sent, Then it fails", async () => {
         const result = await request(app)
-            .post("/register")
+            .post("/schema/register")
             .send({ hey: "ho" })
             .expect(500);
 
@@ -110,7 +110,7 @@ describe("Given a content gateway api", () => {
 
     it("When a valid payload is sent, Then it is saved properly", async () => {
         const result = await request(app)
-            .post("/receive")
+            .post("/schema/receive")
             .send({
                 info: userInfo,
                 cursor: DEFAULT_CURSOR,
@@ -125,7 +125,7 @@ describe("Given a content gateway api", () => {
 
     it("When an invalid payload is sent, Then it fails", async () => {
         const result = await request(app)
-            .post("/receive")
+            .post("/schema/receive")
             .send({ hey: "ho" })
             .expect(500);
 
@@ -146,7 +146,7 @@ describe("Given a content gateway api", () => {
     it("When a valid batch payload is sent, Then it is saved properly", async () => {
         const users = [generateUser(), generateUser()];
         const result = await request(app)
-            .post("/receive-batch")
+            .post("/schema/receive-batch")
             .send({
                 info: userInfo,
                 cursor: DEFAULT_CURSOR,
@@ -161,7 +161,7 @@ describe("Given a content gateway api", () => {
 
     it("When an invalid batch payload is sent, Then it fails", async () => {
         const result = await request(app)
-            .post("/receive-batch")
+            .post("/schema/receive-batch")
             .send({
                 info: userInfo,
                 cursor: 0,

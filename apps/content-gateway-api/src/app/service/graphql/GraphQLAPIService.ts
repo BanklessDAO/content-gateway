@@ -21,7 +21,7 @@ import { pascalCase } from "pascal-case";
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
 
 export type Middleware = (
-    readonlyrequest: Request,
+    request: Request,
     response: Response
 ) => Promise<void>;
 
@@ -259,21 +259,7 @@ const createGraphQLMiddleware = async ({
             return new g.GraphQLSchema({
                 query: new g.GraphQLObjectType({
                     name: "Query",
-                    fields: {
-                        historical: {
-                            type: new g.GraphQLNonNull(
-                                new g.GraphQLObjectType({
-                                    name: "historical",
-                                    fields: fields,
-                                })
-                            ),
-                            description:
-                                "Contains all the queries that operate on historical data that might not be up to date",
-                            resolve: () => {
-                                return {};
-                            },
-                        },
-                    },
+                    fields: fields,
                 }),
             });
         }),
