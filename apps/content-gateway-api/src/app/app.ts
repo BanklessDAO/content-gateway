@@ -85,9 +85,9 @@ export const createApp = async (prisma: PrismaClient) => {
     };
 
     app.use("/api/rest/", await generateContentGatewayAPI(context));
-    app.use("/api/graphql/historical", await createGraphQLAPIService(context));
+    app.use("/api/graphql/", await createGraphQLAPIService(context));
     app.use(
-        "/api/graphql/live",
+        "/api/graphql-live",
         createGraphQLLiveService({
             liveLoaders: liveLoaders,
         })
