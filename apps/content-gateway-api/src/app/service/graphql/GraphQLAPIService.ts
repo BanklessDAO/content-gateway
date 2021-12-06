@@ -259,7 +259,21 @@ const createGraphQLMiddleware = async ({
             return new g.GraphQLSchema({
                 query: new g.GraphQLObjectType({
                     name: "Query",
-                    fields: fields,
+                    fields: {
+                        historical: {
+                            type: new g.GraphQLNonNull(
+                                new g.GraphQLObjectType({
+                                    name: "historical",
+                                    fields: fields,
+                                })
+                            ),
+                            description:
+                                "Contains all the queries that operate on historical data that might not be up to date",
+                            resolve: () => {
+                                return {};
+                            },
+                        },
+                    },
                 }),
             });
         }),
