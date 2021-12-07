@@ -1,9 +1,16 @@
-import { PrismaClient } from "@cga/prisma";
 import { createLogger, programError } from "@shared/util-fp";
+import { MongoClient } from "mongodb";
 import { createApp } from "./app/";
 
 const logger = createLogger("main");
-const prisma = new PrismaClient();
+
+const url =
+    process.env.MONGO_CGA_URL ?? programError("You must specify MONGO_CGA_URL");
+const dbName =
+    process.env.MONGO_CGA_USER ??
+    programError("You must specify MONGO_CGA_USER");
+
+const mongoClient = new MongoClient(url);
 
 async function main() {
     const port =
@@ -11,7 +18,9 @@ async function main() {
         process.env.CGA_PORT ||
         programError("You must specify either PORT or CGA_PORT");
 
-    const app = await createApp(prisma);
+    await mongoClient.connect();
+    await mongoClient.db("admin").command({ ping: 1 });
+    const app = await createApp({ dbName, mongoClient });
 
     const server = app.listen(port, () => {
         console.log(`Listening at http://localhost:${port}`);
@@ -25,5 +34,5 @@ async function main() {
 main()
     .catch((err) => logger.error(err))
     .finally(() => {
-        prisma.$disconnect();
+        mongoClient.close();
     });

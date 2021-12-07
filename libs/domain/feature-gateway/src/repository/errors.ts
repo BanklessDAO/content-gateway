@@ -28,24 +28,6 @@ export class DatabaseError extends ProgramErrorBase<"DatabaseError"> {
     }
 }
 
-export class UnknownError extends ProgramErrorBase<"UnknownError"> {
-    public unknownCause: unknown;
-    constructor(unknownCause: unknown) {
-        super({
-            _tag: "UnknownError",
-            message: "Some unknown error happened. This is probably a bug.",
-            details:
-                unknownCause instanceof Error
-                    ? {
-                          name: unknownCause.name,
-                          message: unknownCause.message,
-                      }
-                    : {},
-        });
-        this.unknownCause = unknownCause;
-    }
-}
-
 export class MissingSchemaError extends ProgramErrorBase<"MissingSchemaError"> {
     public info: SchemaInfo;
     constructor(info: SchemaInfo) {

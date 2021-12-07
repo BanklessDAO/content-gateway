@@ -52,16 +52,23 @@ export class GenericProgramError extends ProgramErrorBase<string> {
     }
 }
 export class UnknownError extends ProgramErrorBase<"UnknownError"> {
-    private e: unknown;
-    constructor(e: unknown) {
+    public unknownCause: unknown;
+    constructor(unknownCause: unknown) {
+        console.log(unknownCause);
         super({
             _tag: "UnknownError",
-            message:
-                e instanceof Error
-                    ? e.message
-                    : `An unknown error happened: ${e}`,
+            message: "Some unknown error happened. This is probably a bug.",
+            details:
+                unknownCause instanceof Error
+                    ? {
+                          name: unknownCause.name,
+                          message: unknownCause.message,
+                      }
+                    : {
+                          unknownCause: String(unknownCause),
+                      },
         });
-        this.e = e;
+        this.unknownCause = unknownCause;
     }
 }
 

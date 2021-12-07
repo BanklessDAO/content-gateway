@@ -11,12 +11,12 @@ import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
+import { pascalCase } from "pascal-case";
 import * as pluralize from "pluralize";
 import { MAX_ITEMS } from "./constants";
 import { ObservableSchemaRepository } from "./decorator";
 import { AnyFilter, createFiltersFor } from "./types/Filters";
 import { createResultsType, Results } from "./types/Results";
-import { pascalCase } from "pascal-case";
 
 type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
 
@@ -60,7 +60,7 @@ const mapFilters = (from: Record<string, AnyFilter>): Filter[] => {
         const [fieldName, filter] = next;
         Object.entries(filter).forEach(([filterType, value]) => {
             acc.push({
-                fieldPath: [fieldName],
+                fieldPath: fieldName,
                 type: filterType as FilterType,
                 value: value,
             });
@@ -78,9 +78,10 @@ const createGraphQLMiddleware = async ({
     const str = schemas.map((schema) => schemaInfoToString(schema.info)).join();
     logger.info(`Current schemas are: ${str}`);
 
-    const findById = async (id: bigint) => {
+    const findById = async (info: SchemaInfo, id: bigint) => {
         return pipe(
-            dataRepository.findById(id),
+            // TODO! bigint 👇
+            dataRepository.findById(info, id.toString()),
             TO.map((data) => data.record),
             TO.getOrElse(() => T.of({} as Record<string, unknown>))
         )();
@@ -106,7 +107,7 @@ const createGraphQLMiddleware = async ({
         return pipe(
             dataRepository.findByQuery({
                 info: schema.info,
-                cursor: after ? BigInt(after) : undefined,
+                cursor: after ? after : undefined,
                 limit: limit,
                 where: where ?? [],
             }),
@@ -161,8 +162,9 @@ const createGraphQLMiddleware = async ({
         schema: Schema,
         type: g.GraphQLObjectType<unknown, unknown>
     ): [SchemaInfo, g.GraphQLFieldConfigMap<string, unknown>] => {
+        const info = schema.info;
         return [
-            schema.info,
+            info,
             {
                 [type.name]: {
                     type: type,
@@ -173,7 +175,7 @@ const createGraphQLMiddleware = async ({
                         const { id } = args as {
                             id: bigint;
                         };
-                        return findById(id);
+                        return findById(info, id);
                     },
                 },
                 [pluralize.plural(type.name)]: {

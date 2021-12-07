@@ -1,17 +1,28 @@
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
-import { PrismaClient } from "@cga/prisma";
 import {
+    DataRepository,
     Entry,
     FilterType,
     SchemaValidationError,
+    SinglePayload,
 } from "@domain/feature-gateway";
 import { GenericProgramError } from "@shared/util-dto";
-import { extractLeft, extractRight } from "@shared/util-fp";
-import { createSchemaFromType, SchemaInfo } from "@shared/util-schema";
+import { extractLeft, extractRight, programError } from "@shared/util-fp";
+import {
+    createSchemaFromType,
+    SchemaInfo,
+    schemaInfoToString,
+} from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as O from "fp-ts/lib/Option";
+import { Collection, Db, MongoClient } from "mongodb";
 import { v4 as uuid } from "uuid";
-import { createPrismaDataRepository, createPrismaSchemaRepository } from ".";
+import {
+    createMongoDataRepository,
+    createMongoSchemaRepository,
+    Data,
+    SCHEMAS_COLLECTION_NAME,
+} from ".";
 
 @AdditionalProperties(false)
 class Address {
@@ -29,47 +40,93 @@ const addressInfo = {
     version: "V1",
 };
 
-const prisma = new PrismaClient({
-    // log: ["query"],
-});
+const url =
+    process.env.MONGO_CGA_URL ?? programError("MONGO_CGA_URL is missing");
+const dbName =
+    process.env.MONGO_CGA_USER ?? programError("MONGO_CGA_USER is missing");
 
-describe("Given a Prisma data storage", () => {
-    const schemaRepository = createPrismaSchemaRepository(prisma);
-    const storage = createPrismaDataRepository(prisma, schemaRepository);
+describe("Given a Mongo data storage", () => {
+    let target: DataRepository;
+    let mongoClient: MongoClient;
+    let db: Db;
+    let schemas: Collection;
+
+    beforeAll(async () => {
+        mongoClient = new MongoClient(url);
+        await mongoClient.connect();
+        db = mongoClient.db(dbName);
+        schemas = db.collection(SCHEMAS_COLLECTION_NAME);
+
+        const schemaRepository = await createMongoSchemaRepository({
+            dbName,
+            mongoClient,
+        });
+
+        target = createMongoDataRepository({
+            dbName,
+            mongoClient,
+            schemaRepository,
+        });
+    });
+
+    afterAll(async () => {
+        await db.dropDatabase();
+        await mongoClient.close();
+    });
+
     const schema = extractRight(createSchemaFromType(addressInfo, Address));
 
     const prepareTempSchema = async (version: string) => {
+        const info = {
+            ...addressInfo,
+            version: version,
+        };
         const tempSchema = {
             ...schema,
-            info: {
-                ...addressInfo,
-                version: version,
-            },
+            info: info,
         };
-        await prisma.schema.create({
-            data: {
-                ...{
-                    ...tempSchema.info,
-                },
-                jsonSchema: tempSchema.jsonSchema,
-            },
+        await schemas.insertOne({
+            key: schemaInfoToString(info),
+            jsonSchema: tempSchema.jsonSchema,
+            createdAt: new Date(),
+            updatedAt: new Date(),
         });
         return tempSchema;
+    };
+
+    const randomInfo = () => ({
+        namespace: uuid(),
+        name: uuid(),
+        version: uuid(),
+    });
+
+    const storeRecord = async (payload: SinglePayload): Promise<Entry> => {
+        await target.store(payload)();
+        const { info, record } = payload;
+        const coll = db.collection<Data>(schemaInfoToString(info));
+        const entry =
+            (await coll.findOne({ id: record.id as string })) ??
+            programError("Data not found");
+        return {
+            _id: entry._id.toString(),
+            id: entry.id,
+            record: entry.data,
+        };
     };
 
     const prepareAddresses = async (info: SchemaInfo, count: number) => {
         const result = [] as Entry[];
         for (let i = 0; i < count; i++) {
+            const id = uuid();
             const address = {
                 info: info,
                 record: {
-                    id: uuid(),
+                    id: id,
                     name: `Some Street ${i}`,
                     num: i,
                 },
             };
-            const data = extractRight(await storage.store(address)());
-            result.push(data);
+            result.push(await storeRecord(address));
         }
         return result;
     };
@@ -78,23 +135,24 @@ describe("Given a Prisma data storage", () => {
         it("Then it is found when there is an entry with the given id", async () => {
             const version = uuid();
             const tempSchema = await prepareTempSchema(version);
+            const info = tempSchema.info;
             const address = {
-                info: tempSchema.info,
+                info: info,
                 record: {
                     id: uuid(),
                     name: `Some Street`,
                     num: 1,
                 },
             };
-            const data = extractRight(await storage.store(address)());
+            const data = await storeRecord(address);
 
-            const result = await storage.findById(data.id)();
+            const result = await target.findById(info, data.id)();
 
             expect(result).toEqual(O.some(data));
         });
 
         it("Then it is not found when there isn't an entry with the given id", async () => {
-            const result = await storage.findById(BigInt(2))();
+            const result = await target.findById(randomInfo(), uuid())();
             expect(result).toEqual(O.none);
         });
     });
@@ -112,10 +170,10 @@ describe("Given a Prisma data storage", () => {
                 },
             };
 
-            const data = extractRight(await storage.store(item)());
+            const data = await storeRecord(item);
 
             const result = extractRight(
-                await storage.findBySchema({
+                await target.findByQuery({
                     limit: 2,
                     info: tempSchema.info,
                 })()
@@ -123,6 +181,7 @@ describe("Given a Prisma data storage", () => {
 
             expect(result.entries).toEqual([
                 {
+                    _id: data._id.toString(),
                     id: data.id,
                     record: data.record,
                 },
@@ -134,7 +193,7 @@ describe("Given a Prisma data storage", () => {
             const tempSchema = await prepareTempSchema(version);
 
             const result = extractLeft(
-                await storage.store({
+                await target.store({
                     info: tempSchema.info,
                     record: {
                         name: "Some Street 2",
@@ -160,7 +219,7 @@ describe("Given a Prisma data storage", () => {
             const tempSchema = await prepareTempSchema(version);
 
             const result = extractLeft(
-                await storage.store({
+                await target.store({
                     info: tempSchema.info,
                     record: {
                         id: uuid(),
@@ -201,13 +260,13 @@ describe("Given a Prisma data storage", () => {
                 },
             ];
 
-            await storage.storeBulk({
+            await target.storeBulk({
                 info: tempSchema.info,
                 records: records,
             })();
 
             const result = extractRight(
-                await storage.findBySchema({
+                await target.findByQuery({
                     limit: 10,
                     info: tempSchema.info,
                 })()
@@ -228,7 +287,7 @@ describe("Given a Prisma data storage", () => {
                     num: 1,
                 },
             };
-            await storage.store(duplicate)();
+            await target.store(duplicate)();
 
             const records = [
                 {
@@ -242,13 +301,13 @@ describe("Given a Prisma data storage", () => {
                 },
             ];
 
-            await storage.storeBulk({
+            await target.storeBulk({
                 info: info,
                 records: records,
             })();
 
             const result = extractRight(
-                await storage.findBySchema({
+                await target.findByQuery({
                     limit: 10,
                     info: tempSchema.info,
                 })()
@@ -265,8 +324,8 @@ describe("Given a Prisma data storage", () => {
             const addresses = await prepareAddresses(tempSchema.info, 2);
 
             const result = extractRight(
-                await storage.findBySchema({
-                    cursor: addresses[0].id,
+                await target.findByQuery({
+                    cursor: addresses[0]._id,
                     limit: 10,
                     info: tempSchema.info,
                 })()
@@ -274,6 +333,7 @@ describe("Given a Prisma data storage", () => {
 
             expect(result.entries).toEqual([
                 {
+                    _id: addresses[1]._id.toString(),
                     id: addresses[1].id,
                     record: addresses[1].record,
                 },
@@ -286,7 +346,7 @@ describe("Given a Prisma data storage", () => {
             const addresses = await prepareAddresses(tempSchema.info, 2);
 
             const result = extractRight(
-                await storage.findBySchema({
+                await target.findByQuery({
                     limit: 10,
                     info: tempSchema.info,
                 })()
@@ -294,6 +354,7 @@ describe("Given a Prisma data storage", () => {
 
             expect(result.entries).toEqual(
                 addresses.map((a) => ({
+                    _id: a._id,
                     id: a.id,
                     record: a.record,
                 }))
@@ -303,7 +364,7 @@ describe("Given a Prisma data storage", () => {
         it("Then when there is no data, an empty array is returned", async () => {
             const tempSchema = await prepareTempSchema(uuid());
             const result = extractRight(
-                await storage.findBySchema({
+                await target.findByQuery({
                     limit: 10,
                     info: tempSchema.info,
                 })()
@@ -314,15 +375,15 @@ describe("Given a Prisma data storage", () => {
     });
 
     describe("When querying data by filters", () => {
-        it("Then it works without operators", async () => {
+        it("Then it works without filters", async () => {
             const tempSchema = await prepareTempSchema(uuid());
             const first = await prepareAddresses(tempSchema.info, 2);
 
             const addresses = await prepareAddresses(tempSchema.info, 2);
 
             const result = extractRight(
-                await storage.findByQuery({
-                    cursor: first[1].id,
+                await target.findByQuery({
+                    cursor: first[1]._id,
                     limit: 2,
                     info: tempSchema.info,
                 })()
@@ -330,42 +391,40 @@ describe("Given a Prisma data storage", () => {
 
             expect(result.entries).toEqual(
                 addresses.map((a) => ({
+                    _id: a._id,
                     id: a.id,
                     record: a.record,
                 }))
             );
         });
 
-        it("Then it works with the contains operator", async () => {
+        it("Then it works with the contains filter", async () => {
             const tempSchema = await prepareTempSchema(uuid());
 
-            const data0 = extractRight(
-                await storage.store({
-                    info: tempSchema.info,
-                    record: {
-                        id: uuid(),
-                        name: "Hello World A",
-                        num: 1,
-                    },
-                })()
-            );
-            const data1 = extractRight(
-                await storage.store({
-                    info: tempSchema.info,
-                    record: {
-                        id: uuid(),
-                        name: "Hello World B",
-                        num: 1,
-                    },
-                })()
-            );
+            const data0 = await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "Hello World A",
+                    num: 1,
+                },
+            });
+
+            const data1 = await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "Hello World B",
+                    num: 1,
+                },
+            });
 
             const result = extractRight(
-                await storage.findByQuery({
+                await target.findByQuery({
                     limit: 2,
                     where: [
                         {
-                            fieldPath: ["name"],
+                            fieldPath: "name",
                             type: FilterType.contains,
                             value: "World",
                         },
@@ -375,6 +434,7 @@ describe("Given a Prisma data storage", () => {
             );
 
             const expected = [data0, data1].map((d) => ({
+                _id: d._id,
                 id: d.id,
                 record: d.record,
             }));
@@ -382,34 +442,32 @@ describe("Given a Prisma data storage", () => {
             expect(result.entries).toEqual(expected);
         });
 
-        it("Then it works with the greater than or equal operator", async () => {
+        it("Then it works with the greater than or equal filter", async () => {
             const tempSchema = await prepareTempSchema(uuid());
 
-            const data0 = extractRight(
-                await storage.store({
-                    info: tempSchema.info,
-                    record: {
-                        id: uuid(),
-                        name: "Hello World A",
-                        num: 3,
-                    },
-                })()
-            );
-            await storage.store({
+            const data0 = await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "Hello World A",
+                    num: 3,
+                },
+            });
+            await storeRecord({
                 info: tempSchema.info,
                 record: {
                     id: uuid(),
                     name: "Hello World B",
                     num: 1,
                 },
-            })();
+            });
 
             const result = extractRight(
-                await storage.findByQuery({
+                await target.findByQuery({
                     limit: 2,
                     where: [
                         {
-                            fieldPath: ["num"],
+                            fieldPath: "num",
                             type: FilterType.gte,
                             value: 2,
                         },
@@ -420,26 +478,25 @@ describe("Given a Prisma data storage", () => {
 
             expect(result.entries).toEqual([
                 {
+                    _id: data0._id,
                     id: data0.id,
                     record: data0.record,
                 },
             ]);
         });
 
-        it("Then it works with the less than or equal operator", async () => {
+        it("Then it works with the less than or equal filter", async () => {
             const tempSchema = await prepareTempSchema(uuid());
 
-            const data0 = extractRight(
-                await storage.store({
-                    info: tempSchema.info,
-                    record: {
-                        id: uuid(),
-                        name: "Hello World A",
-                        num: 1,
-                    },
-                })()
-            );
-            await storage.store({
+            const data0 = await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "Hello World A",
+                    num: 1,
+                },
+            });
+            await target.store({
                 info: tempSchema.info,
                 record: {
                     id: uuid(),
@@ -449,11 +506,11 @@ describe("Given a Prisma data storage", () => {
             })();
 
             const result = extractRight(
-                await storage.findByQuery({
+                await target.findByQuery({
                     limit: 2,
                     where: [
                         {
-                            fieldPath: ["num"],
+                            fieldPath: "num",
                             type: FilterType.lte,
                             value: 2,
                         },
@@ -464,30 +521,29 @@ describe("Given a Prisma data storage", () => {
 
             expect(result.entries).toEqual([
                 {
+                    _id: data0._id,
                     id: data0.id,
                     record: data0.record,
                 },
             ]);
         });
 
-        it("Then it works with the equals operator", async () => {
+        it("Then it works with the equals filter", async () => {
             const tempSchema = await prepareTempSchema(uuid());
 
             const id0 = uuid();
             const id1 = uuid();
 
-            const data0 = extractRight(
-                await storage.store({
-                    info: tempSchema.info,
-                    record: {
-                        id: id0,
-                        name: "Hello World A",
-                        num: 1,
-                    },
-                })()
-            );
+            const data0 = await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: id0,
+                    name: "Hello World A",
+                    num: 1,
+                },
+            });
 
-            await storage.store({
+            await target.store({
                 info: tempSchema.info,
                 record: {
                     id: id1,
@@ -497,11 +553,11 @@ describe("Given a Prisma data storage", () => {
             })();
 
             const result = extractRight(
-                await storage.findByQuery({
+                await target.findByQuery({
                     limit: 2,
                     where: [
                         {
-                            fieldPath: ["id"],
+                            fieldPath: "id",
                             type: FilterType.equals,
                             value: id0,
                         },
@@ -512,29 +568,29 @@ describe("Given a Prisma data storage", () => {
 
             expect(result.entries).toEqual([
                 {
+                    _id: data0._id,
                     id: data0.id,
                     record: data0.record,
                 },
             ]);
         });
 
-        it("Then it works with two operators when there is a result", async () => {
+        it("Then it works with two filters when there is a result", async () => {
             const tempSchema = await prepareTempSchema(uuid());
 
             const id0 = uuid();
             const id1 = uuid();
 
-            const data0 = extractRight(
-                await storage.store({
-                    info: tempSchema.info,
-                    record: {
-                        id: id0,
-                        name: "Hello World A",
-                        num: 1,
-                    },
-                })()
-            );
-            await storage.store({
+            const data0 = await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: id0,
+                    name: "Hello World A",
+                    num: 1,
+                },
+            });
+
+            await target.store({
                 info: tempSchema.info,
                 record: {
                     id: id1,
@@ -544,16 +600,16 @@ describe("Given a Prisma data storage", () => {
             })();
 
             const result = extractRight(
-                await storage.findByQuery({
+                await target.findByQuery({
                     limit: 2,
                     where: [
                         {
-                            fieldPath: ["id"],
+                            fieldPath: "id",
                             type: FilterType.equals,
                             value: id0,
                         },
                         {
-                            fieldPath: ["name"],
+                            fieldPath: "name",
                             type: FilterType.contains,
                             value: "World",
                         },
@@ -564,19 +620,20 @@ describe("Given a Prisma data storage", () => {
 
             expect(result.entries).toEqual([
                 {
+                    _id: data0._id,
                     id: data0.id,
                     record: data0.record,
                 },
             ]);
         });
 
-        it("Then it works with two operators when there is no match", async () => {
+        it("Then it works with two filters when there is no match", async () => {
             const tempSchema = await prepareTempSchema(uuid());
 
             const id0 = uuid();
             const id1 = uuid();
 
-            await storage.store({
+            await target.store({
                 info: tempSchema.info,
                 record: {
                     id: id0,
@@ -585,7 +642,7 @@ describe("Given a Prisma data storage", () => {
                 },
             })();
 
-            await storage.store({
+            await target.store({
                 info: tempSchema.info,
                 record: {
                     id: id1,
@@ -595,16 +652,16 @@ describe("Given a Prisma data storage", () => {
             })();
 
             const result = extractRight(
-                await storage.findByQuery({
+                await target.findByQuery({
                     limit: 2,
                     where: [
                         {
-                            fieldPath: ["id"],
+                            fieldPath: "id",
                             type: FilterType.equals,
                             value: id0,
                         },
                         {
-                            fieldPath: ["name"],
+                            fieldPath: "name",
                             type: FilterType.contains,
                             value: "Wombat",
                         },
@@ -616,37 +673,34 @@ describe("Given a Prisma data storage", () => {
             expect(result.entries).toEqual([]);
         });
 
-        it("Then it works with both cursor and operator", async () => {
+        it("Then it works with both cursor and filter", async () => {
             const tempSchema = await prepareTempSchema(uuid());
 
-            const data0 = extractRight(
-                await storage.store({
-                    info: tempSchema.info,
-                    record: {
-                        id: uuid(),
-                        name: "Hello World A",
-                        num: 1,
-                    },
-                })()
-            );
-            const data1 = extractRight(
-                await storage.store({
-                    info: tempSchema.info,
-                    record: {
-                        id: uuid(),
-                        name: "Hello World B",
-                        num: 1,
-                    },
-                })()
-            );
+            const data0 = await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "Hello World A",
+                    num: 1,
+                },
+            });
+
+            const data1 = await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "Hello World B",
+                    num: 1,
+                },
+            });
 
             const result = extractRight(
-                await storage.findByQuery({
-                    cursor: data0.id,
+                await target.findByQuery({
+                    cursor: data0._id,
                     limit: 2,
                     where: [
                         {
-                            fieldPath: ["name"],
+                            fieldPath: "name",
                             type: FilterType.contains,
                             value: "World",
                         },
@@ -657,44 +711,154 @@ describe("Given a Prisma data storage", () => {
 
             expect(result.entries).toEqual([
                 {
+                    _id: data1._id,
                     id: data1.id,
                     record: data1.record,
                 },
             ]);
         });
 
-        it("Test", async () => {
+        it("Then it works with ordering and filtering", async () => {
             const tempSchema = await prepareTempSchema(uuid());
 
-            const data0 = extractRight(
-                await storage.store({
-                    info: tempSchema.info,
-                    record: {
-                        id: uuid(),
-                        name: "ok",
-                        num: 4,
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "User Joe",
+                    num: 27,
+                },
+            });
+
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "User Jane",
+                    num: 18,
+                },
+            });
+
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "Frank",
+                    num: 54,
+                },
+            });
+
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "User Edith",
+                    num: 45,
+                },
+            });
+
+            const result = extractRight(
+                await target.findByQuery({
+                    limit: 5,
+                    where: [
+                        {
+                            fieldPath: "name",
+                            type: FilterType.starts_with,
+                            value: "User",
+                        },
+                    ],
+                    orderBy: {
+                        fieldPath: "num",
+                        direction: "asc",
                     },
+                    info: tempSchema.info,
                 })()
             );
 
-            const result = await prisma.data.findMany({
-                where: {
-                    data: {
-                        path: ["num"],
-                        not: 1,
-                    },
+            expect(result.entries.map((r) => r.record.num)).toEqual([
+                18, 27, 45,
+            ]);
+        });
+
+        it("Then it works with ordering, filtering and cursor", async () => {
+            const tempSchema = await prepareTempSchema(uuid());
+
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "User Joe",
+                    num: 27,
                 },
             });
+
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "User Jane",
+                    num: 18,
+                },
+            });
+
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "Frank",
+                    num: 54,
+                },
+            });
+
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "User Edith",
+                    num: 45,
+                },
+            });
+
+            const first = extractRight(
+                await target.findByQuery({
+                    limit: 2,
+                    where: [
+                        {
+                            fieldPath: "name",
+                            type: FilterType.starts_with,
+                            value: "User",
+                        },
+                    ],
+                    orderBy: {
+                        fieldPath: "num",
+                        direction: "asc",
+                    },
+                    info: tempSchema.info,
+                })()
+            );
+
+            const result = extractRight(
+                await target.findByQuery({
+                    limit: 2,
+                    cursor: `${
+                        first.entries[first.entries.length - 1].record.num
+                    }`,
+                    where: [
+                        {
+                            fieldPath: "name",
+                            type: FilterType.starts_with,
+                            value: "User",
+                        },
+                    ],
+                    orderBy: {
+                        fieldPath: "num",
+                        direction: "asc",
+                    },
+                    info: tempSchema.info,
+                })()
+            );
+
+            expect(result.entries.map((r) => r.record.num)).toEqual([45]);
         });
-    });
-
-    beforeAll(async () => {
-        await prisma.data.deleteMany({});
-        await prisma.schema.deleteMany({});
-    });
-
-    afterAll(async () => {
-        await prisma.data.deleteMany({});
-        await prisma.schema.deleteMany({});
     });
 });

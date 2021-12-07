@@ -1,3 +1,5 @@
-export * from "./PrismaDataRepository";
-export * from "./PrismaSchemaRepository";
-export * from "./utils"
+export * from "./mongo";
+export * from "./MongoDataRepository";
+export * from "./MongoSchemaRepository";
+export * from "./utils";
+

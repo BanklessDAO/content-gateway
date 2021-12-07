@@ -17,23 +17,14 @@ export type ListPayload = {
 };
 
 export type Entry = {
-    id: bigint;
+    _id: string;
+    id: string;
     record: Record<string, unknown>;
 };
-
-export type EntryWithInfo = {
-    info: SchemaInfo;
-} & Entry;
 
 export type EntryList = {
     info: SchemaInfo;
     entries: Entry[];
-};
-
-export type SchemaFilter = {
-    cursor?: bigint;
-    limit: number;
-    info: SchemaInfo;
 };
 
 export const FilterType = {
@@ -48,22 +39,25 @@ export const FilterType = {
     gte: "gte",
 } as const;
 
+export type OrderDirection = "asc" | "desc";
+
+export type OrderBy = {
+    fieldPath: string;
+    direction: OrderDirection;
+};
+
 export type FilterType = keyof typeof FilterType;
 
 export type Filter = {
     type: FilterType;
-    fieldPath: string[];
+    fieldPath: string;
     value: unknown;
 };
-
-export type OrderDirection = "asc" | "desc";
-
-export type OrderBy = Record<string, OrderDirection>;
 
 export type Query = {
     info: SchemaInfo;
     limit: number;
-    cursor?: bigint;
+    cursor?: string;
     where?: Filter[];
     orderBy?: OrderBy;
 };
@@ -78,16 +72,11 @@ export type DataStorageError =
  * It is responsible for storing the data received from the SDK.
  */
 export type DataRepository = {
-    store: (
-        entry: SinglePayload
-    ) => TE.TaskEither<DataStorageError, EntryWithInfo>;
+    store: (entry: SinglePayload) => TE.TaskEither<DataStorageError, void>;
     storeBulk: (
         entryList: ListPayload
-    ) => TE.TaskEither<DataStorageError, EntryList>;
-    findById: (id: bigint) => TO.TaskOption<EntryWithInfo>;
-    findBySchema: (
-        filter: SchemaFilter
-    ) => TE.TaskEither<DatabaseError, EntryList>;
+    ) => TE.TaskEither<DataStorageError, void>;
+    findById: (info: SchemaInfo, id: string) => TO.TaskOption<Entry>;
     findByQuery: (query: Query) => TE.TaskEither<DatabaseError, EntryList>;
 };
 
@@ -106,19 +95,20 @@ export const createDataRepositoryStub = (
 
     const store = (
         singlePayload: SinglePayload
-    ): TE.TaskEither<DataStorageError, EntryWithInfo> => {
+    ): TE.TaskEither<DataStorageError, void> => {
         const keyStr = schemaInfoToString(singlePayload.info);
         if (!map.has(keyStr)) {
             map.set(keyStr, []);
         }
         const entry = {
-            id: BigInt(counter),
+            _id: `${counter}`,
+            id: `${counter}`,
             info: singlePayload.info,
             record: singlePayload.record,
         };
         counter++;
         map.get(keyStr)?.push(entry);
-        return TE.right(entry);
+        return TE.right(undefined);
     };
 
     return {
@@ -126,21 +116,16 @@ export const createDataRepositoryStub = (
         store: store,
         storeBulk: (
             listPayload: ListPayload
-        ): TE.TaskEither<DataStorageError, EntryList> => {
+        ): TE.TaskEither<DataStorageError, void> => {
             const { info, records } = listPayload;
             return pipe(
                 records,
                 A.map((record) => store({ info, record })),
                 TE.sequenceArray,
-                TE.map((entries) => ({
-                    info,
-                    entries: [...entries],
-                }))
+                TE.map(() => undefined)
             );
         },
-        findById: (): TO.TaskOption<EntryWithInfo> => TO.none,
-        findBySchema: (filter: SchemaFilter) =>
-            TE.of({ info: filter.info, entries: [] }),
+        findById: (): TO.TaskOption<Entry> => TO.none,
         findByQuery: (filter: Query) =>
             TE.of({ info: filter.info, entries: [] }),
     };

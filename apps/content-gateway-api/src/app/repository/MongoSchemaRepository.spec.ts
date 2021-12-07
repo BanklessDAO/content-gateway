@@ -1,17 +1,18 @@
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
-import { PrismaClient } from "@cga/prisma";
-import { extractRight } from "@shared/util-fp";
+import { SchemaRepository } from "@domain/feature-gateway";
+import { extractRight, programError } from "@shared/util-fp";
 import {
     createSchemaFromType,
     Schema,
-    schemaInfoToString
+    schemaInfoToString,
 } from "@shared/util-schema";
 import { Type } from "@tsed/core";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import * as O from "fp-ts/Option";
+import { Db, MongoClient } from "mongodb";
 import { v4 as uuid } from "uuid";
-import { createPrismaSchemaRepository } from "./PrismaSchemaRepository";
+import { createMongoSchemaRepository } from ".";
 
 @AdditionalProperties(false)
 class User {
@@ -58,18 +59,37 @@ const createSchema = (type: Type<unknown>, version: string) => {
     );
 };
 
-const client = new PrismaClient();
+const url =
+    process.env.MONGO_CGA_URL ?? programError("MONGO_CGA_URL is missing");
+const dbName =
+    process.env.MONGO_CGA_USER ?? programError("MONGO_CGA_USER is missing");
 
-describe("Given a Prisma schema storage", () => {
-    const storage = createPrismaSchemaRepository(client);
+describe("Given a Mongo schema storage", () => {
+    let target: SchemaRepository;
+    let mongoClient: MongoClient;
+    let db: Db;
+
+    beforeAll(async () => {
+        mongoClient = new MongoClient(url);
+        db = mongoClient.db(dbName);
+        await mongoClient.connect();
+
+        target = await createMongoSchemaRepository({
+            dbName,
+            mongoClient,
+        });
+    });
+
+    afterAll(async () => {
+        await db.dropDatabase();
+        await mongoClient.close();
+    });
 
     describe("When creating a new schema entry", () => {
         it("Then it is successfully created when valid", async () => {
             const version = uuid();
 
-            const result = await storage.register(
-                createSchema(User, version)
-            )();
+            const result = await target.register(createSchema(User, version))();
 
             expect(result).toEqual(E.right(undefined));
         });
@@ -79,9 +99,9 @@ describe("Given a Prisma schema storage", () => {
             const oldSchema = createSchema(User, version);
             const newSchema = createSchema(IncompatibleUser, version);
 
-            await storage.register(oldSchema)();
+            await target.register(oldSchema)();
 
-            const result = await storage.register(newSchema)();
+            const result = await target.register(newSchema)();
 
             const info = schemaInfoToString({ ...userInfo, version: version });
 
@@ -102,9 +122,9 @@ describe("Given a Prisma schema storage", () => {
                 version
             );
 
-            await storage.register(userSchema)();
+            await target.register(userSchema)();
 
-            const result = await storage.register(compatibleSchema)();
+            const result = await target.register(compatibleSchema)();
 
             expect(result).toEqual(E.right(undefined));
         });
@@ -112,10 +132,10 @@ describe("Given a Prisma schema storage", () => {
         it("Then it returns the proper schema When we try to find it", async () => {
             const version = uuid();
             const schema = createSchema(User, version);
-            await storage.register(schema)();
+            await target.register(schema)();
 
             const result = (
-                (await storage.find(schema.info)()) as O.Some<Schema>
+                (await target.find(schema.info)()) as O.Some<Schema>
             ).value;
             expect({
                 info: result.info,
@@ -124,20 +144,6 @@ describe("Given a Prisma schema storage", () => {
                 info: schema.info,
                 jsonSchema: schema.jsonSchema,
             });
-        });
-    });
-
-    describe("When creating multiple schema entries", () => {
-        it("Then they are all returned when trying to find them", async () => {
-            const version0 = uuid();
-            const version1 = uuid();
-
-            await storage.register(createSchema(User, version0))();
-            await storage.register(createSchema(User, version1))();
-
-            const result = await storage.findAll()();
-
-            // expect(result).toEqual(E.right(undefined));
         });
     });
 });

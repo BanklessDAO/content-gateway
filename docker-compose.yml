@@ -1,23 +1,22 @@
 version: "3.5"
 
 services:
-    postgres_cga:
-        container_name: postgres_container_cga
-        image: postgres
-        environment:
-            POSTGRES_USER: ${PG_CGA_USER}
-            POSTGRES_DB: ${PG_CGA_USER} # same as user
-            POSTGRES_PASSWORD: ${PG_CGA_PASSWORD}
-            PGDATA: /data/postgres_cga
-        volumes:
-            - postgres_cga:/data/postgres_cga
-        ports:
-            - "${PG_CGA_PORT}:5432"
-        networks:
-            - postgres
+    mongo_cga:
+        image: mongo
         restart: unless-stopped
+        container_name: mongo_cga
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: ${MONGO_CGA_USER}
+            MONGO_INITDB_ROOT_PASSWORD: ${MONGO_CGA_PASSWORD}
+            MONGO_INITDB_DATABASE: ${MONGO_CGA_USER}
+        volumes:
+            - /mongo_cga:/data/db
+        ports:
+            - "${MONGO_CGA_PORT}:27017"
+        networks:
+            - storage
     postgres_cgl:
-        container_name: postgres_container_cgl
+        container_name: postgres_cgl
         image: postgres
         environment:
             POSTGRES_USER: ${PG_CGL_USER}
@@ -29,11 +28,11 @@ services:
         ports:
             - "${PG_CGL_PORT}:5432"
         networks:
-            - postgres
+            - storage
         restart: unless-stopped
 networks:
-    postgres:
+    storage:
         driver: bridge
 volumes:
-    postgres_cga:
+    mongo_cga:
     postgres_cgl:

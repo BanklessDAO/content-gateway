@@ -1,1 +1,1 @@
-web: script/prisma-deploy cga && script/run cga
+web: script/run cga

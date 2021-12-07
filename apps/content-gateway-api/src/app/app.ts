@@ -3,16 +3,16 @@ import {
     ContentGatewayClient,
     createContentGatewayClient,
 } from "@banklessdao/content-gateway-client";
-import { PrismaClient } from "@cga/prisma";
+import { MongoClient } from "mongodb";
 import {
     ContentGateway,
     createContentGateway,
     DataRepository,
-    SchemaRepository,
 } from "@domain/feature-gateway";
 import { createLogger, programError } from "@shared/util-fp";
 import * as express from "express";
 import { graphqlHTTP } from "express-graphql";
+import * as g from "graphql";
 import { join } from "path";
 import { Logger } from "tslog";
 import {
@@ -21,11 +21,10 @@ import {
     ObservableSchemaRepository,
     toObservableSchemaRepository,
 } from ".";
-import { createPrismaDataRepository, createPrismaSchemaRepository } from "./";
-import { generateContentGatewayAPI } from "./service";
-import * as g from "graphql";
-import { LiveLoader } from "./live-loaders/LiveLoader";
+import { createMongoDataRepository, createMongoSchemaRepository } from "./";
 import { liveLoaders } from "./live-loaders";
+import { LiveLoader } from "./live-loaders/LiveLoader";
+import { generateContentGatewayAPI } from "./service";
 
 export type ApplicationContext = {
     logger: Logger;
@@ -33,14 +32,20 @@ export type ApplicationContext = {
     isDev: boolean;
     isProd: boolean;
     app: express.Application;
-    prisma: PrismaClient;
+    mongoClient: MongoClient;
     schemaRepository: ObservableSchemaRepository;
     dataRepository: DataRepository;
     contentGateway: ContentGateway;
     client: ContentGatewayClient;
 };
 
-export const createApp = async (prisma: PrismaClient) => {
+export const createApp = async ({
+    dbName,
+    mongoClient,
+}: {
+    dbName: string;
+    mongoClient: MongoClient;
+}) => {
     const env = process.env.NODE_ENV ?? programError("NODE_ENV not set");
     const isDev = env === "development";
     const isProd = env === "production";
@@ -50,16 +55,19 @@ export const createApp = async (prisma: PrismaClient) => {
     const logger = createLogger("ContentGatewayAPIApp");
 
     if (resetDb) {
-        await prisma.data.deleteMany({});
-        await prisma.schema.deleteMany({});
+        await mongoClient.db(dbName).dropDatabase();
     }
     logger.info(`Running in ${env} mode`);
 
     const app = express();
     const schemaRepository = toObservableSchemaRepository(
-        createPrismaSchemaRepository(prisma)
+        await createMongoSchemaRepository({ dbName, mongoClient })
     );
-    const dataRepository = createPrismaDataRepository(prisma, schemaRepository);
+    const dataRepository = createMongoDataRepository({
+        dbName,
+        mongoClient,
+        schemaRepository,
+    });
 
     const contentGateway = createContentGateway({
         schemaRepository,
@@ -72,12 +80,12 @@ export const createApp = async (prisma: PrismaClient) => {
     });
 
     const context: ApplicationContext = {
-        logger: logger,
+        logger,
         env,
         isDev,
         isProd,
         app,
-        prisma,
+        mongoClient,
         schemaRepository,
         dataRepository,
         contentGateway,
@@ -104,11 +112,9 @@ export const createApp = async (prisma: PrismaClient) => {
     return app;
 };
 
-type Deps = {
+export const createGraphQLLiveService = (deps: {
     readonly liveLoaders: LiveLoader<any, any>[];
-};
-
-export const createGraphQLLiveService = (deps: Deps) => {
+}) => {
     const fields = deps.liveLoaders
         .map((loader) => loader.configure())
         .reduce((acc, next) => {

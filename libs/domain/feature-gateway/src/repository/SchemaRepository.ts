@@ -1,12 +1,9 @@
+import { UnknownError } from "@shared/util-dto";
 import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
-import {
-    DatabaseError,
-    RegisteredSchemaIncompatibleError,
-    UnknownError,
-} from ".";
+import { DatabaseError, RegisteredSchemaIncompatibleError } from ".";
 
 export type SchemaRegistrationError =
     | UnknownError

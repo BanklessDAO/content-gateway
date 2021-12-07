@@ -32,3 +32,26 @@ export const createLogger = (name: string) =>
 export const programError = (msg: string): never => {
     throw new Error(msg);
 };
+
+export const coercePrimitive = (value: string): string | number | boolean => {
+    if (value === "true") {
+        return true;
+    }
+    if (value === "false") {
+        return false;
+    }
+
+    const int = parseInt(value);
+
+    if (!isNaN(int)) {
+        return int;
+    }
+
+    const float = parseFloat(value);
+
+    if (!isNaN(float)) {
+        return float;
+    }
+
+    return value;
+};
