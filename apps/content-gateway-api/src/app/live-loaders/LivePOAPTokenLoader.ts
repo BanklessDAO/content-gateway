@@ -6,7 +6,7 @@ import * as g from "graphql";
 import * as E from "fp-ts/Either";
 import * as TE from "fp-ts/TaskEither";
 import * as T from "fp-ts/Task";
-import { createResultType } from "../service/graphql/types/Results";
+import { createResultType } from "../service/v1/graphql/types/Results";
 import { pipe } from "fp-ts/lib/function";
 
 const name = "POAPToken";

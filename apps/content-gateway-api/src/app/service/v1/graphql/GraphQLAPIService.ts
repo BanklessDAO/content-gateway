@@ -18,20 +18,17 @@ import { ObservableSchemaRepository } from "./decorator";
 import { AnyFilter, createFiltersFor } from "./types/Filters";
 import { createResultsType, Results } from "./types/Results";
 
-type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
-
-export type Middleware = (
-    request: Request,
-    response: Response
-) => Promise<void>;
-
-export type Deps = {
-    readonly schemaRepository: ObservableSchemaRepository;
-    readonly dataRepository: DataRepository;
-};
-
 export type GraphQLAPIService = {
     readonly middleware: Middleware;
+};
+
+type SchemaGQLTypePair = [Schema, g.GraphQLObjectType];
+
+type Middleware = (request: Request, response: Response) => Promise<void>;
+
+type Deps = {
+    readonly schemaRepository: ObservableSchemaRepository;
+    readonly dataRepository: DataRepository;
 };
 
 type QueryMapping = {
@@ -41,7 +38,7 @@ type QueryMapping = {
 /**
  * Creates a new GraphQL API that can be used as an Express middleware.
  */
-export const createGraphQLAPIService = async (
+export const createGraphQLAPIServiceV1 = async (
     deps: Deps
 ): Promise<Middleware> => {
     let currentMiddleware = await createGraphQLMiddleware(deps);
@@ -78,10 +75,9 @@ const createGraphQLMiddleware = async ({
     const str = schemas.map((schema) => schemaInfoToString(schema.info)).join();
     logger.info(`Current schemas are: ${str}`);
 
-    const findById = async (info: SchemaInfo, id: bigint) => {
+    const findById = async (info: SchemaInfo, id: string) => {
         return pipe(
-            // TODO! bigint 👇
-            dataRepository.findById(info, id.toString()),
+            dataRepository.findById(info, id),
             TO.map((data) => data.record),
             TO.getOrElse(() => T.of({} as Record<string, unknown>))
         )();
@@ -169,11 +165,11 @@ const createGraphQLMiddleware = async ({
                 [type.name]: {
                     type: type,
                     args: {
-                        id: { type: g.GraphQLInt },
+                        id: { type: g.GraphQLString },
                     },
                     resolve: async (_, args) => {
                         const { id } = args as {
-                            id: bigint;
+                            id: string;
                         };
                         return findById(info, id);
                     },
@@ -188,7 +184,6 @@ const createGraphQLMiddleware = async ({
                         },
                         after: {
                             type: g.GraphQLString,
-                            defaultValue: "0",
                         },
                         where: {
                             type: createFiltersFor(

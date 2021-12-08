@@ -10,10 +10,10 @@ import {
 import { createLogger } from "@shared/util-fp";
 import { createSchemaFromObject } from "@shared/util-schema";
 import * as express from "express";
+import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/lib/Task";
 import * as TE from "fp-ts/lib/TaskEither";
-import * as E from "fp-ts/Either";
 
 const logger = createLogger("ContentGatewayAPI");
 
@@ -26,7 +26,7 @@ type Deps = {
  * This is the REST API of Content Gateway that is used
  * by the Content Gateway Client
  */
-export const generateContentGatewayAPI = async ({
+export const generateContentGatewayAPIV1 = async ({
     contentGateway,
     app,
 }: Deps) => {

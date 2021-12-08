@@ -3,7 +3,6 @@ import {
     ContentGatewayClient,
     createContentGatewayClient,
 } from "@banklessdao/content-gateway-client";
-import { MongoClient } from "mongodb";
 import {
     ContentGateway,
     createContentGateway,
@@ -13,10 +12,11 @@ import { createLogger, programError } from "@shared/util-fp";
 import * as express from "express";
 import { graphqlHTTP } from "express-graphql";
 import * as g from "graphql";
+import { MongoClient } from "mongodb";
 import { join } from "path";
 import { Logger } from "tslog";
 import {
-    createGraphQLAPIService,
+    createGraphQLAPIServiceV1,
     createInMemoryOutboundDataAdapter,
     ObservableSchemaRepository,
     toObservableSchemaRepository,
@@ -24,7 +24,7 @@ import {
 import { createMongoDataRepository, createMongoSchemaRepository } from "./";
 import { liveLoaders } from "./live-loaders";
 import { LiveLoader } from "./live-loaders/LiveLoader";
-import { generateContentGatewayAPI } from "./service";
+import { generateContentGatewayAPIV1 } from "./service";
 
 export type ApplicationContext = {
     logger: Logger;
@@ -92,10 +92,10 @@ export const createApp = async ({
         client,
     };
 
-    app.use("/api/rest/", await generateContentGatewayAPI(context));
-    app.use("/api/graphql/", await createGraphQLAPIService(context));
+    app.use("/api/v1/rest/", await generateContentGatewayAPIV1(context));
+    app.use("/api/v1/graphql/", await createGraphQLAPIServiceV1(context));
     app.use(
-        "/api/graphql-live",
+        "/api/v1/graphql-live",
         createGraphQLLiveService({
             liveLoaders: liveLoaders,
         })

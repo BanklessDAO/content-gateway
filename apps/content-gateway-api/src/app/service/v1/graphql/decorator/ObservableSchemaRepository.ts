@@ -4,6 +4,10 @@ import { Schema, SchemaInfo } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 
+/**
+ * Adds the ability to listen to changes in the state of the
+ * {@link SchemaRepository} to an instance of it (decorator pattern).
+ */
 export type ObservableSchemaRepository = SchemaRepository & {
     onChange: (listener: () => void) => void;
 };
