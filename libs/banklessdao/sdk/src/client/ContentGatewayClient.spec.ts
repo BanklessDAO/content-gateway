@@ -2,7 +2,7 @@ import { createLogger, extractLeft } from "@shared/util-fp";
 import { SchemaValidationError } from "@shared/util-schema";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
-import { createContentGatewayClient } from "./";
+import { createContentGatewayClient } from ".";
 import { ContentGatewayClient } from "./ContentGatewayClient";
 import {
     createOutboundAdapterStub,

@@ -14,7 +14,7 @@ import {
     InitContext,
     JobDescriptor,
     LoadContext,
-    SaveContext,
+    SaveContext
 } from ".";
 import { ScheduleMode } from "./scheduler/ScheduleMode";
 
@@ -92,9 +92,8 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
         loadContext: LoadContext;
     }) {
         const { rawResult, mappedResult, loadContext } = params;
-        const nextCursor = this.extractCursor(rawResult);
         return mappedResult.length > 0
-            ? nextCursor
+            ? this.extractCursor(rawResult)
             : loadContext.cursor ?? DEFAULT_CURSOR;
     }
 

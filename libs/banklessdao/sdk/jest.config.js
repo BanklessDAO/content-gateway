@@ -1,5 +1,5 @@
 module.exports = {
-    displayName: "banklessdao-content-gateway-client",
+    displayName: "banklessdao-sdk",
     preset: "../../../jest.preset.js",
     globals: {
         "ts-jest": {
@@ -11,5 +11,5 @@ module.exports = {
     },
     moduleFileExtensions: ["ts", "tsx", "js", "jsx"],
     coverageDirectory:
-        "../../../coverage/libs/banklessdao/content-gateway-client",
+        "../../../coverage/libs/banklessdao/sdk",
 };

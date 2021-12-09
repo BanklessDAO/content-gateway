@@ -9,9 +9,9 @@ import {
     MissingSchemaError,
     Query,
     SchemaRepository,
-    SinglePayload,
+    SinglePayload
 } from "@domain/feature-gateway";
-import { coercePrimitive } from "@shared/util-fp";
+import { coercePrimitive, createLogger } from "@shared/util-fp";
 import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import * as E from "fp-ts/Either";
 import { absurd, pipe } from "fp-ts/lib/function";
@@ -30,6 +30,7 @@ export const createMongoDataRepository = ({
     schemaRepository: SchemaRepository;
 }): DataRepository => {
     const db = mongoClient.db(dbName);
+    const logger = createLogger("MongoDataRepository");
 
     const upsertData = (
         data: SinglePayload
@@ -57,7 +58,9 @@ export const createMongoDataRepository = ({
                     }
                 )
             )(),
-            TE.map(() => undefined)
+            TE.map(() => {
+                return undefined;
+            })
         );
     };
 
@@ -90,6 +93,9 @@ export const createMongoDataRepository = ({
         listPayload: ListPayload
     ): TE.TaskEither<DataStorageError, void> => {
         const { info, records } = listPayload;
+        if(records.length === 0) {
+            return TE.right(undefined);
+        }
         const key = schemaInfoToString(info);
         const collection = db.collection<Data>(key);
         return pipe(
@@ -122,7 +128,18 @@ export const createMongoDataRepository = ({
                     return collection.bulkWrite(updates);
                 })
             ),
-            TE.map(() => undefined)
+            TE.map((result) => {
+                logger.info("Bulk upsert results:", {
+                    insertedCount: result.insertedCount,
+                    matchedCount: result.matchedCount,
+                    modifiedCount: result.modifiedCount,
+                    upsertedCount: result.upsertedCount,
+                    ok: result.ok,
+                    hasWriteErrors: result.hasWriteErrors(),
+                    writeErrorCount: result.getWriteErrorCount(),
+                });
+                return undefined;
+            })
         );
     };
 
@@ -229,8 +246,8 @@ export const createMongoDataRepository = ({
                     const gt =
                         orderBy.fieldPath === "_id"
                             ? new ObjectId(cursor)
-                            // * this is not nice, but what the hell
-                            : coercePrimitive(cursor);
+                            : // * this is not nice, but what the hell
+                              coercePrimitive(cursor);
                     const finalPath =
                         orderBy.fieldPath === "_id"
                             ? "_id"

@@ -1,7 +1,7 @@
 import {
     createContentGatewayClient,
     createRESTAdapter,
-} from "@banklessdao/content-gateway-client";
+} from "@banklessdao/sdk";
 import { PrismaClient } from "@cgl/prisma";
 import { createLoaderRegistry } from "@domain/feature-loaders";
 import { createLogger, programError } from "@shared/util-fp";

@@ -1,4 +1,4 @@
-import { extractLeft, extractRight } from "@shared/util-fp";
+import { extractRight } from "@shared/util-fp";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import { createSchemaFromObject, createSchemaFromType } from ".";

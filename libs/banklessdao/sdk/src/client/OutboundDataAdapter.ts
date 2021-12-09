@@ -2,7 +2,7 @@ import {
     DataTransferError,
     JsonBatchPayload,
     JsonPayload,
-    post,
+    post
 } from "@shared/util-dto";
 import { SchemaInfo, SchemaJson } from "@shared/util-schema";
 import * as TE from "fp-ts/TaskEither";
@@ -30,28 +30,28 @@ export const createRESTAdapter = (url: string): OutboundDataAdapter => {
     return {
         register: (schema: SchemaJson) => {
             return post({
-                url: `${url}/api/rest/schema/register`,
+                url: `${url}/api/v1/rest/schema/register`,
                 input: schema,
                 codec: t.UnknownRecord,
             });
         },
         remove: (info: SchemaInfo) => {
             return post({
-                url: `${url}/api/rest/schema/remove`,
+                url: `${url}/api/v1/rest/schema/remove`,
                 input: info,
                 codec: t.UnknownRecord,
             });
         },
         send: (payload: JsonPayload) => {
             return post({
-                url: `${url}/api/rest/schema/receive`,
+                url: `${url}/api/v1/rest/schema/receive`,
                 input: payload,
                 codec: t.UnknownRecord,
             });
         },
         sendBatch: (payload: JsonBatchPayload) => {
             return post({
-                url: `${url}/api/rest/schema/receive-batch`,
+                url: `${url}/api/v1/rest/schema/receive-batch`,
                 input: payload,
                 codec: t.UnknownRecord,
             });
@@ -78,7 +78,7 @@ export const createOutboundAdapterStub = (): OutboundDataAdapterStub => {
             schemas.push(schema);
             return TE.right({});
         },
-        remove: (info) => {
+        remove: () => {
             return TE.right({});
         },
         send: (payload) => {

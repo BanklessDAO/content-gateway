@@ -1,4 +1,4 @@
-import { ContentGatewayClient } from "@banklessdao/content-gateway-client";
+import { ContentGatewayClient } from "@banklessdao/sdk";
 import { ProgramError } from "@shared/util-dto";
 import { SchemaInfo } from "@shared/util-schema";
 import * as TE from "fp-ts/TaskEither";

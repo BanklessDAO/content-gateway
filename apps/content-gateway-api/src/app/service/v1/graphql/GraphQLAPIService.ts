@@ -119,8 +119,8 @@ const createGraphQLMiddleware = async ({
                     entries.pop();
                 }
                 if (hasEntries) {
-                    startCursor = entries[0].id.toString();
-                    endCursor = entries[entries.length - 1].id.toString();
+                    startCursor = entries[0]._id.toString();
+                    endCursor = entries[entries.length - 1]._id.toString();
                 } else {
                     startCursor = after ?? "";
                     endCursor = startCursor;
@@ -135,7 +135,7 @@ const createGraphQLMiddleware = async ({
                     notes: notes,
                     data: entries.map((entry) => ({
                         ...entry.record,
-                        _id: entry.id.toString(),
+                        _id: entry._id.toString(),
                     })),
                 };
             }),

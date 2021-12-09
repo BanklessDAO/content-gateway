@@ -1,20 +1,20 @@
 {
     "version": 2,
     "projects": {
-        "banklessdao-content-gateway-client": {
-            "root": "libs/banklessdao/content-gateway-client",
-            "sourceRoot": "libs/banklessdao/content-gateway-client/src",
+        "banklessdao-sdk": {
+            "root": "libs/banklessdao/sdk",
+            "sourceRoot": "libs/banklessdao/sdk/src",
             "projectType": "library",
             "targets": {
                 "build": {
                     "executor": "@nrwl/workspace:tsc",
                     "outputs": ["{options.outputPath}"],
                     "options": {
-                        "outputPath": "dist/libs/banklessdao/content-gateway-client",
-                        "main": "libs/banklessdao/content-gateway-client/src/index.ts",
-                        "tsConfig": "libs/banklessdao/content-gateway-client/tsconfig.lib.json",
+                        "outputPath": "dist/libs/banklessdao/sdk",
+                        "main": "libs/banklessdao/sdk/src/index.ts",
+                        "tsConfig": "libs/banklessdao/sdk/tsconfig.lib.json",
                         "assets": [
-                            "libs/banklessdao/content-gateway-client/*.md"
+                            "libs/banklessdao/sdk/*.md"
                         ]
                     }
                 },
@@ -23,17 +23,17 @@
                     "outputs": ["{options.outputFile}"],
                     "options": {
                         "lintFilePatterns": [
-                            "libs/banklessdao/content-gateway-client/**/*.ts"
+                            "libs/banklessdao/sdk/**/*.ts"
                         ]
                     }
                 },
                 "test": {
                     "executor": "@nrwl/jest:jest",
                     "outputs": [
-                        "coverage/libs/banklessdao/content-gateway-client"
+                        "coverage/libs/banklessdao/sdk"
                     ],
                     "options": {
-                        "jestConfig": "libs/banklessdao/content-gateway-client/jest.config.js",
+                        "jestConfig": "libs/banklessdao/sdk/jest.config.js",
                         "passWithNoTests": true
                     }
                 }

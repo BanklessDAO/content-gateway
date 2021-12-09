@@ -28,7 +28,7 @@
         ]
     },
     "projects": {
-        "banklessdao-content-gateway-client": {
+        "banklessdao-sdk": {
             "tags": ["sdk"]
         },
         "content-gateway-api": {

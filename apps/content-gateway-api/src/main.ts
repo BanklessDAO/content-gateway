@@ -10,7 +10,9 @@ const dbName =
     process.env.MONGO_CGA_USER ??
     programError("You must specify MONGO_CGA_USER");
 
-const mongoClient = new MongoClient(url);
+const mongoClient = new MongoClient(url, {
+    keepAlive: true,
+});
 
 async function main() {
     const port =
@@ -20,8 +22,9 @@ async function main() {
 
     await mongoClient.connect();
     await mongoClient.db("admin").command({ ping: 1 });
-    const app = await createApp({ dbName, mongoClient });
+    logger.info(`Connected to MongoDB at ${url}`);
 
+    const app = await createApp({ dbName, mongoClient });
     const server = app.listen(port, () => {
         console.log(`Listening at http://localhost:${port}`);
     });
@@ -31,8 +34,4 @@ async function main() {
     });
 }
 
-main()
-    .catch((err) => logger.error(err))
-    .finally(() => {
-        mongoClient.close();
-    });
+main().catch((err) => logger.error(err));

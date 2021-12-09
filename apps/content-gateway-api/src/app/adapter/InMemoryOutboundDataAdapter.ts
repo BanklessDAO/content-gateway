@@ -1,4 +1,4 @@
-import { OutboundDataAdapter } from "@banklessdao/content-gateway-client";
+import { OutboundDataAdapter } from "@banklessdao/sdk";
 import { ContentGateway } from "@domain/feature-gateway";
 import {
     DataTransferError,

@@ -34,12 +34,13 @@ export const createMongoSchemaRepository = async ({
     dbName: string;
     mongoClient: MongoClient;
 }): Promise<SchemaRepository> => {
-    const schemas = mongoClient
-        .db(dbName)
-        .collection<MongoSchema>(SCHEMAS_COLLECTION_NAME);
+    const db = mongoClient.db(dbName);
+    const schemas = db.collection<MongoSchema>(SCHEMAS_COLLECTION_NAME);
 
     // TODO! test if the index was created
     await schemas.createIndex({ key: 1 }, { unique: true });
+    await schemas.createIndex({ createdAt: 1 });
+    await schemas.createIndex({ updatedAt: 1 });
 
     const findSchema = (info: SchemaInfo) => {
         return pipe(
@@ -113,6 +114,23 @@ export const createMongoSchemaRepository = async ({
             jsonSchema: schema.jsonSchema,
         });
 
+    const findAll = (): T.Task<Array<Schema>> => {
+        return pipe(
+            async () => {
+                // * this can fail on paper, but if there is no database connection
+                // * 👇 then we have bigger problems
+                return schemas.find().toArray();
+            },
+            T.map((entities) => {
+                return pipe(
+                    entities.map(mongoSchemaToSchema),
+                    A.filter(E.isRight),
+                    A.map((item) => item.right)
+                );
+            })
+        );
+    };
+
     return {
         register: (
             schema: Schema
@@ -153,25 +171,30 @@ export const createMongoSchemaRepository = async ({
             );
         },
         find: findSchema,
-        findAll: (): T.Task<Array<Schema>> => {
+        findAll: findAll,
+        loadStats: (): T.Task<Array<SchemaStat>> => {
             return pipe(
-                async () => {
-                    // * this can fail on paper, but if there is no database connection
-                    // * 👇 then we have bigger problems
-                    return schemas.find().toArray();
-                },
-                T.map((entities) => {
-                    return pipe(
-                        entities.map(mongoSchemaToSchema),
-                        A.filter(E.isRight),
-                        A.map((item) => item.right)
-                    );
+                findAll(),
+                T.chain((allSchemas) => {
+                    return async () => {
+                        const stats = [] as SchemaStat[];
+                        for (const schema of allSchemas) {
+                            const info = schema.info;
+                            const name = schemaInfoToString(info);
+                            const coll = db.collection(name);
+                            const rowCount = await coll.countDocuments();
+                            const lastDocument = await coll.findOne(
+                                {},
+                                { sort: { updatedAt: "desc" } }
+                            );
+                            const lastUpdated =
+                                lastDocument?.updatedAt ?? new Date(0);
+                            stats.push({ info, rowCount, lastUpdated });
+                        }
+                        return stats;
+                    };
                 })
             );
-        },
-        loadStats: (): T.Task<Array<SchemaStat>> => {
-            // TODO!
-            return T.of([]);
         },
     };
 };

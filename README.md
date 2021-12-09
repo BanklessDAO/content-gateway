@@ -4,7 +4,7 @@ This is the monorepo for _Content Gateway_. You can follow the links below to le
 
 -   [Content Gateway API](/apps/content-gateway-api): central storage module for both *schema*s and _data_.
 -   [Content Gateway Loader](/apps/content-gateway-loader): module responsible for implementing the _pull_ ingeration mechanism (eg: when we load data from external systems)
--   [Content Gateway Client](/libs/banklessdao/content-gateway-client): library package responsible for implementing the _push_ integration mechanism (eg: when you send the data to the CG API).
+-   [Content Gateway Client](/libs/banklessdao/sdk): library package responsible for implementing the _push_ integration mechanism (eg: when you send the data to the CG API).
 
 If you want to write custom _pull_ integration logic, head over to the [Content Gateway Loader](/apps/content-gateway-loader) README.
 
