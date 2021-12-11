@@ -3,25 +3,25 @@ import {
     DataRepository,
     Entry,
     FilterType,
+    SchemaRepository,
     SchemaValidationError,
-    SinglePayload,
+    SinglePayload
 } from "@domain/feature-gateway";
 import { GenericProgramError } from "@shared/util-dto";
 import { extractLeft, extractRight, programError } from "@shared/util-fp";
 import {
     createSchemaFromType,
     SchemaInfo,
-    schemaInfoToString,
+    schemaInfoToString
 } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as O from "fp-ts/lib/Option";
-import { Collection, Db, MongoClient } from "mongodb";
+import { Db, MongoClient } from "mongodb";
 import { v4 as uuid } from "uuid";
 import {
     createMongoDataRepository,
     createMongoSchemaRepository,
-    Data,
-    SCHEMAS_COLLECTION_NAME,
+    Data
 } from ".";
 
 @AdditionalProperties(false)
@@ -49,15 +49,14 @@ describe("Given a Mongo data storage", () => {
     let target: DataRepository;
     let mongoClient: MongoClient;
     let db: Db;
-    let schemas: Collection;
+    let schemaRepository: SchemaRepository;
 
     beforeAll(async () => {
         mongoClient = new MongoClient(url);
         await mongoClient.connect();
         db = mongoClient.db(dbName);
-        schemas = db.collection(SCHEMAS_COLLECTION_NAME);
 
-        const schemaRepository = await createMongoSchemaRepository({
+        schemaRepository = await createMongoSchemaRepository({
             dbName,
             mongoClient,
         });
@@ -76,22 +75,18 @@ describe("Given a Mongo data storage", () => {
 
     const schema = extractRight(createSchemaFromType(addressInfo, Address));
 
-    const prepareTempSchema = async (version: string) => {
+    const prepareRandomSchema = async (version: string) => {
         const info = {
             ...addressInfo,
             version: version,
         };
-        const tempSchema = {
+        const result = {
             ...schema,
             info: info,
         };
-        await schemas.insertOne({
-            key: schemaInfoToString(info),
-            jsonSchema: tempSchema.jsonSchema,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        });
-        return tempSchema;
+
+        await schemaRepository.register(result)();
+        return result;
     };
 
     const randomInfo = () => ({
@@ -114,7 +109,7 @@ describe("Given a Mongo data storage", () => {
         };
     };
 
-    const prepareAddresses = async (info: SchemaInfo, count: number) => {
+    const prepareRandomAddresses = async (info: SchemaInfo, count: number) => {
         const result = [] as Entry[];
         for (let i = 0; i < count; i++) {
             const id = uuid();
@@ -134,7 +129,7 @@ describe("Given a Mongo data storage", () => {
     describe("When querying a data entry by its id", () => {
         it("Then it is found when there is an entry with the given id", async () => {
             const version = uuid();
-            const tempSchema = await prepareTempSchema(version);
+            const tempSchema = await prepareRandomSchema(version);
             const info = tempSchema.info;
             const address = {
                 info: info,
@@ -160,7 +155,7 @@ describe("Given a Mongo data storage", () => {
     describe("When creating a new data entry", () => {
         it("Then it is successfully created when valid", async () => {
             const version = uuid();
-            const tempSchema = await prepareTempSchema(version);
+            const tempSchema = await prepareRandomSchema(version);
             const item = {
                 info: tempSchema.info,
                 record: {
@@ -190,7 +185,7 @@ describe("Given a Mongo data storage", () => {
 
         it("Then it fails when id is missing", async () => {
             const version = uuid();
-            const tempSchema = await prepareTempSchema(version);
+            const tempSchema = await prepareRandomSchema(version);
 
             const result = extractLeft(
                 await target.store({
@@ -216,7 +211,7 @@ describe("Given a Mongo data storage", () => {
 
         it("Then it fails when name is missing", async () => {
             const version = uuid();
-            const tempSchema = await prepareTempSchema(version);
+            const tempSchema = await prepareRandomSchema(version);
 
             const result = extractLeft(
                 await target.store({
@@ -246,7 +241,7 @@ describe("Given a Mongo data storage", () => {
     describe("When creating multiple data entries", () => {
         it("Then it is successfully created when valid", async () => {
             const version = uuid();
-            const tempSchema = await prepareTempSchema(version);
+            const tempSchema = await prepareRandomSchema(version);
             const records = [
                 {
                     id: uuid(),
@@ -277,9 +272,9 @@ describe("Given a Mongo data storage", () => {
 
         it("Then it overwrites old entries", async () => {
             const version = uuid();
-            const tempSchema = await prepareTempSchema(version);
+            const tempSchema = await prepareRandomSchema(version);
             const info = tempSchema.info;
-            const duplicate = {
+            const oldRecord = {
                 info: info,
                 record: {
                     id: uuid(),
@@ -287,11 +282,11 @@ describe("Given a Mongo data storage", () => {
                     num: 1,
                 },
             };
-            await target.store(duplicate)();
+            await target.store(oldRecord)();
 
-            const records = [
+            const newRecordsWithDuplicate = [
                 {
-                    ...duplicate.record,
+                    ...oldRecord.record,
                     name: "New Street 2",
                 },
                 {
@@ -303,7 +298,7 @@ describe("Given a Mongo data storage", () => {
 
             await target.storeBulk({
                 info: info,
-                records: records,
+                records: newRecordsWithDuplicate,
             })();
 
             const result = extractRight(
@@ -313,15 +308,17 @@ describe("Given a Mongo data storage", () => {
                 })()
             );
 
-            expect(result.entries.map((e) => e.record)).toEqual(records);
+            expect(result.entries.map((e) => e.record)).toEqual(
+                newRecordsWithDuplicate
+            );
         });
     });
 
     describe("When querying data by its schema info", () => {
         it("Then when there is data it is returned using cursor", async () => {
             const version = uuid();
-            const tempSchema = await prepareTempSchema(version);
-            const addresses = await prepareAddresses(tempSchema.info, 2);
+            const tempSchema = await prepareRandomSchema(version);
+            const addresses = await prepareRandomAddresses(tempSchema.info, 2);
 
             const result = extractRight(
                 await target.findByQuery({
@@ -342,8 +339,8 @@ describe("Given a Mongo data storage", () => {
 
         it("Then when there is data it is returned without cursor", async () => {
             const version = uuid();
-            const tempSchema = await prepareTempSchema(version);
-            const addresses = await prepareAddresses(tempSchema.info, 2);
+            const tempSchema = await prepareRandomSchema(version);
+            const addresses = await prepareRandomAddresses(tempSchema.info, 2);
 
             const result = extractRight(
                 await target.findByQuery({
@@ -362,7 +359,7 @@ describe("Given a Mongo data storage", () => {
         });
 
         it("Then when there is no data, an empty array is returned", async () => {
-            const tempSchema = await prepareTempSchema(uuid());
+            const tempSchema = await prepareRandomSchema(uuid());
             const result = extractRight(
                 await target.findByQuery({
                     limit: 10,
@@ -376,10 +373,10 @@ describe("Given a Mongo data storage", () => {
 
     describe("When querying data by filters", () => {
         it("Then it works without filters", async () => {
-            const tempSchema = await prepareTempSchema(uuid());
-            const first = await prepareAddresses(tempSchema.info, 2);
+            const tempSchema = await prepareRandomSchema(uuid());
+            const first = await prepareRandomAddresses(tempSchema.info, 2);
 
-            const addresses = await prepareAddresses(tempSchema.info, 2);
+            const addresses = await prepareRandomAddresses(tempSchema.info, 2);
 
             const result = extractRight(
                 await target.findByQuery({
@@ -399,7 +396,7 @@ describe("Given a Mongo data storage", () => {
         });
 
         it("Then it works with the contains filter", async () => {
-            const tempSchema = await prepareTempSchema(uuid());
+            const tempSchema = await prepareRandomSchema(uuid());
 
             const data0 = await storeRecord({
                 info: tempSchema.info,
@@ -443,7 +440,7 @@ describe("Given a Mongo data storage", () => {
         });
 
         it("Then it works with the greater than or equal filter", async () => {
-            const tempSchema = await prepareTempSchema(uuid());
+            const tempSchema = await prepareRandomSchema(uuid());
 
             const data0 = await storeRecord({
                 info: tempSchema.info,
@@ -486,7 +483,7 @@ describe("Given a Mongo data storage", () => {
         });
 
         it("Then it works with the less than or equal filter", async () => {
-            const tempSchema = await prepareTempSchema(uuid());
+            const tempSchema = await prepareRandomSchema(uuid());
 
             const data0 = await storeRecord({
                 info: tempSchema.info,
@@ -529,7 +526,7 @@ describe("Given a Mongo data storage", () => {
         });
 
         it("Then it works with the equals filter", async () => {
-            const tempSchema = await prepareTempSchema(uuid());
+            const tempSchema = await prepareRandomSchema(uuid());
 
             const id0 = uuid();
             const id1 = uuid();
@@ -576,7 +573,7 @@ describe("Given a Mongo data storage", () => {
         });
 
         it("Then it works with two filters when there is a result", async () => {
-            const tempSchema = await prepareTempSchema(uuid());
+            const tempSchema = await prepareRandomSchema(uuid());
 
             const id0 = uuid();
             const id1 = uuid();
@@ -628,7 +625,7 @@ describe("Given a Mongo data storage", () => {
         });
 
         it("Then it works with two filters when there is no match", async () => {
-            const tempSchema = await prepareTempSchema(uuid());
+            const tempSchema = await prepareRandomSchema(uuid());
 
             const id0 = uuid();
             const id1 = uuid();
@@ -674,7 +671,7 @@ describe("Given a Mongo data storage", () => {
         });
 
         it("Then it works with both cursor and filter", async () => {
-            const tempSchema = await prepareTempSchema(uuid());
+            const tempSchema = await prepareRandomSchema(uuid());
 
             const data0 = await storeRecord({
                 info: tempSchema.info,
@@ -719,7 +716,7 @@ describe("Given a Mongo data storage", () => {
         });
 
         it("Then it works with ordering and filtering", async () => {
-            const tempSchema = await prepareTempSchema(uuid());
+            const tempSchema = await prepareRandomSchema(uuid());
 
             await storeRecord({
                 info: tempSchema.info,
@@ -781,7 +778,7 @@ describe("Given a Mongo data storage", () => {
         });
 
         it("Then it works with ordering, filtering and cursor", async () => {
-            const tempSchema = await prepareTempSchema(uuid());
+            const tempSchema = await prepareRandomSchema(uuid());
 
             await storeRecord({
                 info: tempSchema.info,

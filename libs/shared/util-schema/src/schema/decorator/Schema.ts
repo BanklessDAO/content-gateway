@@ -1,20 +1,21 @@
 /* eslint-disable @typescript-eslint/ban-types */
+import { DeepRequired } from "@shared/util-fp";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import "reflect-metadata";
 import { ClassType } from ".";
-import { SchemaInfo } from "../../../../shared/util-schema/src";
+import { SchemaInfo } from "../..";
 import { SchemaDescriptor } from "./descriptors";
 import {
     getSchemaMeta,
     getTypeMeta,
     setSchemaMeta,
-    setTypeNameFor,
+    setTypeNameFor
 } from "./utils";
 
-export type SchemaParams = {
+export type DataParams = {
     /**
-     * The {@link SchemaInfo} is an unique identifier for your {@link Schema}.
+     * The {@link SchemaInfo} is an unique identifier for your {@link Data}.
      * (namespace, name, version). This has to be unique across the board.
      */
     info: SchemaInfo;
@@ -24,7 +25,7 @@ export type SchemaParams = {
  * Use this decorator to mark the class that you want to register
  * with Content Gateway.
  */
-export const Schema = (params: SchemaParams) => {
+export const Data = (params: DataParams) => {
     const { info } = params;
     return (target: Function) => {
         const newMeta = pipe(
@@ -44,7 +45,7 @@ export const Schema = (params: SchemaParams) => {
  */
 export const extractSchemaDescriptor = (
     target: ClassType
-): E.Either<string[], SchemaDescriptor> => {
+): E.Either<string[], DeepRequired<SchemaDescriptor>> => {
     return pipe(
         E.Do,
         E.bind("typeMeta", () => getTypeMeta(target)),
@@ -53,7 +54,7 @@ export const extractSchemaDescriptor = (
             return {
                 properties: typeMeta.properties,
                 info: schemaMeta.info,
-            };
+            } as DeepRequired<SchemaDescriptor>;
         })
     );
 };

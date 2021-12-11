@@ -13,6 +13,7 @@ import {
 export const Required = {
     REQUIRED: "REQUIRED",
     OPTIONAL: "OPTIONAL",
+    NON_EMPTY: "NON_EMPTY"
 } as const;
 
 export type Required = keyof typeof Required;
@@ -25,11 +26,7 @@ export type PropertyParams = {
  * Use the {@link Property} decorator on all your class properties
  * that you want to add to the final schema.
  */
-export const Property = (
-    params: PropertyParams = {
-        required: Required.REQUIRED,
-    }
-) => {
+export const Property = (params: PropertyParams) => {
     const { required } = params;
     return (target: any, propertyName: string) => {
         let clazz = target;
@@ -50,7 +47,10 @@ export const Property = (
                     const pd = currentMeta.properties[propertyName];
                     pd.name = propertyName;
                     pd.required = required;
-                    pd.type = extractPrimitiveType(designType);
+                    const pt = extractPrimitiveType(designType);
+                    if (pt) {
+                        pd.type = pt;
+                    }
                     return currentMeta;
                 })
             );

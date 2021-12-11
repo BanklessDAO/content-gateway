@@ -1,18 +1,27 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     CodecValidationError,
+    JSONSchemaType,
     mapCodecValidationError,
     schemaCodec,
+    SchemaDefinitions,
     SupportedJSONSchema,
+    SupportedPropertyRecord
 } from "@shared/util-dto";
 import { Type } from "@tsed/core";
 import { getJsonSchema } from "@tsed/schema";
 import Ajv from "ajv/dist/ajv";
 import * as E from "fp-ts/Either";
-import { pipe } from "fp-ts/lib/function";
+import { absurd, pipe } from "fp-ts/lib/function";
 import * as difftool from "json-schema-diff-validator";
-import { SchemaValidationError } from ".";
+import {
+    ClassType,
+    extractSchemaDescriptor,
+    Required,
+    SchemaValidationError
+} from ".";
 import { SchemaInfo } from "..";
+import { Properties, SchemaDescriptor } from "./decorator/descriptors";
 
 const ajv = new Ajv({
     allErrors: true,
@@ -61,6 +70,121 @@ export type Schema = {
      */
     // TODO: make this return errors
     isBackwardCompatibleWith: (other: Schema) => boolean;
+};
+
+/**
+ * Creates a [[Schema]] object from the given [[type]]
+ * and the given schema [[info]].
+ * Note that this is a curried function and requireds a [[serializer]]
+ * in order to work.
+ */
+export const createSchemaFromClass: <T>(
+    type: ClassType<T>
+) => E.Either<string[] | CodecValidationError, Schema> = (klass) => {
+    
+    const definitions: SchemaDefinitions = {};
+    const required: string[] = [];
+    const properties: SupportedPropertyRecord = {};
+
+    const initializeJsonSchemaType = (name: string): JSONSchemaType => {
+        const result: JSONSchemaType = {
+            type: "object",
+            properties: {},
+            required: [],
+        };
+        definitions[name] = result;
+        return result;
+    };
+
+    const mapToSchemaRecur = (
+        props: Properties,
+        type: JSONSchemaType
+    ): void => {
+        for (const [name, pd] of Object.entries(props.properties)) {
+            let minLength: number | undefined = undefined;
+            if (pd.required === Required.NON_EMPTY) {
+                minLength = 1;
+            }
+            switch (pd.type._tag) {
+                case "number":
+                case "boolean":
+                case "string":
+                    if (minLength) {
+                        type.properties[name] = {
+                            type: pd.type._tag,
+                            minLength,
+                        };
+                    } else {
+                        type.properties[name] = {
+                            type: pd.type._tag,
+                        };
+                    }
+                    break;
+                case "array":
+                    type.properties[name] = {
+                        type: "array",
+                        items: {
+                            type: pd.type.type,
+                        },
+                    };
+                    break;
+                case "object-ref":
+                    type.properties[name] = {
+                        $ref: `#/definitions/${pd.type.descriptor.name}`,
+                    };
+                    mapToSchemaRecur(
+                        pd.type.descriptor,
+                        initializeJsonSchemaType(pd.type.descriptor.name)
+                    );
+                    break;
+                case "array-ref":
+                    type.properties[name] = {
+                        type: "array",
+                        items: {
+                            $ref: `#/definitions/${pd.type.descriptor.name}`,
+                        },
+                    };
+                    mapToSchemaRecur(
+                        pd.type.descriptor,
+                        initializeJsonSchemaType(pd.type.descriptor.name)
+                    );
+                    break;
+                default:
+                    absurd(pd.type);
+            }
+            if (pd.required !== Required.OPTIONAL) {
+                type.required?.push(name);
+            }
+        }
+    };
+
+    const mapToJsonSchema = (
+        descriptor: SchemaDescriptor
+    ): SupportedJSONSchema => {
+        const result: SupportedJSONSchema = {
+            additionalProperties: false,
+            type: "object",
+            properties: properties,
+            definitions: definitions,
+            required: required,
+        };
+        mapToSchemaRecur(descriptor, result);
+        return result;
+    };
+
+    return pipe(
+        E.Do,
+        E.bind("descriptor", () => extractSchemaDescriptor(klass)),
+        E.bind("jsonSchema", ({ descriptor }) =>
+            E.right(mapToJsonSchema(descriptor))
+        ),
+        E.chainW(({ descriptor, jsonSchema }) => {
+            return createSchemaFromObject({
+                info: descriptor.info,
+                jsonSchema: jsonSchema,
+            });
+        })
+    );
 };
 
 /**

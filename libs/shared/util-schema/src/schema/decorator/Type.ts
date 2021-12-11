@@ -4,10 +4,10 @@ import "reflect-metadata";
 import { setTypeNameFor } from "./utils";
 
 /**
- * Use the {@link Type} decorator on all your classes that
+ * Use the {@link Nested} decorator on all your classes that
  * you intend to nest into your schema class.
  */
-export const Type = (_: {} = {}) => {
+export const Nested = (_: {} = {}) => {
     return (target: Function) => {
         setTypeNameFor(target);
     };

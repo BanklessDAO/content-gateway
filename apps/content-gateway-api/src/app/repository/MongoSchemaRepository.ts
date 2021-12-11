@@ -97,7 +97,6 @@ export const createMongoSchemaRepository = async ({
             TE.chainFirst(() => {
                 // TODO! test if the index was created
                 return wrapDbOperation(async () => {
-                    const db = mongoClient.db(dbName);
                     return db
                         .collection(collectionName)
                         .createIndex({ id: 1 }, { unique: true });

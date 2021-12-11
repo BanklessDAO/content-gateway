@@ -32,9 +32,16 @@ export const stringPropertyCodec = withMessage(
 export type StringProperty = t.TypeOf<typeof stringPropertyCodec>;
 
 export const arrayPropertyCodec = withMessage(
+    // TODO: write tests for boolean and number too
     t.strict({
         type: t.literal("array"),
-        items: t.strict({ type: t.literal("string") }),
+        items: t.strict({
+            type: t.union([
+                t.literal("string"),
+                t.literal("number"),
+                t.literal("boolean"),
+            ]),
+        }),
     }),
     (input) => `${JSON.stringify(input)} is not a valid array property`
 );
@@ -142,6 +149,13 @@ export const hasIdCodec = withMessage(
 
 export type HasId = t.TypeOf<typeof hasIdCodec>;
 
+export const definitionsCodec = withMessage(
+    t.record(t.string, jsonSchemaTypeCodec),
+    () => "Definitions is not a valid json schema type record"
+);
+
+export type SchemaDefinitions = t.TypeOf<typeof definitionsCodec>;
+
 export const supportedJSONSchemaCodec = t.intersection([
     withMessage(
         t.strict({
@@ -153,10 +167,7 @@ export const supportedJSONSchemaCodec = t.intersection([
     jsonSchemaTypeCodec,
     t.exact(
         t.partial({
-            definitions: withMessage(
-                t.record(t.string, jsonSchemaTypeCodec),
-                () => "Definitions is not a valid json schema type record"
-            ),
+            definitions: definitionsCodec,
         })
     ),
 ]);

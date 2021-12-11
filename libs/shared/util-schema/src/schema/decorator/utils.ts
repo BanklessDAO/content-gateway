@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
-import { ClassType } from ".";
+import { RefParams, Required } from ".";
 import { PropertyType, SchemaDescriptor, TypeDescriptor } from "./descriptors";
 
 const schemaMetaKey = Symbol("Root");
@@ -33,11 +33,18 @@ export const getTypeMeta = (
     return pipe(
         meta ||
             E.right({
+                name: target.name,
                 properties: {},
             }),
         E.map((td: TypeDescriptor) => {
             if (property && !td.properties[property]) {
-                td.properties[property] = {};
+                td.properties[property] = {
+                    name: "",
+                    type: {
+                        _tag: "string",
+                    },
+                    required: Required.OPTIONAL,
+                };
             }
             return td;
         })
@@ -61,6 +68,11 @@ export const getSchemaMeta = (
     return (
         meta ||
         E.right({
+            info: {
+                namespace: "",
+                name: "",
+                version: "",
+            },
             properties: {},
         })
     );
@@ -110,9 +122,10 @@ export const addTypeError = (
  * Creates a decorator that connects the references between class properties.
  */
 export const createRefConnector = (
-    refType: "array" | "object",
-    refClass: ClassType
+    refType: "array-ref" | "object-ref",
+    params: RefParams
 ) => {
+    const { type, required } = params;
     return (target: any, propertyName: string) => {
         let clazz = target;
         let newMeta: E.Either<string[], TypeDescriptor>;
@@ -129,14 +142,17 @@ export const createRefConnector = (
             newMeta = pipe(
                 E.Do,
                 E.bind("currentMeta", () => getTypeMeta(clazz, propertyName)),
-                E.bind("refMeta", () => getTypeMeta(refClass)),
+                E.bind("refMeta", () => getTypeMeta(type)),
                 E.map(({ currentMeta, refMeta }) => {
                     //* we know that refMeta will be complete at this point
                     //* 👇 because of the implicit decorator evaluation order
-                    currentMeta.properties[propertyName].type = {
+                    const pd = currentMeta.properties[propertyName];
+                    pd.name = propertyName;
+                    pd.type = {
                         _tag: refType,
                         descriptor: refMeta,
                     };
+                    pd.required = required;
                     return currentMeta;
                 })
             );

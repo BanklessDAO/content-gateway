@@ -55,3 +55,28 @@ export const coercePrimitive = (value: string): string | number | boolean => {
 
     return value;
 };
+
+type Falsy = undefined | false | 0 | "" | null | void;
+type Unique = typeof Unique;
+declare const Unique: unique symbol;
+type Not<T extends boolean> = T extends true ? false : true;
+type IsNever<T> = [T] extends [never] ? true : false;
+type IsAny<T> = [T] extends [Unique] ? Not<IsNever<T>> : false;
+type Or<T, U> = T extends Falsy ? U : T;
+// eslint-disable-next-line @typescript-eslint/ban-types
+type IsUnknown<T> = [T] extends [Unique | {} | void | null]
+    ? false
+    : true;
+
+export type Required<T> = Or<IsAny<T>, IsUnknown<T>> extends true
+    ? T
+    : { [P in keyof T]-?: T[P] };
+export type DeepRequired<T, E = readonly unknown[]> = Or<
+    IsAny<T>,
+    IsUnknown<T>
+> extends true
+    ? T
+    : // eslint-disable-next-line @typescript-eslint/ban-types
+    T extends E | Function
+    ? T
+    : { [P in keyof T]-?: DeepRequired<T[P], E> };

@@ -2,24 +2,98 @@ import { extractRight } from "@shared/util-fp";
 import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import { createSchemaFromObject, createSchemaFromType } from ".";
-import { SchemaValidationError } from "..";
+import {
+    ArrayOf,
+    ArrayRef,
+    createSchemaFromClass,
+    Data,
+    Nested,
+    ObjectRef,
+    Property,
+    Required as NewRequired,
+    SchemaValidationError
+} from "..";
 import { User as UserWithBackwardsCompatibleNestedAddress } from "./test/UserWithBackwardsCompatibleAddress";
 
+const userInfo = {
+    namespace: "test",
+    name: "User",
+    version: "v1",
+};
+
+@Nested()
 class Comment {
+    @Property({
+        required: NewRequired.NON_EMPTY,
+    })
     @Required(true)
     text: string;
 }
 
+@Nested()
 class City {
+    @Property({
+        required: NewRequired.NON_EMPTY,
+    })
     @Required(true)
     name: string;
 }
 
+@Nested()
 class Address {
+    @Property({
+        required: NewRequired.NON_EMPTY,
+    })
     @Required(true)
     address: string;
+
+    @ObjectRef({
+        required: NewRequired.REQUIRED,
+        type: City,
+    })
     @Required(true)
     city: City;
+}
+
+@AdditionalProperties(false)
+@Data({
+    info: userInfo,
+})
+class User {
+    @Property({
+        required: NewRequired.NON_EMPTY,
+    })
+    @Required(true)
+    id: string;
+
+    @Property({
+        required: NewRequired.NON_EMPTY,
+    })
+    @Required(true)
+    name: string;
+
+    @ArrayRef({
+        required: NewRequired.OPTIONAL,
+        type: Comment,
+    })
+    @Required(false)
+    @CollectionOf(Comment)
+    comments: Comment[];
+
+    @ArrayOf({
+        required: NewRequired.OPTIONAL,
+        type: "string",
+    })
+    @Required(false)
+    @CollectionOf(String)
+    skills: string[];
+
+    @ObjectRef({
+        required: NewRequired.REQUIRED,
+        type: Address,
+    })
+    @Required(true)
+    address: Address;
 }
 
 class BackwardsIncompatibleAddress {
@@ -27,22 +101,6 @@ class BackwardsIncompatibleAddress {
     address: string;
     @Required(true)
     city: string;
-}
-
-@AdditionalProperties(false)
-class User {
-    @Required(true)
-    id: string;
-    @Required(true)
-    name?: string;
-    @Required(false)
-    @CollectionOf(Comment)
-    comments: Comment[];
-    @Required(false)
-    @CollectionOf(String)
-    skills: string[];
-    @Required(true)
-    address: Address;
 }
 
 @AdditionalProperties(false)
@@ -94,12 +152,6 @@ class BackwardsCompatibleUserWithIncompatibleAddress {
     @Required(true)
     address: BackwardsIncompatibleAddress;
 }
-
-const userInfo = {
-    namespace: "test",
-    name: "User",
-    version: "v1",
-};
 
 const expectedProperties = {
     id: {
@@ -286,6 +338,14 @@ describe("Given a Schema", () => {
                 jsonSchema: expectedSchemaObject,
             })
         );
+
+        it("When accessing its schema object then it should be correct", () => {
+            expect(schema.jsonSchema).toEqual(expectedSchemaObject);
+        });
+    });
+
+    describe("created from a class", () => {
+        const schema = extractRight(createSchemaFromClass(User));
 
         it("When accessing its schema object then it should be correct", () => {
             expect(schema.jsonSchema).toEqual(expectedSchemaObject);

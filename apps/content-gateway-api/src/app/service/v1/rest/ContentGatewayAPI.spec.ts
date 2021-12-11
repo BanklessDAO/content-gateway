@@ -13,7 +13,7 @@ import { AdditionalProperties, Required } from "@tsed/schema";
 import * as express from "express";
 import * as request from "supertest";
 import { v4 as uuid } from "uuid";
-import { generateContentGatewayAPI } from "./ContentGatewayAPI";
+import { generateContentGatewayAPIV1 } from "./ContentGatewayAPI";
 
 const userInfo = {
     namespace: "test",
@@ -65,7 +65,7 @@ describe("Given a content gateway api", () => {
         });
         app.use(
             "/",
-            await generateContentGatewayAPI({
+            await generateContentGatewayAPIV1({
                 app: app,
                 contentGateway: gateway,
             })
