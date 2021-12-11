@@ -1,4 +1,4 @@
-import { CodecValidationError, GenericProgramError, ProgramErrorBase } from "@shared/util-dto";
+import { CodecValidationError, GenericProgramError, ProgramErrorBase } from "@shared/util-data";
 import { AxiosError } from "axios";
 
 export class HTTPDataTransferError extends ProgramErrorBase<"HTTPDataTransferError"> {

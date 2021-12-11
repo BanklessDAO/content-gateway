@@ -53,7 +53,7 @@
         "shared-util-auth": {
             "tags": []
         },
-        "shared-util-dto": {
+        "shared-util-data": {
             "tags": []
         },
         "shared-util-fp": {

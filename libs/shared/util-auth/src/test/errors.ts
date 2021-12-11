@@ -1,4 +1,4 @@
-import { ProgramErrorBase } from "@shared/util-dto";
+import { ProgramErrorBase } from "@shared/util-data";
 
 export class TodoNotFoundError extends ProgramErrorBase<"TodoNotFoundError"> {
     constructor(id: number) {

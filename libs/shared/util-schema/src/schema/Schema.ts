@@ -7,7 +7,7 @@ import {
     SchemaDefinitions,
     SupportedJSONSchema,
     SupportedPropertyRecord
-} from "@shared/util-dto";
+} from "@shared/util-data";
 import { Type } from "@tsed/core";
 import { getJsonSchema } from "@tsed/schema";
 import Ajv from "ajv/dist/ajv";

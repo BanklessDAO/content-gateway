@@ -1,5 +1,5 @@
 import { ContentGatewayClient } from "@banklessdao/sdk";
-import { ProgramError } from "@shared/util-dto";
+import { ProgramError } from "@shared/util-data";
 import { SchemaInfo } from "@shared/util-schema";
 import * as TE from "fp-ts/TaskEither";
 import { Job, JobDescriptor, JobRepository, JobScheduler } from ".";

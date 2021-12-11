@@ -7,7 +7,7 @@ import {
     SchemaValidationError,
     SinglePayload
 } from "@domain/feature-gateway";
-import { GenericProgramError } from "@shared/util-dto";
+import { GenericProgramError } from "@shared/util-data";
 import { extractLeft, extractRight, programError } from "@shared/util-fp";
 import {
     createSchemaFromType,

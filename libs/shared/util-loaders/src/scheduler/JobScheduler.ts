@@ -1,5 +1,5 @@
 import { ContentGatewayClient } from "@banklessdao/sdk";
-import { ProgramError } from "@shared/util-dto";
+import { ProgramError } from "@shared/util-data";
 import { createLogger, programError } from "@shared/util-fp";
 import { schemaInfoToString } from "@shared/util-schema";
 import * as E from "fp-ts/Either";

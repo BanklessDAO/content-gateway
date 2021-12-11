@@ -1,4 +1,4 @@
-import { UnknownError } from "@shared/util-dto";
+import { UnknownError } from "@shared/util-data";
 import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";

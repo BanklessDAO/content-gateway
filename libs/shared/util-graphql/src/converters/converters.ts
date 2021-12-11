@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import * as s from "@shared/util-dto";
+import * as s from "@shared/util-data";
 import { programError } from "@shared/util-fp";
 import { Schema } from "@shared/util-schema";
 import * as g from "graphql";

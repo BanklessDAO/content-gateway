@@ -5,7 +5,7 @@ import {
     jsonBatchPayloadCodec,
     jsonPayloadCodec,
     mapCodecValidationError,
-} from "@shared/util-dto";
+} from "@shared/util-data";
 import { createSchemaFromObject, SchemaInfo } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";

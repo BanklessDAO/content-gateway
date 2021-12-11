@@ -1,8 +1,8 @@
 import { DocumentNode, OperationVariables } from "@apollo/client/core";
-import { ProgramError } from "@shared/util-dto";
+import { ProgramError } from "@shared/util-data";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
-import { TheGraphClient as TheGraphClient } from "./impl/TheGraphClient";
+import { ApolloGraphQLClient as ApolloGraphQLClient } from "./impl/TheGraphClient";
 
 /**
  *
@@ -20,4 +20,4 @@ export interface GraphQLClient {
  * endpoint at the given URL.
  */
 export const createGraphQLClient = (url: string): GraphQLClient =>
-    new TheGraphClient(url);
+    new ApolloGraphQLClient(url);

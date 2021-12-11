@@ -1,5 +1,5 @@
 module.exports = {
-    displayName: "shared-util-dto",
+    displayName: "shared-util-data",
     preset: "../../../jest.preset.js",
     globals: {
         "ts-jest": {
@@ -10,5 +10,5 @@ module.exports = {
         "^.+\\.[tj]sx?$": "ts-jest",
     },
     moduleFileExtensions: ["ts", "tsx", "js", "jsx"],
-    coverageDirectory: "../../../coverage/libs/shared/util-dto",
+    coverageDirectory: "../../../coverage/libs/shared/util-data",
 };

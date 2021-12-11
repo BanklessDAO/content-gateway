@@ -1,5 +1,5 @@
 import { DatabaseError } from "@domain/feature-gateway";
-import { UnknownError } from "@shared/util-dto";
+import { UnknownError } from "@shared/util-data";
 import * as TE from "fp-ts/TaskEither";
 
 export const wrapDbOperation =

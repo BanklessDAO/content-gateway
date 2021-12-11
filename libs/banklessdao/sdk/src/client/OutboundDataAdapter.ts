@@ -3,7 +3,7 @@ import {
     JsonBatchPayload,
     JsonPayload,
     post
-} from "@shared/util-dto";
+} from "@shared/util-data";
 import { SchemaInfo, SchemaJson } from "@shared/util-schema";
 import * as TE from "fp-ts/TaskEither";
 import * as t from "io-ts";

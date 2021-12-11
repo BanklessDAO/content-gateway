@@ -1,4 +1,4 @@
-import { ProgramErrorBase } from "@shared/util-dto";
+import { ProgramErrorBase } from "@shared/util-data";
 
 export class SchemaValidationError extends ProgramErrorBase<"SchemaValidationError"> {
     constructor(errors: Record<string, unknown>) {

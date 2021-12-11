@@ -4,20 +4,20 @@ import {
     HttpLink,
     InMemoryCache,
     NormalizedCacheObject,
-    OperationVariables
+    OperationVariables,
 } from "@apollo/client/core";
 import {
     mapCodecValidationError,
     ProgramError,
-    UnknownError
-} from "@shared/util-dto";
+    UnknownError,
+} from "@shared/util-data";
 import fetch from "cross-fetch";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { GraphQLClient } from "..";
 
-export class TheGraphClient implements GraphQLClient {
+export class ApolloGraphQLClient implements GraphQLClient {
     private readonly client: ApolloClient<NormalizedCacheObject>;
 
     constructor(uri: string) {

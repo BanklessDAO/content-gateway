@@ -1,5 +1,5 @@
 import { FilterType } from "@domain/feature-gateway";
-import * as s from "@shared/util-dto";
+import * as s from "@shared/util-data";
 import * as g from "graphql";
 
 const IDFilter = new g.GraphQLInputObjectType({

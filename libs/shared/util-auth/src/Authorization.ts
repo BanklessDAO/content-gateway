@@ -1,4 +1,4 @@
-import { ProgramError } from "@shared/util-dto";
+import { ProgramError } from "@shared/util-data";
 import * as A from "fp-ts/Array";
 import { pipe } from "fp-ts/function";
 import * as TE from "fp-ts/TaskEither";

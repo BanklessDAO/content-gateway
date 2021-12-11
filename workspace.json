@@ -395,33 +395,33 @@
                 }
             }
         },
-        "shared-util-dto": {
-            "root": "libs/shared/util-dto",
-            "sourceRoot": "libs/shared/util-dto/src",
+        "shared-util-data": {
+            "root": "libs/shared/util-data",
+            "sourceRoot": "libs/shared/util-data/src",
             "projectType": "library",
             "targets": {
                 "build": {
                     "executor": "@nrwl/workspace:tsc",
                     "outputs": ["{options.outputPath}"],
                     "options": {
-                        "outputPath": "dist/libs/shared/util-dto",
-                        "main": "libs/shared/util-dto/src/index.ts",
-                        "tsConfig": "libs/shared/util-dto/tsconfig.lib.json",
-                        "assets": ["libs/shared/util-dto/*.md"]
+                        "outputPath": "dist/libs/shared/util-data",
+                        "main": "libs/shared/util-data/src/index.ts",
+                        "tsConfig": "libs/shared/util-data/tsconfig.lib.json",
+                        "assets": ["libs/shared/util-data/*.md"]
                     }
                 },
                 "lint": {
                     "executor": "@nrwl/linter:eslint",
                     "outputs": ["{options.outputFile}"],
                     "options": {
-                        "lintFilePatterns": ["libs/shared/util-dto/**/*.ts"]
+                        "lintFilePatterns": ["libs/shared/util-data/**/*.ts"]
                     }
                 },
                 "test": {
                     "executor": "@nrwl/jest:jest",
-                    "outputs": ["coverage/libs/shared/util-dto"],
+                    "outputs": ["coverage/libs/shared/util-data"],
                     "options": {
-                        "jestConfig": "libs/shared/util-dto/jest.config.js",
+                        "jestConfig": "libs/shared/util-data/jest.config.js",
                         "passWithNoTests": true
                     }
                 }

@@ -1,6 +1,6 @@
 import { GraphQLFieldConfigMap } from "graphql";
 import * as TE from "fp-ts/TaskEither";
-import { ProgramError } from "@shared/util-dto";
+import { ProgramError } from "@shared/util-data";
 
 export type LiveLoader<I, O> = {
     configure: () => GraphQLFieldConfigMap<string, unknown>

@@ -1,4 +1,4 @@
-import { ProgramError, ProgramErrorBase } from "@shared/util-dto";
+import { ProgramError, ProgramErrorBase } from "@shared/util-data";
 
 export class DataReceivingError extends ProgramErrorBase<"DataReceivingError"> {
     constructor(cause: ProgramError) {

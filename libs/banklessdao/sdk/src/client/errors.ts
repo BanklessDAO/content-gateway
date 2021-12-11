@@ -1,4 +1,4 @@
-import { ProgramErrorBase } from "@shared/util-dto";
+import { ProgramErrorBase } from "@shared/util-data";
 import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 
 export class SchemaNotFoundError extends ProgramErrorBase<"SchemaNotFoundError"> {

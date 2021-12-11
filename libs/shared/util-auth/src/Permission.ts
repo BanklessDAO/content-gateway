@@ -1,4 +1,4 @@
-import { ProgramError } from "@shared/util-dto";
+import { ProgramError } from "@shared/util-data";
 import { Filter } from "./Filter";
 import { Operation } from "./Operation";
 import { Policy } from "./Policy";

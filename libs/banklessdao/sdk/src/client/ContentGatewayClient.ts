@@ -1,4 +1,4 @@
-import { DataTransferError } from "@shared/util-dto";
+import { DataTransferError } from "@shared/util-data";
 import {
     createSchemaFromType,
     Payload,

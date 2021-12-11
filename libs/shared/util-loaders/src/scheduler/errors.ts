@@ -1,4 +1,4 @@
-import { ProgramError, ProgramErrorBase } from "@shared/util-dto";
+import { ProgramError, ProgramErrorBase } from "@shared/util-data";
 import { schemaInfoToString } from "@shared/util-schema";
 import { Job } from ".";
 

@@ -7,7 +7,7 @@ import {
     SchemaRepository,
     SchemaStat
 } from "@domain/feature-gateway";
-import { CodecValidationError, UnknownError } from "@shared/util-dto";
+import { CodecValidationError, UnknownError } from "@shared/util-data";
 import {
     createSchemaFromObject,
     Schema,

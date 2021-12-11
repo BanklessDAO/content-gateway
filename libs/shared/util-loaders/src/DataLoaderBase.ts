@@ -1,4 +1,4 @@
-import { ProgramError, UnknownError } from "@shared/util-dto";
+import { ProgramError, UnknownError } from "@shared/util-data";
 import { createLogger } from "@shared/util-fp";
 import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import { Type } from "@tsed/core";

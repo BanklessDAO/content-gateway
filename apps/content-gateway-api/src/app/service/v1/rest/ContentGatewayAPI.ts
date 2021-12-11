@@ -6,7 +6,7 @@ import {
     ProgramError,
     programErrorCodec,
     schemaInfoCodec,
-} from "@shared/util-dto";
+} from "@shared/util-data";
 import { createLogger } from "@shared/util-fp";
 import { createSchemaFromObject } from "@shared/util-schema";
 import * as express from "express";
