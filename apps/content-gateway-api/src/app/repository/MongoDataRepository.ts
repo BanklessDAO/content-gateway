@@ -19,7 +19,7 @@ import { absurd, pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import { Filter as MongoFilter, MongoClient, ObjectId } from "mongodb";
-import { Data, wrapDbOperation, wrapDbOperationWithParams } from ".";
+import { DocumentData, wrapDbOperation, wrapDbOperationWithParams } from ".";
 
 export const createMongoDataRepository = ({
     dbName,
@@ -38,7 +38,7 @@ export const createMongoDataRepository = ({
     ): TE.TaskEither<DatabaseError, void> => {
         const { info, record } = data;
         const key = schemaInfoToString(info);
-        const collection = db.collection<Data>(key);
+        const collection = db.collection<DocumentData>(key);
         const id = record.id as string;
         return pipe(
             wrapDbOperation(() =>
@@ -98,7 +98,7 @@ export const createMongoDataRepository = ({
             return TE.right(undefined);
         }
         const key = schemaInfoToString(info);
-        const collection = db.collection<Data>(key);
+        const collection = db.collection<DocumentData>(key);
         return pipe(
             schemaRepository.find(info),
             TE.fromTaskOption(() => new MissingSchemaError(info)),
@@ -146,7 +146,7 @@ export const createMongoDataRepository = ({
 
     const findById = (info: SchemaInfo, id: string): TO.TaskOption<Entry> => {
         const key = schemaInfoToString(info);
-        const collection = db.collection<Data>(key);
+        const collection = db.collection<DocumentData>(key);
         return pipe(
             TO.tryCatch(() =>
                 collection.findOne({
@@ -167,8 +167,8 @@ export const createMongoDataRepository = ({
         );
     };
 
-    const convertFilters = (where: Filter[]): MongoFilter<Data> => {
-        const result = {} as MongoFilter<Data>;
+    const convertFilters = (where: Filter[]): MongoFilter<DocumentData> => {
+        const result = {} as MongoFilter<DocumentData>;
         for (const filter of where) {
             const path = `data.${filter.fieldPath}`;
             switch (filter.type) {
@@ -231,7 +231,7 @@ export const createMongoDataRepository = ({
         return pipe(
             wrapDbOperation(async () => {
                 const key = schemaInfoToString(info);
-                const coll = db.collection<Data>(key);
+                const coll = db.collection<DocumentData>(key);
                 const orderBy: OrderBy = query.orderBy
                     ? {
                           fieldPath: `data.${query.orderBy.fieldPath}`,

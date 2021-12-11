@@ -4,7 +4,12 @@ import * as E from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/function";
 import { ClassType, Required } from ".";
 import { TypeDescriptor } from "./descriptors";
-import { addTypeError, createRefConnector, getTypeMeta, setTypeMeta } from "./utils";
+import {
+    addTypeError,
+    createRefConnector,
+    getTypeMeta,
+    setTypeMeta
+} from "./utils";
 
 export type RefParams = {
     type: ClassType;
@@ -64,4 +69,164 @@ export const ArrayRef = (params: ArrayRefParams) => {
  */
 export const ObjectRef = (params: RefParams) => {
     return createRefConnector("object-ref", params);
+};
+
+/**
+ * Shorthand for:
+ * ```ts
+ * @ArrayOf({
+        required: Required.REQUIRED,
+        type: "string",
+    })
+ * ```
+ */
+export const RequiredStringArrayOf = () => {
+    return ArrayOf({
+        required: Required.REQUIRED,
+        type: "string",
+    });
+};
+
+/**
+ * Shorthand for:
+ * ```ts
+ * @ArrayOf({
+        required: Required.REQUIRED,
+        type: "number",
+    })
+ * ```
+ */
+export const RequiredNumberArrayOf = () => {
+    return ArrayOf({
+        required: Required.REQUIRED,
+        type: "number",
+    });
+};
+
+/**
+ * Shorthand for:
+ * ```ts
+ * @ArrayOf({
+        required: Required.REQUIRED,
+        type: "boolean",
+    })
+ * ```
+ */
+export const RequiredBooleanArrayOf = () => {
+    return ArrayOf({
+        required: Required.REQUIRED,
+        type: "boolean",
+    });
+};
+
+/**
+ * Shorthand for:
+ * ```ts
+ * @ArrayOf({
+        required: Required.OPTIONAL,
+        type: "string",
+    })
+ * ```
+ */
+export const OptionalStringArrayOf = () => {
+    return ArrayOf({
+        required: Required.OPTIONAL,
+        type: "string",
+    });
+};
+
+/**
+     * Shorthand for:
+     * ```ts
+     * @ArrayOf({
+            required: Required.OPTIONAL,
+            type: "number",
+        })
+     * ```
+     */
+export const OptionalNumberArrayOf = () => {
+    return ArrayOf({
+        required: Required.OPTIONAL,
+        type: "number",
+    });
+};
+
+/**
+     * Shorthand for:
+     * ```ts
+     * @ArrayOf({
+            required: Required.OPTIONAL,
+            type: "boolean",
+        })
+     * ```
+     */
+export const OptionalBooleanArrayOf = () => {
+    return ArrayOf({
+        required: Required.OPTIONAL,
+        type: "boolean",
+    });
+};
+
+/**
+ * Shorthand for:
+ * ```ts
+ * @ObjectRef({
+ *     type: type,
+ *     required: Required.REQUIRED,
+ * })
+ * ```
+ */
+export const RequiredObjectRef = (type: ClassType) => {
+    return createRefConnector("object-ref", {
+        required: Required.REQUIRED,
+        type: type,
+    });
+};
+
+/**
+ * Shorthand for:
+ * ```ts
+ * @ObjectRef({
+ *     type: type,
+ *     required: Required.REQUIRED,
+ * })
+ * ```
+ */
+export const OptionalObjectRef = (type: ClassType) => {
+    return createRefConnector("object-ref", {
+        required: Required.OPTIONAL,
+        type: type,
+    });
+};
+
+/**
+ * Shorthand for:
+ * ```ts
+ * @ArrayRef({
+ *     type: type,
+ *     required: Required.REQUIRED,
+ * })
+ * ```
+ */
+export const RequiredArrayRef = (type: ClassType) => {
+    return createRefConnector("array-ref", {
+        required: Required.REQUIRED,
+        type: type,
+    });
+};
+
+/**
+ * Shorthand for:
+ * ```ts
+ * @ArrayRef({
+ *     type: type,
+ *     required: Required.REQUIRED,
+ * })
+ * ```
+ */
+export const OptionalArrayRef = (type: ClassType) => {
+    return createRefConnector("array-ref", {
+        required: Required.OPTIONAL,
+        type: type,
+    });
 };

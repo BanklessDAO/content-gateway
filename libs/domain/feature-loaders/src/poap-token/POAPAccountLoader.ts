@@ -1,6 +1,9 @@
 import { createGraphQLClient, GraphQLClient } from "@shared/util-data";
 import { ScheduleMode } from "@shared/util-loaders";
-import { AdditionalProperties, Required } from "@tsed/schema";
+import {
+    Data,
+    NonEmptyProperty
+} from "@shared/util-schema";
 import gql from "graphql-tag";
 import * as t from "io-ts";
 import { GraphQLDataLoaderBase } from "../base/GraphQLDataLoaderBase";
@@ -32,9 +35,11 @@ const INFO = {
     version: "V1",
 };
 
-@AdditionalProperties(false)
+@Data({
+    info: INFO,
+})
 class POAPAccount {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
 }
 

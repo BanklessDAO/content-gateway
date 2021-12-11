@@ -6,10 +6,8 @@ import {
     schemaCodec,
     SchemaDefinitions,
     SupportedJSONSchema,
-    SupportedPropertyRecord
+    SupportedPropertyRecord,
 } from "@shared/util-data";
-import { Type } from "@tsed/core";
-import { getJsonSchema } from "@tsed/schema";
 import Ajv from "ajv/dist/ajv";
 import * as E from "fp-ts/Either";
 import { absurd, pipe } from "fp-ts/lib/function";
@@ -18,7 +16,7 @@ import {
     ClassType,
     extractSchemaDescriptor,
     Required,
-    SchemaValidationError
+    SchemaValidationError,
 } from ".";
 import { SchemaInfo } from "..";
 import { Properties, SchemaDescriptor } from "./decorator/descriptors";
@@ -80,8 +78,7 @@ export type Schema = {
  */
 export const createSchemaFromClass: <T>(
     type: ClassType<T>
-) => E.Either<string[] | CodecValidationError, Schema> = (klass) => {
-    
+) => E.Either<CodecValidationError, Schema> = (klass) => {
     const definitions: SchemaDefinitions = {};
     const required: string[] = [];
     const properties: SupportedPropertyRecord = {};
@@ -90,7 +87,6 @@ export const createSchemaFromClass: <T>(
         const result: JSONSchemaType = {
             type: "object",
             properties: {},
-            required: [],
         };
         definitions[name] = result;
         return result;
@@ -100,6 +96,8 @@ export const createSchemaFromClass: <T>(
         props: Properties,
         type: JSONSchemaType
     ): void => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const required: string[] = [];
         for (const [name, pd] of Object.entries(props.properties)) {
             let minLength: number | undefined = undefined;
             if (pd.required === Required.NON_EMPTY) {
@@ -153,8 +151,11 @@ export const createSchemaFromClass: <T>(
                     absurd(pd.type);
             }
             if (pd.required !== Required.OPTIONAL) {
-                type.required?.push(name);
+                required?.push(name);
             }
+        }
+        if (required.length > 0) {
+            type.required = required;
         }
     };
 
@@ -165,10 +166,14 @@ export const createSchemaFromClass: <T>(
             additionalProperties: false,
             type: "object",
             properties: properties,
-            definitions: definitions,
-            required: required,
         };
         mapToSchemaRecur(descriptor, result);
+        if (Object.keys(definitions).length > 0) {
+            result.definitions = definitions;
+        }
+        if (required.length > 0) {
+            result.required = required;
+        }
         return result;
     };
 
@@ -185,22 +190,6 @@ export const createSchemaFromClass: <T>(
             });
         })
     );
-};
-
-/**
- * Creates a [[Schema]] object from the given [[type]]
- * and the given schema [[info]].
- * Note that this is a curried function and requireds a [[serializer]]
- * in order to work.
- */
-export const createSchemaFromType: <T>(
-    info: SchemaInfo,
-    type: Type<T>
-) => E.Either<CodecValidationError, Schema> = (info, type) => {
-    return createSchemaFromObject({
-        info: info,
-        jsonSchema: getJsonSchema(type),
-    });
 };
 
 /**

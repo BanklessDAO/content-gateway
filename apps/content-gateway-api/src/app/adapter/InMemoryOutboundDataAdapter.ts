@@ -4,15 +4,11 @@ import {
     DataTransferError,
     jsonBatchPayloadCodec,
     jsonPayloadCodec,
-    mapCodecValidationError,
+    mapCodecValidationError
 } from "@shared/util-data";
 import { createSchemaFromObject, SchemaInfo } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
-
-type Deps = {
-    contentGateway: ContentGateway;
-};
 
 /**
  * This data adapter will send the payloads to an in-memory {@link ContentGateway} instance
@@ -20,7 +16,9 @@ type Deps = {
  */
 export const createInMemoryOutboundDataAdapter = ({
     contentGateway,
-}: Deps): OutboundDataAdapter => {
+}: {
+    contentGateway: ContentGateway;
+}): OutboundDataAdapter => {
     return {
         register: (
             schema

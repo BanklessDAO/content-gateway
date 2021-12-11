@@ -2,13 +2,19 @@ import { notEmpty } from "@shared/util-fp";
 import {
     DEFAULT_CURSOR,
     LoadContext,
-    ScheduleMode,
+    ScheduleMode
 } from "@shared/util-loaders";
-import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
+import {
+    Data,
+    Nested,
+    NonEmptyProperty,
+    OptionalProperty,
+    RequiredArrayRef,
+    RequiredObjectRef
+} from "@shared/util-schema";
 import * as t from "io-ts";
 import { withMessage } from "io-ts-types";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
-import { BATCH_SIZE } from "../defaults";
 
 const INFO = {
     namespace: "bankless-podcast",
@@ -16,75 +22,81 @@ const INFO = {
     version: "V1",
 };
 
+@Nested()
 class Thumbnail {
-    @Required(true)
+    @NonEmptyProperty()
     kind: string;
-    @Required(true)
+    @NonEmptyProperty()
     url: string;
-    @Required(true)
+    @NonEmptyProperty()
     width: number;
-    @Required(true)
+    @NonEmptyProperty()
     height: number;
 }
 
+@Nested()
 class ResourceId {
-    @Required(true)
+    @NonEmptyProperty()
     kind: string;
-    @Required(true)
+    @NonEmptyProperty()
     videoId: string;
 }
 
+@Nested()
 class Snippet {
-    @Required(true)
+    @NonEmptyProperty()
     title: string;
-    @Required(true)
+    @NonEmptyProperty()
     channelTitle: string;
-    @Required(true)
+    @NonEmptyProperty()
     playlistId: string;
-    @Required(true)
+    @NonEmptyProperty()
     position: number;
-    @Required(true)
+    @NonEmptyProperty()
     description: string;
-    @Required(true)
+    @NonEmptyProperty()
     channelId: string;
-    @Required(true)
+    @RequiredObjectRef(ResourceId)
     resourceId: ResourceId;
-    @Required(true)
+    @NonEmptyProperty()
     publishedAt: number;
 
-    @Required(false)
+    @OptionalProperty()
     videoOwnerChannelTitle?: string;
-    @Required(false)
+    @OptionalProperty()
     videoOwnerChannelId?: string;
 
-    @Required(true)
-    @CollectionOf(Thumbnail)
+    @RequiredArrayRef(Thumbnail)
     thumbnails: Thumbnail[];
 }
 
+@Nested()
 class ContentDetails {
-    @Required(false)
+    @OptionalProperty()
     videoId?: string;
-    @Required(false)
+    @OptionalProperty()
     videoPublishedAt?: number;
 }
 
+@Nested()
 class Status {
-    @Required(true)
+    @NonEmptyProperty()
     privacyStatus: string;
 }
 
-@AdditionalProperties(false)
+@Data({
+    info: INFO,
+})
 class PodcastItem {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
+    @NonEmptyProperty()
     kind: string;
-    @Required(true)
+    @RequiredObjectRef(Snippet)
     snippet: Snippet;
-    @Required(true)
+    @RequiredObjectRef(ContentDetails)
     contentDetails: ContentDetails;
-    @Required(true)
+    @RequiredObjectRef(Status)
     status: Status;
 }
 

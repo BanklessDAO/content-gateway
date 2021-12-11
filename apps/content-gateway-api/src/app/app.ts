@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-    ContentGatewayClient,
-    createContentGatewayClient,
+    ContentGatewayClientV1,
+    createContentGatewayClientV1,
 } from "@banklessdao/sdk";
 import {
     ContentGateway,
@@ -36,7 +36,7 @@ export type ApplicationContext = {
     schemaRepository: ObservableSchemaRepository;
     dataRepository: DataRepository;
     contentGateway: ContentGateway;
-    client: ContentGatewayClient;
+    client: ContentGatewayClientV1;
 };
 
 export const createApp = async ({
@@ -73,7 +73,7 @@ export const createApp = async ({
         schemaRepository,
         dataRepository,
     });
-    const client = createContentGatewayClient({
+    const client = createContentGatewayClientV1({
         adapter: createInMemoryOutboundDataAdapter({
             contentGateway,
         }),

@@ -8,8 +8,14 @@ import {
 } from "@domain/feature-gateway";
 import { extractRight } from "@shared/util-fp";
 import { DEFAULT_CURSOR } from "@shared/util-loaders";
-import { createSchemaFromType, Schema } from "@shared/util-schema";
-import { AdditionalProperties, Required } from "@tsed/schema";
+import {
+    createSchemaFromClass,
+    Data,
+    Nested,
+    NonEmptyProperty,
+    RequiredObjectRef,
+    Schema
+} from "@shared/util-schema";
 import * as express from "express";
 import * as request from "supertest";
 import { v4 as uuid } from "uuid";
@@ -21,20 +27,23 @@ const userInfo = {
     version: "V1",
 };
 
+@Nested()
 class Address {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
+    @NonEmptyProperty()
     name: string;
 }
 
-@AdditionalProperties(false)
+@Data({
+    info: userInfo,
+})
 class User {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
+    @NonEmptyProperty()
     name: string;
-    @Required(true)
+    @RequiredObjectRef(Address)
     address: Address;
 }
 
@@ -73,7 +82,7 @@ describe("Given a content gateway api", () => {
     });
 
     it("When a valid schema is sent, Then it registers", async () => {
-        const schema = extractRight(createSchemaFromType(userInfo, User));
+        const schema = extractRight(createSchemaFromClass(User));
         const result = await request(app)
             .post("/schema/register")
             .send(schema.toJson())

@@ -2,61 +2,64 @@
 import { SchemaRepository } from "@domain/feature-gateway";
 import { extractRight, programError } from "@shared/util-fp";
 import {
-    createSchemaFromType,
+    ClassType,
+    createSchemaFromClass,
+    Data,
+    NonEmptyProperty,
+    OptionalProperty,
     Schema,
-    schemaInfoToString,
+    schemaInfoToString
 } from "@shared/util-schema";
-import { Type } from "@tsed/core";
-import { AdditionalProperties, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
 import * as O from "fp-ts/Option";
 import { Db, MongoClient } from "mongodb";
 import { v4 as uuid } from "uuid";
 import { createMongoSchemaRepository } from ".";
 
-@AdditionalProperties(false)
-class User {
-    @Required(true)
-    id: string;
-    @Required(true)
-    name: string;
-}
-
-@AdditionalProperties(false)
-class BackwardsCompatibleUser {
-    @Required(true)
-    id: string;
-    @Required(true)
-    name: string;
-    @Required(false)
-    likesRamen: boolean;
-}
-
-@AdditionalProperties(false)
-class IncompatibleUser {
-    @Required(true)
-    id: string;
-    @Required(true)
-    name: string;
-    @Required(true)
-    age: number;
-}
-
 const userInfo = {
     namespace: "test",
     name: "User",
+    version: "V1",
 };
 
-const createSchema = (type: Type<unknown>, version: string) => {
-    return extractRight(
-        createSchemaFromType(
-            {
-                ...userInfo,
-                version,
-            },
-            type
-        )
-    );
+@Data({
+    info: userInfo,
+})
+class User {
+    @NonEmptyProperty()
+    id: string;
+    @NonEmptyProperty()
+    name: string;
+}
+
+@Data({
+    info: userInfo,
+})
+class BackwardsCompatibleUser {
+    @NonEmptyProperty()
+    id: string;
+    @NonEmptyProperty()
+    name: string;
+    @OptionalProperty()
+    likesRamen?: boolean;
+}
+
+@Data({
+    info: userInfo,
+})
+class IncompatibleUser {
+    @NonEmptyProperty()
+    id: string;
+    @NonEmptyProperty()
+    name: string;
+    @NonEmptyProperty()
+    age: number;
+}
+
+const createSchema = (type: ClassType, version: string) => {
+    const result = extractRight(createSchemaFromClass(type));
+    result.info.version = version;
+    return result;
 };
 
 const url =

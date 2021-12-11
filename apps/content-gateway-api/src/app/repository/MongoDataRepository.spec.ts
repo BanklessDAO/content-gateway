@@ -10,35 +10,38 @@ import {
 import { GenericProgramError } from "@shared/util-data";
 import { extractLeft, extractRight, programError } from "@shared/util-fp";
 import {
-    createSchemaFromType,
+    createSchemaFromClass,
+    Data,
+    NonEmptyProperty,
     SchemaInfo,
     schemaInfoToString,
 } from "@shared/util-schema";
-import { AdditionalProperties, Required } from "@tsed/schema";
 import * as O from "fp-ts/lib/Option";
 import { Db, MongoClient } from "mongodb";
 import { v4 as uuid } from "uuid";
 import {
     createMongoDataRepository,
     createMongoSchemaRepository,
-    Data,
+    DocumentData,
 } from ".";
-
-@AdditionalProperties(false)
-class Address {
-    @Required(true)
-    id: string;
-    @Required(true)
-    name: string;
-    @Required(true)
-    num: number;
-}
 
 const addressInfo = {
     namespace: "test",
     name: "Address",
     version: "V1",
 };
+
+@Data({
+    info: addressInfo,
+})
+class Address {
+    @NonEmptyProperty()
+    id: string;
+    @NonEmptyProperty()
+    name: string;
+    @NonEmptyProperty()
+    num: number;
+}
 
 const url =
     process.env.MONGO_CGA_URL ?? programError("MONGO_CGA_URL is missing");
@@ -73,7 +76,7 @@ describe("Given a Mongo data storage", () => {
         await mongoClient.close();
     });
 
-    const schema = extractRight(createSchemaFromType(addressInfo, Address));
+    const schema = extractRight(createSchemaFromClass(Address));
 
     const prepareRandomSchema = async (version: string) => {
         const info = {
@@ -98,7 +101,7 @@ describe("Given a Mongo data storage", () => {
     const storeRecord = async (payload: SinglePayload): Promise<Entry> => {
         await target.store(payload)();
         const { info, record } = payload;
-        const coll = db.collection<Data>(schemaInfoToString(info));
+        const coll = db.collection<DocumentData>(schemaInfoToString(info));
         const entry =
             (await coll.findOne({ id: record.id as string })) ??
             programError("Data not found");

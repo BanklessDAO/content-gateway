@@ -1,7 +1,6 @@
 import { ProgramError, UnknownError } from "@shared/util-data";
 import { createLogger } from "@shared/util-fp";
-import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
-import { Type } from "@tsed/core";
+import { ClassType, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import { pipe } from "fp-ts/function";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
@@ -14,7 +13,7 @@ import {
     InitContext,
     JobDescriptor,
     LoadContext,
-    SaveContext
+    SaveContext,
 } from ".";
 import { ScheduleMode } from "./scheduler/ScheduleMode";
 
@@ -34,7 +33,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
     protected logger: Logger = createLogger(this.constructor.name);
 
     protected abstract codec: t.Type<R>;
-    protected abstract type: Type<M>;
+    protected abstract type: ClassType<M>;
     protected abstract batchSize: number;
     protected abstract cadenceConfig: CadenceConfig;
 

@@ -1,17 +1,17 @@
 import { extractRight } from "@shared/util-fp";
-import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
 import * as E from "fp-ts/Either";
-import { createSchemaFromObject, createSchemaFromType } from ".";
 import {
-    ArrayOf,
-    ArrayRef,
     createSchemaFromClass,
+    createSchemaFromObject,
     Data,
     Nested,
-    ObjectRef,
-    Property,
-    Required as NewRequired,
-    SchemaValidationError
+    NonEmptyProperty,
+    OptionalArrayRef,
+    OptionalObjectRef,
+    OptionalProperty,
+    OptionalStringArrayOf,
+    RequiredObjectRef,
+    SchemaValidationError,
 } from "..";
 import { User as UserWithBackwardsCompatibleNestedAddress } from "./test/UserWithBackwardsCompatibleAddress";
 
@@ -23,133 +23,99 @@ const userInfo = {
 
 @Nested()
 class Comment {
-    @Property({
-        required: NewRequired.NON_EMPTY,
-    })
-    @Required(true)
+    @NonEmptyProperty()
     text: string;
 }
 
 @Nested()
 class City {
-    @Property({
-        required: NewRequired.NON_EMPTY,
-    })
-    @Required(true)
+    @NonEmptyProperty()
     name: string;
 }
 
 @Nested()
 class Address {
-    @Property({
-        required: NewRequired.NON_EMPTY,
-    })
-    @Required(true)
+    @NonEmptyProperty()
     address: string;
 
-    @ObjectRef({
-        required: NewRequired.REQUIRED,
-        type: City,
-    })
-    @Required(true)
+    @RequiredObjectRef(City)
     city: City;
 }
 
-@AdditionalProperties(false)
 @Data({
     info: userInfo,
 })
 class User {
-    @Property({
-        required: NewRequired.NON_EMPTY,
-    })
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
 
-    @Property({
-        required: NewRequired.NON_EMPTY,
-    })
-    @Required(true)
+    @NonEmptyProperty()
     name: string;
 
-    @ArrayRef({
-        required: NewRequired.OPTIONAL,
-        type: Comment,
-    })
-    @Required(false)
-    @CollectionOf(Comment)
+    @OptionalArrayRef(Comment)
     comments: Comment[];
 
-    @ArrayOf({
-        required: NewRequired.OPTIONAL,
-        type: "string",
-    })
-    @Required(false)
-    @CollectionOf(String)
+    @OptionalStringArrayOf()
     skills: string[];
 
-    @ObjectRef({
-        required: NewRequired.REQUIRED,
-        type: Address,
-    })
-    @Required(true)
+    @RequiredObjectRef(Address)
     address: Address;
 }
 
 class BackwardsIncompatibleAddress {
-    @Required(true)
+    @NonEmptyProperty()
     address: string;
-    @Required(true)
+    @NonEmptyProperty()
     city: string;
 }
 
-@AdditionalProperties(false)
+@Data({
+    info: userInfo,
+})
 class BackwardsCompatibleUser {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
-    name?: string;
-    @Required(false)
-    @CollectionOf(Comment)
+    @NonEmptyProperty()
+    name: string;
+    @OptionalArrayRef(Comment)
     comments: Comment[];
-    @Required(false)
-    @CollectionOf(String)
+    @OptionalStringArrayOf()
     skills: string[];
-    @Required(true)
+    @RequiredObjectRef(Address)
     address: Address;
-    @Required(false)
+    @OptionalProperty()
     favoriteHobby: string;
 }
 
-@AdditionalProperties(false)
+@Data({
+    info: userInfo,
+})
 class BackwardsIncompatibleUser {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
+    @NonEmptyProperty()
     name?: string;
-    @Required(false)
-    @CollectionOf(Comment)
+    @OptionalObjectRef(Comment)
     comments: Comment[];
-    @Required(false)
-    @CollectionOf(String)
+    @OptionalStringArrayOf()
     skills: string[];
-    @Required(true)
+    @NonEmptyProperty()
     address: string;
 }
 
-@AdditionalProperties(false)
+@Data({
+    info: userInfo,
+})
 class BackwardsCompatibleUserWithIncompatibleAddress {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
-    name?: string;
-    @Required(false)
-    @CollectionOf(Comment)
+    @NonEmptyProperty()
+    name: string;
+    @OptionalArrayRef(Comment)
     comments: Comment[];
-    @Required(false)
-    @CollectionOf(String)
+    @OptionalStringArrayOf()
     skills: string[];
-    @Required(true)
+    @RequiredObjectRef(BackwardsIncompatibleAddress)
     address: BackwardsIncompatibleAddress;
 }
 
@@ -222,8 +188,8 @@ const expectedSchemaObject = {
 };
 
 describe("Given a Schema", () => {
-    describe("created from a type", () => {
-        const schema = extractRight(createSchemaFromType(userInfo, User));
+    describe("created from a class", () => {
+        const schema = extractRight(createSchemaFromClass(User));
 
         it("When accessing its schema object then it should be correct", () => {
             expect(schema.jsonSchema).toEqual(expectedSchemaObject);
@@ -281,48 +247,36 @@ describe("Given a Schema", () => {
         });
 
         it("When has backward compatible changes to other Then it is compatible", () => {
-            const oldSchema = extractRight(
-                createSchemaFromType(userInfo, User)
-            );
+            const oldSchema = extractRight(createSchemaFromClass(User));
             const newSchema = extractRight(
-                createSchemaFromType(userInfo, BackwardsCompatibleUser)
+                createSchemaFromClass(BackwardsCompatibleUser)
             );
 
             expect(newSchema.isBackwardCompatibleWith(oldSchema)).toBe(true);
         });
 
         it("When has nested backward compatible changes to other Then it is compatible", () => {
-            const oldSchema = extractRight(
-                createSchemaFromType(userInfo, User)
-            );
+            const oldSchema = extractRight(createSchemaFromClass(User));
             const newSchema = extractRight(
-                createSchemaFromType(
-                    userInfo,
-                    UserWithBackwardsCompatibleNestedAddress
-                )
+                createSchemaFromClass(UserWithBackwardsCompatibleNestedAddress)
             );
 
             expect(newSchema.isBackwardCompatibleWith(oldSchema)).toBe(true);
         });
 
         it("When has backward incompatible changes to other Then it is incompatible", () => {
-            const oldSchema = extractRight(
-                createSchemaFromType(userInfo, User)
-            );
+            const oldSchema = extractRight(createSchemaFromClass(User));
             const newSchema = extractRight(
-                createSchemaFromType(userInfo, BackwardsIncompatibleUser)
+                createSchemaFromClass(BackwardsIncompatibleUser)
             );
 
             expect(newSchema.isBackwardCompatibleWith(oldSchema)).toBe(false);
         });
 
         it("When has backward incompatible changes in nested type to other Then it is incompatible", () => {
-            const oldSchema = extractRight(
-                createSchemaFromType(userInfo, User)
-            );
+            const oldSchema = extractRight(createSchemaFromClass(User));
             const newSchema = extractRight(
-                createSchemaFromType(
-                    userInfo,
+                createSchemaFromClass(
                     BackwardsCompatibleUserWithIncompatibleAddress
                 )
             );

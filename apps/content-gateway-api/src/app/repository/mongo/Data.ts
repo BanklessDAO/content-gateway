@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 // @@index([updatedAt])
 // @@index([deletedAt])
 
-export type Data = {
+export type DocumentData = {
     _id: ObjectId;
     id: string;
     data: Record<string, unknown>;

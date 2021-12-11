@@ -1,6 +1,6 @@
 import { createGraphQLClient, GraphQLClient } from "@shared/util-data";
 import { ScheduleMode } from "@shared/util-loaders";
-import { AdditionalProperties, Required } from "@tsed/schema";
+import { Data, NonEmptyProperty } from "@shared/util-schema";
 import { DocumentNode } from "graphql";
 import gql from "graphql-tag";
 import * as t from "io-ts";
@@ -51,15 +51,17 @@ const INFO = {
     version: "V1",
 };
 
-@AdditionalProperties(false)
+@Data({
+    info: INFO,
+})
 class POAPToken {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
+    @NonEmptyProperty()
     ownerId: string;
-    @Required(true)
+    @NonEmptyProperty()
     eventId: string;
-    @Required(true)
+    @NonEmptyProperty()
     createdAt: number;
 }
 

@@ -8,6 +8,7 @@ import {
     SchemaStat
 } from "@domain/feature-gateway";
 import { CodecValidationError, UnknownError } from "@shared/util-data";
+import { createLogger } from "@shared/util-fp";
 import {
     createSchemaFromObject,
     Schema,
@@ -34,6 +35,7 @@ export const createMongoSchemaRepository = async ({
     dbName: string;
     mongoClient: MongoClient;
 }): Promise<SchemaRepository> => {
+    const logger = createLogger("MongoSchemaRepository");
     const db = mongoClient.db(dbName);
     const schemas = db.collection<MongoSchema>(SCHEMAS_COLLECTION_NAME);
 

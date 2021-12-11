@@ -1,6 +1,17 @@
 import { notEmpty } from "@shared/util-fp";
 import { LoadContext, ScheduleMode } from "@shared/util-loaders";
-import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
+import {
+    Data,
+    Nested,
+    NonEmptyProperty,
+    ObjectRef,
+    OptionalObjectRef,
+    OptionalProperty,
+    Property,
+    Required,
+    RequiredArrayRef,
+    RequiredObjectRef,
+} from "@shared/util-schema";
 import * as t from "io-ts";
 import { withMessage } from "io-ts-types";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
@@ -12,76 +23,80 @@ const INFO = {
     version: "V1",
 };
 
+@Nested()
 class DiscordUser {
-    @Required(true)
+    @NonEmptyProperty()
     discordHandle: string;
-    @Required(true)
+    @NonEmptyProperty()
     discordId: string;
 }
 
+@Nested()
 class Reward {
-    @Required(true)
+    @NonEmptyProperty()
     currency: string;
-    @Required(true)
+    @NonEmptyProperty()
     amount: number;
-    @Required(true)
+    @NonEmptyProperty()
     scale: number;
 }
 
+@Nested()
 class StatusEvent {
-    @Required(true)
+    @NonEmptyProperty()
     status: string;
-    @Required(true)
+    @NonEmptyProperty()
     setAt: number;
 }
 
-@AdditionalProperties(false)
+@Data({
+    info: INFO,
+})
 class Bounty {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
+    @NonEmptyProperty()
     season: number;
-    @Required(true)
+    @NonEmptyProperty()
     title: string;
-    @Required(true)
+    @NonEmptyProperty()
     description: string;
-    @Required(true)
+    @NonEmptyProperty()
     criteria: string;
-    @Required(true)
+    @NonEmptyProperty()
     status: string;
-    @Required(true)
+    @NonEmptyProperty()
     customerId: string;
-    @Required(true)
+    @RequiredObjectRef(Reward)
     reward: Reward;
-    @Required(true)
-    @CollectionOf(StatusEvent)
+    @RequiredArrayRef(StatusEvent)
     statusHistory: StatusEvent[];
 
-    @Required(true)
+    @NonEmptyProperty()
     dueAt: number;
-    @Required(true)
+    @NonEmptyProperty()
     createdAt: number;
-    @Required(true)
+    @OptionalObjectRef(DiscordUser)
     createdBy: DiscordUser;
 
-    @Required(false)
+    @OptionalProperty()
     claimedAt?: number;
-    @Required(false)
+    @OptionalObjectRef(DiscordUser)
     claimedBy?: DiscordUser;
-    @Required(false)
+    @OptionalProperty()
     submittedAt?: number;
-    @Required(false)
+    @OptionalObjectRef(DiscordUser)
     submittedBy?: DiscordUser;
-    @Required(false)
+    @OptionalProperty()
     reviewedAt?: number;
-    @Required(false)
+    @OptionalObjectRef(DiscordUser)
     reviewedBy?: DiscordUser;
 
-    @Required(false)
+    @OptionalProperty()
     discordMessageId?: string;
-    @Required(false)
+    @OptionalProperty()
     submissionNotes?: string;
-    @Required(false)
+    @OptionalProperty()
     submissionUrl?: string;
 }
 

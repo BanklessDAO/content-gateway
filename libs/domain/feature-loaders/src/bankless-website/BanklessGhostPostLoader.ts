@@ -1,6 +1,6 @@
 import { notEmpty } from "@shared/util-fp";
 import { LoadContext, ScheduleMode } from "@shared/util-loaders";
-import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
+import { Data, Nested, NonEmptyProperty, OptionalProperty, RequiredArrayRef } from "@shared/util-schema";
 import * as t from "io-ts";
 import { withMessage } from "io-ts-types";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
@@ -12,82 +12,84 @@ const INFO = {
     version: "V1",
 };
 
+@Nested()
 class BanklessWebsiteTag {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
+    @NonEmptyProperty()
     name: string;
-    @Required(true)
+    @NonEmptyProperty()
     slug: string;
-    @Required(true)
+    @NonEmptyProperty()
     visibility: string;
-    @Required(true)
+    @NonEmptyProperty()
     url: string;
 }
 
+@Nested()
 class BanklessWebsiteAuthor {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
+    @NonEmptyProperty()
     name: string;
-    @Required(true)
+    @NonEmptyProperty()
     slug: string;
-    @Required(true)
+    @NonEmptyProperty()
     url: string;
-    @Required(true)
+    @NonEmptyProperty()
     bio: string;
 }
 
-@AdditionalProperties(false)
+@Data({
+    info: INFO,
+})
 class BaklessWebsitePost {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
+    @NonEmptyProperty()
     uuid: string;
-    @Required(true)
+    @NonEmptyProperty()
     title: string;
-    @Required(true)
+    @NonEmptyProperty()
     slug: string;
-    @Required(true)
+    @NonEmptyProperty()
     html: string;
-    @Required(true)
+    @NonEmptyProperty()
     commentId: string;
-    @Required(true)
+    @NonEmptyProperty()
     featureImage: string;
-    @Required(true)
+    @NonEmptyProperty()
     featured: boolean;
-    @Required(true)
+    @NonEmptyProperty()
     visibility: string;
-    @Required(true)
+    @NonEmptyProperty()
     emailRecipientFilter: string;
-    @Required(true)
+    @NonEmptyProperty()
     createdAt: number;
-    @Required(true)
+    @NonEmptyProperty()
     updatedAt: number;
-    @Required(true)
+    @NonEmptyProperty()
     publishedAt: number;
-    @Required(true)
+    @NonEmptyProperty()
     customExcerpt: string;
-    @Required(true)
+    @NonEmptyProperty()
     url: string;
-    @Required(true)
+    @NonEmptyProperty()
     excerpt: string;
-    @Required(true)
+    @NonEmptyProperty()
     readingTime: number;
-    @Required(true)
+    @NonEmptyProperty()
     access: boolean;
-    @Required(true)
+    @NonEmptyProperty()
     sendEmailWhenPublished: boolean;
-    @Required(true)
-    @CollectionOf(BanklessWebsiteTag)
+    @RequiredArrayRef(BanklessWebsiteTag)
     tags: BanklessWebsiteTag[];
-    @Required(true)
-    @CollectionOf(BanklessWebsiteAuthor)
+    @RequiredArrayRef(BanklessWebsiteAuthor)
     authors: BanklessWebsiteAuthor[];
 
-    @Required(false)
+    @OptionalProperty()
     canonicalUrl?: string;
-    @Required(false)
+    @OptionalProperty()
     emailSubject?: string;
 }
 

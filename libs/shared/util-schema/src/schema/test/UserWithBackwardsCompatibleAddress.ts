@@ -1,38 +1,49 @@
-import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
+import {
+    Data,
+    NonEmptyProperty,
+    OptionalArrayRef,
+    OptionalProperty,
+    OptionalStringArrayOf,
+    RequiredObjectRef
+} from "..";
 
 class Comment {
-    @Required(true)
-    text!: string;
+    @NonEmptyProperty()
+    text: string;
 }
 
 class City {
-    @Required(true)
-    name!: string;
+    @NonEmptyProperty()
+    name: string;
 }
 
 class Address {
-    @Required(true)
-    address!: string;
-    @Required(true)
-    city!: City;
-    @Required(false)
-    likeIt!: boolean;
+    @NonEmptyProperty()
+    address: string;
+    @RequiredObjectRef(City)
+    city: City;
+    @OptionalProperty()
+    likeIt: boolean;
 }
 
-@AdditionalProperties(false)
+@Data({
+    info: {
+        namespace: "test",
+        name: "User",
+        version: "v1",
+    },
+})
 export class User {
-    @Required(true)
-    id!: string;
-    @Required(true)
-    name?: string;
-    @Required(false)
-    @CollectionOf(Comment)
-    comments!: Comment[];
-    @Required(false)
-    @CollectionOf(String)
-    skills!: string[];
-    @Required(true)
-    address!: Address;
-    @Required(false)
-    favoriteHobby!: string;
+    @NonEmptyProperty()
+    id: string;
+    @NonEmptyProperty()
+    name: string;
+    @OptionalArrayRef(Comment)
+    comments: Comment[];
+    @OptionalStringArrayOf()
+    skills: string[];
+    @RequiredObjectRef(Address)
+    address: Address;
+    @OptionalProperty()
+    favoriteHobby: string;
 }

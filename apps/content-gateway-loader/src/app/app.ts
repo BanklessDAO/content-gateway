@@ -1,6 +1,6 @@
 import {
-    createContentGatewayClient,
-    createRESTAdapter,
+    createContentGatewayClientV1,
+    createHTTPAdapterV1,
 } from "@banklessdao/sdk";
 import { PrismaClient } from "@cgl/prisma";
 import { createLoaderRegistry } from "@domain/feature-loaders";
@@ -54,9 +54,9 @@ export const createApp = async (prisma: PrismaClient) => {
         youtubeApiKey: YOUTUBE_API_KEY,
     });
     const jobRepository = createJobRepository(prisma);
-    const adapter = createRESTAdapter(CGA_URL);
+    const adapter = createHTTPAdapterV1(CGA_URL);
 
-    const contentGatewayClient = createContentGatewayClient({
+    const contentGatewayClient = createContentGatewayClientV1({
         adapter: adapter,
     });
 

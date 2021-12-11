@@ -7,13 +7,22 @@ import {
     addTypeError,
     extractPrimitiveType,
     getTypeMeta,
-    setTypeMeta
+    setTypeMeta,
 } from "./utils";
 
 export const Required = {
+    /**
+     * The field is required to be present but can be empty.
+     */
     REQUIRED: "REQUIRED",
+    /**
+     * The value of the field can be `undefined` or `null`.
+     */
     OPTIONAL: "OPTIONAL",
-    NON_EMPTY: "NON_EMPTY"
+    /**
+     * The field is required to be present and must not be empty.
+     */
+    NON_EMPTY: "NON_EMPTY",
 } as const;
 
 export type Required = keyof typeof Required;
@@ -21,6 +30,7 @@ export type Required = keyof typeof Required;
 export type PropertyParams = {
     required: Required;
 };
+
 
 /**
  * Use the {@link Property} decorator on all your class properties
@@ -58,3 +68,39 @@ export const Property = (params: PropertyParams) => {
         setTypeMeta(newMeta, clazz);
     };
 };
+
+/**
+ * Shorthand for:
+ * ```ts
+ * Property({
+ *     required: Required.NON_EMPTY,
+ * })
+ * ```
+ */
+export const NonEmptyProperty = () => Property({
+    required: Required.NON_EMPTY,
+})
+
+/**
+ * Shorthand for:
+ * ```ts
+ * Property({
+ *     required: Required.REQUIRED,
+ * })
+ * ```
+ */
+export const RequiredProperty = () => Property({
+    required: Required.REQUIRED,
+})
+
+/**
+ * Shorthand for:
+ * ```ts
+ * Property({
+ *     required: Required.OPTIONAL,
+ * })
+ * ```
+ */
+export const OptionalProperty = () => Property({
+    required: Required.OPTIONAL,
+})

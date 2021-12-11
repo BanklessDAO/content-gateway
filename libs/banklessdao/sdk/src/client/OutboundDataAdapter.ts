@@ -10,6 +10,10 @@ import * as t from "io-ts";
 
 /**
  * This abstraction hides the implementation details of how data is sent over the wire.
+ * It is used by the SDK to send data to a Content Gateway API server.
+ * In 99% of cases what you'll need is the HTTP adapter which can be created by
+ * calling the {@link createHTTPAdapterV1} function.
+ * Note that 
  */
 export type OutboundDataAdapter = {
     register: (
@@ -26,7 +30,7 @@ export type OutboundDataAdapter = {
     ) => TE.TaskEither<DataTransferError, Record<string, unknown>>;
 };
 
-export const createRESTAdapter = (url: string): OutboundDataAdapter => {
+export const createHTTPAdapterV1 = (url: string): OutboundDataAdapter => {
     return {
         register: (schema: SchemaJson) => {
             return post({

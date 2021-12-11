@@ -1,6 +1,13 @@
 import { notEmpty } from "@shared/util-fp";
 import { LoadContext, ScheduleMode } from "@shared/util-loaders";
-import { AdditionalProperties, CollectionOf, Required } from "@tsed/schema";
+import {
+    Data,
+    NonEmptyProperty,
+    OptionalObjectRef,
+    OptionalProperty,
+    RequiredArrayRef,
+    RequiredStringArrayOf
+} from "@shared/util-schema";
 import * as t from "io-ts";
 import { withMessage } from "io-ts-types";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
@@ -13,56 +20,56 @@ const INFO = {
 };
 
 class Quiz {
-    @Required(true)
-    @CollectionOf(String)
+    @RequiredStringArrayOf()
     answers: string[];
-    @Required(true)
+    @NonEmptyProperty()
     rightAnswerNumber: number;
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
 }
 
 class Slide {
-    @Required(true)
+    @NonEmptyProperty()
     type: string;
-    @Required(true)
+    @NonEmptyProperty()
     title: string;
-    @Required(false)
+    @OptionalProperty()
     content?: string;
-    @Required(false)
+    @OptionalObjectRef(Quiz)
     quiz?: Quiz;
-    @Required(false)
+    @OptionalProperty()
     component?: string;
 }
 
-@AdditionalProperties(false)
+@Data({
+    info: INFO,
+})
 class Course {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
+    @NonEmptyProperty()
     poapImageLink: string;
-    @Required(true)
+    @NonEmptyProperty()
     learningActions: string;
-    @Required(true)
+    @NonEmptyProperty()
     knowledgeRequirements: string;
-    @Required(true)
+    @NonEmptyProperty()
     poapEventId: number;
-    @Required(true)
+    @NonEmptyProperty()
     duration: number;
-    @Required(true)
+    @NonEmptyProperty()
     learnings: string;
-    @Required(true)
+    @NonEmptyProperty()
     difficulty: string;
-    @Required(true)
+    @NonEmptyProperty()
     description: string;
-    @Required(true)
+    @NonEmptyProperty()
     name: string;
-    @Required(true)
+    @NonEmptyProperty()
     notionId: string;
-    @Required(true)
+    @NonEmptyProperty()
     slug: string;
-    @CollectionOf(Slide)
-    @Required(true)
+    @RequiredArrayRef(Slide)
     slides: Slide[];
 }
 

@@ -1,7 +1,7 @@
 import { createGraphQLClient, GraphQLClient } from "@shared/util-data";
 import { notEmpty } from "@shared/util-fp";
 import { DEFAULT_CURSOR, ScheduleMode } from "@shared/util-loaders";
-import { AdditionalProperties, Required } from "@tsed/schema";
+import { Data, NonEmptyProperty } from "@shared/util-schema";
 import { DocumentNode } from "graphql";
 import gql from "graphql-tag";
 import * as t from "io-ts";
@@ -34,13 +34,15 @@ const INFO = {
     version: "V1",
 };
 
-@AdditionalProperties(false)
+@Data({
+    info: INFO,
+})
 class BANKAccount {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Required(true)
+    @NonEmptyProperty()
     balance: string;
-    @Required(true)
+    @NonEmptyProperty()
     lastTransactionExecutedAt: string;
 }
 

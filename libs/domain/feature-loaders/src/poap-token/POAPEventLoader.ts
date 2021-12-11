@@ -1,6 +1,6 @@
 import { notEmpty } from "@shared/util-fp";
 import { LoadContext, ScheduleMode } from "@shared/util-loaders";
-import { AdditionalProperties, Allow, Required } from "@tsed/schema";
+import { Data, NonEmptyProperty, RequiredProperty } from "@shared/util-schema";
 import * as t from "io-ts";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
 import { BATCH_SIZE } from "../defaults";
@@ -11,43 +11,45 @@ const INFO = {
     version: "V1",
 };
 
-@AdditionalProperties(false)
+@Data({
+    info: INFO,
+})
 class POAPEvent {
-    @Required(true)
+    @NonEmptyProperty()
     id: string;
-    @Allow("")
+    @RequiredProperty()
     fancyId: string;
-    @Allow("")
+    @RequiredProperty()
     name: string;
-    @Allow("")
+    @RequiredProperty()
     eventUrl: string;
-    @Allow("")
+    @RequiredProperty()
     imageUrl: string;
-    @Allow("")
+    @RequiredProperty()
     country: string;
-    @Allow("")
+    @RequiredProperty()
     city: string;
-    @Allow("")
+    @RequiredProperty()
     description: string;
-    @Required(true)
+    @NonEmptyProperty()
     year: number;
-    @Required(true)
+    @NonEmptyProperty()
     fromAdmin: boolean;
-    @Required(true)
+    @NonEmptyProperty()
     virtualEvent: boolean;
-    @Required(true)
+    @NonEmptyProperty()
     privateEvent: boolean;
-    @Required(true)
+    @NonEmptyProperty()
     eventTemplateId: number;
-    @Required(true)
+    @NonEmptyProperty()
     eventHostId: number;
-    @Required(true)
+    @NonEmptyProperty()
     startsAt: number;
-    @Required(true)
+    @NonEmptyProperty()
     endsAt: number;
-    @Required(true)
+    @NonEmptyProperty()
     expiresAt: number;
-    @Required(true)
+    @NonEmptyProperty()
     createdAt: number;
 }
 

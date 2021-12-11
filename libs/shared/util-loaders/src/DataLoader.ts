@@ -1,4 +1,4 @@
-import { ContentGatewayClient } from "@banklessdao/sdk";
+import { ContentGatewayClientV1 } from "@banklessdao/sdk";
 import { ProgramError } from "@shared/util-data";
 import { SchemaInfo } from "@shared/util-schema";
 import * as TE from "fp-ts/TaskEither";
@@ -8,7 +8,7 @@ import { Job, JobDescriptor, JobRepository, JobScheduler } from ".";
  * Contains the necessary information for initializing.
  */
 export type InitContext = {
-    client: ContentGatewayClient;
+    client: ContentGatewayClientV1;
     jobScheduler: JobScheduler;
     jobRepository: JobRepository;
 };
@@ -25,7 +25,7 @@ export type LoadingResult<T> = {
 
 export type SaveContext<T> = {
     currentJob: Job;
-    client: ContentGatewayClient;
+    client: ContentGatewayClientV1;
     jobScheduler: JobScheduler;
     loadingResult: LoadingResult<T>;
 };
