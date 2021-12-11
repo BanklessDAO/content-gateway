@@ -1,7 +1,7 @@
 import { DocumentNode, OperationVariables } from "@apollo/client/core";
-import { ProgramError } from "@shared/util-data";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
+import { ProgramError } from "..";
 import { ApolloGraphQLClient } from "./impl";
 
 /**

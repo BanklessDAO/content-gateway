@@ -5,14 +5,14 @@ import {
     FilterType,
     SchemaRepository,
     SchemaValidationError,
-    SinglePayload
+    SinglePayload,
 } from "@domain/feature-gateway";
 import { GenericProgramError } from "@shared/util-data";
 import { extractLeft, extractRight, programError } from "@shared/util-fp";
 import {
     createSchemaFromType,
     SchemaInfo,
-    schemaInfoToString
+    schemaInfoToString,
 } from "@shared/util-schema";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import * as O from "fp-ts/lib/Option";
@@ -21,7 +21,7 @@ import { v4 as uuid } from "uuid";
 import {
     createMongoDataRepository,
     createMongoSchemaRepository,
-    Data
+    Data,
 } from ".";
 
 @AdditionalProperties(false)
@@ -55,6 +55,7 @@ describe("Given a Mongo data storage", () => {
         mongoClient = new MongoClient(url);
         await mongoClient.connect();
         db = mongoClient.db(dbName);
+        await db.dropDatabase();
 
         schemaRepository = await createMongoSchemaRepository({
             dbName,
@@ -69,7 +70,6 @@ describe("Given a Mongo data storage", () => {
     });
 
     afterAll(async () => {
-        await db.dropDatabase();
         await mongoClient.close();
     });
 
@@ -856,6 +856,67 @@ describe("Given a Mongo data storage", () => {
             );
 
             expect(result.entries.map((r) => r.record.num)).toEqual([45]);
+        });
+
+        //* This is a regresssion that happened because we tried to
+        //* 👇 order by `data._id` by default (which doesn't exist)
+        it("Then it returns the records in same order with different limits", async () => {
+            const tempSchema = await prepareRandomSchema(uuid());
+
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "User Joe",
+                    num: 27,
+                },
+            });
+
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "User Jane",
+                    num: 18,
+                },
+            });
+
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "Frank",
+                    num: 54,
+                },
+            });
+
+            await storeRecord({
+                info: tempSchema.info,
+                record: {
+                    id: uuid(),
+                    name: "User Edith",
+                    num: 45,
+                },
+            });
+
+            const first = extractRight(
+                await target.findByQuery({
+                    limit: 2,
+                    info: tempSchema.info,
+                })()
+            );
+
+            const second = extractRight(
+                await target.findByQuery({
+                    limit: 4,
+                    info: tempSchema.info,
+                })()
+            );
+
+            expect(first.entries.map((e) => e._id)).toEqual([
+                second.entries[0]._id,
+                second.entries[1]._id,
+            ]);
         });
     });
 });

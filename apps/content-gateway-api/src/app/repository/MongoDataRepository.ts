@@ -7,9 +7,10 @@ import {
     Filter,
     ListPayload,
     MissingSchemaError,
+    OrderBy,
     Query,
     SchemaRepository,
-    SinglePayload
+    SinglePayload,
 } from "@domain/feature-gateway";
 import { coercePrimitive, createLogger } from "@shared/util-fp";
 import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
@@ -93,7 +94,7 @@ export const createMongoDataRepository = ({
         listPayload: ListPayload
     ): TE.TaskEither<DataStorageError, void> => {
         const { info, records } = listPayload;
-        if(records.length === 0) {
+        if (records.length === 0) {
             return TE.right(undefined);
         }
         const key = schemaInfoToString(info);
@@ -231,12 +232,17 @@ export const createMongoDataRepository = ({
             wrapDbOperation(async () => {
                 const key = schemaInfoToString(info);
                 const coll = db.collection<Data>(key);
-                const orderBy = query.orderBy || {
-                    fieldPath: "_id",
-                    direction: "asc",
-                };
+                const orderBy: OrderBy = query.orderBy
+                    ? {
+                          fieldPath: `data.${query.orderBy.fieldPath}`,
+                          direction: query.orderBy.direction,
+                      }
+                    : {
+                          fieldPath: "_id",
+                          direction: "asc",
+                      };
                 const sort = {
-                    [`data.${orderBy.fieldPath}`]: orderBy.direction,
+                    [orderBy.fieldPath]: orderBy.direction,
                 };
                 const conds = [];
                 if (where) {
@@ -248,14 +254,10 @@ export const createMongoDataRepository = ({
                             ? new ObjectId(cursor)
                             : // * this is not nice, but what the hell
                               coercePrimitive(cursor);
-                    const finalPath =
-                        orderBy.fieldPath === "_id"
-                            ? "_id"
-                            : `data.${orderBy.fieldPath}`;
                     conds.push({
                         $or: [
                             {
-                                [finalPath]: {
+                                [orderBy.fieldPath]: {
                                     $gt: gt,
                                 },
                             },
