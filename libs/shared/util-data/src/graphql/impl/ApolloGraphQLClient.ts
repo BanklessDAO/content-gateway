@@ -4,12 +4,12 @@ import {
     HttpLink,
     InMemoryCache,
     NormalizedCacheObject,
-    OperationVariables,
+    OperationVariables
 } from "@apollo/client/core";
 import {
     mapCodecValidationError,
     ProgramError,
-    UnknownError,
+    UnknownError
 } from "@shared/util-data";
 import fetch from "cross-fetch";
 import { pipe } from "fp-ts/lib/function";

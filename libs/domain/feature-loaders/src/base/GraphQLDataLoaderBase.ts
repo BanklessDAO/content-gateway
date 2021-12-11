@@ -1,6 +1,6 @@
+import { GraphQLClient } from "@shared/util-data";
 import {
     DataLoaderBase,
-    GraphQLClient,
     LoadContext,
 } from "@shared/util-loaders";
 import { DocumentNode } from "graphql";

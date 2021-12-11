@@ -1,8 +1,7 @@
+import { createGraphQLClient, GraphQLClient } from "@shared/util-data";
 import { notEmpty } from "@shared/util-fp";
 import {
-    createGraphQLClient,
     DEFAULT_CURSOR,
-    GraphQLClient,
     ScheduleMode,
 } from "@shared/util-loaders";
 import { AdditionalProperties, Required } from "@tsed/schema";

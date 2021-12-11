@@ -1,8 +1,5 @@
-import {
-    createGraphQLClient,
-    GraphQLClient,
-    ScheduleMode
-} from "@shared/util-loaders";
+import { createGraphQLClient, GraphQLClient } from "@shared/util-data";
+import { ScheduleMode } from "@shared/util-loaders";
 import { AdditionalProperties, Required } from "@tsed/schema";
 import gql from "graphql-tag";
 import * as t from "io-ts";

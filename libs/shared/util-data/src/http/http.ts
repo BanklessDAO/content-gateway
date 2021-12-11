@@ -15,17 +15,6 @@ import {
     UnknownDataTransferError
 } from "./errors";
 
-export type GetParams<T> = {
-    url: string;
-    codec: t.Type<T>;
-};
-
-export type PostParams<T> = {
-    url: string;
-    input: Record<string, unknown>;
-    codec: t.Type<T>;
-};
-
 const handleError = (error: unknown): DataTransferError => {
     if (axios.isAxiosError(error)) {
         const result = programErrorCodec.decode(error.response?.data);
@@ -66,6 +55,20 @@ const decodeResponse = <T>(codec: t.Type<T>) => {
     });
 };
 
+export type GetParams<T> = {
+    url: string;
+    codec: t.Type<T>;
+};
+
+export type PostParams<T> = {
+    url: string;
+    input: Record<string, unknown>;
+    codec: t.Type<T>;
+};
+
+/**
+ * Executes a GET request and returns the result.
+ */
 export const get = <T>({
     url,
     codec,
@@ -84,6 +87,9 @@ export const get = <T>({
     );
 };
 
+/**
+ * Executes a POST request and returns the result.
+ */
 export const post = <T>({
     url,
     input,

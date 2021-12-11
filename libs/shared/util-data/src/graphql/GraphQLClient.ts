@@ -2,12 +2,16 @@ import { DocumentNode, OperationVariables } from "@apollo/client/core";
 import { ProgramError } from "@shared/util-data";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
-import { ApolloGraphQLClient as ApolloGraphQLClient } from "./impl/TheGraphClient";
+import { ApolloGraphQLClient } from "./impl";
 
 /**
- *
+ * A GraphQL client implementation that can be used to load data
+ * from remote GraphQL servers.
  */
 export interface GraphQLClient {
+    /**
+     * Executes the given GraphQL query and returns the result.
+     */
     query<T>(
         query: DocumentNode,
         vars: OperationVariables,

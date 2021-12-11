@@ -1,13 +1,12 @@
-import gql from "graphql-tag";
-import { createGraphQLClient } from "@shared/util-loaders";
-import * as t from "io-ts";
-import * as g from "graphql";
-import * as E from "fp-ts/Either";
-import * as TE from "fp-ts/TaskEither";
-import * as T from "fp-ts/Task";
-import { LiveLoader } from "./LiveLoader";
-import { createResultType } from "../service/v1/graphql/types/Results";
+import { createGraphQLClient } from "@shared/util-data";
 import { pipe } from "fp-ts/lib/function";
+import * as T from "fp-ts/Task";
+import * as TE from "fp-ts/TaskEither";
+import * as g from "graphql";
+import gql from "graphql-tag";
+import * as t from "io-ts";
+import { createResultType } from "../service/v1/graphql/types/Results";
+import { LiveLoader } from "./LiveLoader";
 
 const query = gql`
     query account($address: ID!) {
