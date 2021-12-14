@@ -7,14 +7,14 @@ import { BATCH_SIZE } from "../defaults";
 
 const INFO = {
     namespace: "poap",
-    name: "POAPEvent",
+    name: "Event",
     version: "V1",
 };
 
 @Data({
     info: INFO,
 })
-class POAPEvent {
+class Event {
     @NonEmptyProperty()
     id: string;
     @RequiredProperty()
@@ -53,7 +53,7 @@ class POAPEvent {
     createdAt: number;
 }
 
-const Event = t.strict({
+const EventCodec = t.strict({
     id: t.number,
     fancy_id: t.string,
     name: t.string,
@@ -73,10 +73,10 @@ const Event = t.strict({
     private_event: t.boolean,
 });
 
-const Events = t.strict({
+const EventsCodec = t.strict({
     items: t.array(
         t.intersection([
-            Event,
+            EventCodec,
             t.partial({
                 created_date: t.string,
             }),
@@ -87,25 +87,25 @@ const Events = t.strict({
     limit: t.number,
 });
 
-type Events = t.TypeOf<typeof Events>;
+type Events = t.TypeOf<typeof EventsCodec>;
 
-export class POAPEventLoader extends HTTPDataLoaderBase<Events, POAPEvent> {
+export class POAPEventLoader extends HTTPDataLoaderBase<Events, Event> {
     public info = INFO;
 
     protected batchSize = BATCH_SIZE;
-    protected type = POAPEvent;
+    protected type = Event;
     protected cadenceConfig = {
         [ScheduleMode.BACKFILL]: { seconds: 5 },
         [ScheduleMode.INCREMENTAL]: { minutes: 5 },
     };
 
-    protected codec = Events;
+    protected codec = EventsCodec;
 
     protected getUrlFor({ limit, cursor }: LoadContext) {
         return `http://api.poap.xyz/paginated-events?sort_field=id&sort_dir=asc&limit=${limit}&offset=${cursor}`;
     }
 
-    protected mapResult(result: Events): Array<POAPEvent> {
+    protected mapResult(result: Events): Array<Event> {
         return result.items
             .map((event) => {
                 try {

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     CodecValidationError,
-    mapCodecValidationError,
+    mapCodecValidationError
 } from "@shared/util-data";
 import { base64Decode, base64Encode } from "@shared/util-fp";
 import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
@@ -24,7 +24,6 @@ export type ListPayload = {
 };
 
 export type Entry = {
-    _id: string;
     id: string;
     record: Record<string, unknown>;
 };

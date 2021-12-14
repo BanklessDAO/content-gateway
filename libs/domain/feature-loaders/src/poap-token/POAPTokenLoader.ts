@@ -28,7 +28,7 @@ const QUERY: DocumentNode = gql`
     }
 `;
 
-const Token = t.strict({
+const TokenCodec = t.strict({
     id: t.string,
     created: t.string,
     owner: t.strict({
@@ -39,22 +39,22 @@ const Token = t.strict({
     }),
 });
 
-const Tokens = t.strict({
-    tokens: t.array(Token),
+const TokensCodec = t.strict({
+    tokens: t.array(TokenCodec),
 });
 
-type Tokens = t.TypeOf<typeof Tokens>;
+type Tokens = t.TypeOf<typeof TokensCodec>;
 
 const INFO = {
     namespace: "poap",
-    name: "POAPToken",
+    name: "Token",
     version: "V1",
 };
 
 @Data({
     info: INFO,
 })
-class POAPToken {
+class Token {
     @NonEmptyProperty()
     id: string;
     @NonEmptyProperty()
@@ -65,25 +65,25 @@ class POAPToken {
     createdAt: number;
 }
 
-export class POAPTokenLoader extends GraphQLDataLoaderBase<Tokens, POAPToken> {
+export class POAPTokenLoader extends GraphQLDataLoaderBase<Tokens, Token> {
     public info = INFO;
 
     protected cursorMode = "cursor" as const;
     protected batchSize = BATCH_SIZE;
-    protected type = POAPToken;
+    protected type = Token;
     protected cadenceConfig = {
         [ScheduleMode.BACKFILL]: { seconds: 5 },
         [ScheduleMode.INCREMENTAL]: { minutes: 5 },
     };
 
     protected graphQLQuery: DocumentNode = QUERY;
-    protected codec = Tokens;
+    protected codec = TokensCodec;
 
     constructor(client: GraphQLClient) {
         super(client);
     }
 
-    protected mapResult(result: Tokens): Array<POAPToken> {
+    protected mapResult(result: Tokens): Array<Token> {
         return result.tokens.map((token) => ({
             id: token.id,
             createdAt: parseInt(token.created),

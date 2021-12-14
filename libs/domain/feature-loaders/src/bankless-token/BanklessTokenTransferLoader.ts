@@ -36,14 +36,14 @@ const QUERY: DocumentNode = gql`
 
 const INFO = {
     namespace: "bankless-token",
-    name: "BANKTransfer",
+    name: "Transfer",
     version: "V1",
 };
 
 @Data({
     info: INFO,
 })
-class BANKTransfer {
+class Transfer {
     @NonEmptyProperty()
     id: string;
     @NonEmptyProperty()
@@ -87,11 +87,11 @@ type BANKTransfers = t.TypeOf<typeof BANKTransfersCodec>;
 
 export class BANKTransferLoader extends GraphQLDataLoaderBase<
     BANKTransfers,
-    BANKTransfer
+    Transfer
 > {
     public info = INFO;
     protected batchSize = BATCH_SIZE;
-    protected type = BANKTransfer;
+    protected type = Transfer;
     protected cadenceConfig = {
         [ScheduleMode.BACKFILL]: { seconds: 5 },
         [ScheduleMode.INCREMENTAL]: { minutes: 5 },
@@ -104,7 +104,7 @@ export class BANKTransferLoader extends GraphQLDataLoaderBase<
         super(client);
     }
 
-    protected mapResult(transfers: BANKTransfers): Array<BANKTransfer> {
+    protected mapResult(transfers: BANKTransfers): Array<Transfer> {
         return transfers.erc20Transfers
             .map((transfer) => {
                 return {

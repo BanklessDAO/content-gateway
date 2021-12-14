@@ -18,7 +18,7 @@ import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import * as g from "graphql";
 import { pascalCase } from "pascal-case";
-import * as pluralize from "pluralize";
+import { liveLoaders } from "../../../live-loaders";
 import { MAX_ITEMS } from "./constants";
 import { ObservableSchemaRepository } from "./decorator";
 import { AnyFilter, createFiltersFor } from "./types/Filters";
@@ -58,6 +58,22 @@ export const createGraphQLAPIServiceV1 = async (
     };
 };
 
+const orderByType = new g.GraphQLInputObjectType({
+    name: "OrderBy",
+    fields: {
+        fieldPath: { type: g.GraphQLString },
+        direction: {
+            type: new g.GraphQLEnumType({
+                name: "Direction",
+                values: {
+                    asc: { value: "asc" },
+                    desc: { value: "desc" },
+                },
+            }),
+        },
+    },
+});
+
 const mapFilters = (from: Record<string, AnyFilter>): Filter[] => {
     return Object.entries(from).reduce((acc, next) => {
         const [fieldName, filter] = next;
@@ -89,13 +105,14 @@ const createGraphQLMiddleware = async ({
         )();
     };
 
-    const findByFilters = async (
-        info: SchemaInfo,
-        first: number,
-        after?: string,
-        where?: Filter[],
-        orderBy?: OrderBy
-    ): Promise<Results> => {
+    const findByFilters = async (params: {
+        info: SchemaInfo;
+        first: number;
+        after?: string;
+        where?: Filter[];
+        orderBy?: OrderBy;
+    }): Promise<Results> => {
+        const { info, first, after, where, orderBy } = params;
         const notes = [] as string[];
         let limit = first;
         if (limit > MAX_ITEMS) {
@@ -133,20 +150,20 @@ const createGraphQLMiddleware = async ({
                     notes: notes,
                     data: entries.map((entry) => ({
                         ...entry.record,
-                        _id: entry._id.toString(),
                     })),
                 };
             }),
-            TE.getOrElse((e) =>
-                T.of({
+            TE.getOrElse((e) => {
+                logger.info("Errors:", e);
+                return T.of({
                     pageInfo: {
                         hasNextPage: false,
                     },
                     errors: [e.message],
                     notes: [] as string[],
                     data: [] as Record<string, unknown>[],
-                })
-            )
+                });
+            })
         )();
     };
 
@@ -170,16 +187,25 @@ const createGraphQLMiddleware = async ({
                         return findById(info, id);
                     },
                 },
-                [pluralize.plural(type.name)]: {
+                [`${type.name}s`]: {
                     type: createResultsType(type),
                     description: `Returns a list of ${type.name}s. Supports pagination and filtering.`,
                     args: {
                         first: {
                             type: g.GraphQLInt,
                             defaultValue: MAX_ITEMS,
+                            description: `Limits the amount of items returned.
+                             Note that if there are less items than \`after\`, all items will be returned (you might get less items than the value you passed to after).`,
                         },
                         after: {
                             type: g.GraphQLString,
+                            description: `**(Optional)** The cursor that you can use to access the next page of items.
+                            You can obtain this value from the \`pageInfo\` field of the response. (\`nextPageToken\`).
+                            See the results type for more information on pagination.`,
+                        },
+                        orderBy: {
+                            type: orderByType,
+                            description: `**(Optional)** Sets the ordering of the items returned. You can order by top level fields (eg: you can't use \`"fieldA.fieldB"\` for now).`,
                         },
                         where: {
                             type: createFiltersFor(
@@ -187,20 +213,25 @@ const createGraphQLMiddleware = async ({
                                 schema.jsonSchema
                             ),
                             defaultValue: {},
+                            description: `**(Optional)** Filters the items returned.
+                             All filters have to be **true** for each item in the collection (this is an AND filter).
+                             See the results type for more information on filtering.`,
                         },
                     },
                     resolve: (_, args) => {
-                        const { first, after, where } = args as {
+                        const { first, after, orderBy, where } = args as {
                             first: number;
                             after: string;
                             where: Record<string, AnyFilter>;
+                            orderBy: OrderBy;
                         };
-                        return findByFilters(
-                            schema.info,
-                            first,
-                            after,
-                            mapFilters(where)
-                        );
+                        return findByFilters({
+                            info: schema.info,
+                            first: first,
+                            after: after,
+                            orderBy: orderBy,
+                            where: mapFilters(where),
+                        });
                     },
                 },
             },
@@ -249,6 +280,15 @@ const createGraphQLMiddleware = async ({
                     },
                 };
             }
+
+            const liveFields = liveLoaders
+                .map((loader) => loader.configure())
+                .reduce((acc, next) => {
+                    return {
+                        ...acc,
+                        ...next,
+                    };
+                }, {});
             return new g.GraphQLSchema({
                 query: new g.GraphQLObjectType({
                     name: "Query",
@@ -258,6 +298,9 @@ const createGraphQLMiddleware = async ({
                                 new g.GraphQLObjectType({
                                     name: "historical",
                                     fields: fields,
+                                    description: `Historical queries return data that might not be up to date.
+                                    This usually means that the data you see was updated 5-10 minutes ago.
+                                    Queries are grouped into namespaces.`,
                                 })
                             ),
                             description:
@@ -266,7 +309,23 @@ const createGraphQLMiddleware = async ({
                                 return {};
                             },
                         },
+                        live: {
+                            type: new g.GraphQLNonNull(
+                                new g.GraphQLObjectType({
+                                    name: "live",
+                                    fields: liveFields,
+                                    description: `Live queries return up to date data, but don't support filtering or ordering.`,
+                                })
+                            ),
+                            description:
+                                "Contains all the queries that operate on live data that are up to date",
+                            resolve: () => {
+                                return {};
+                            },
+                        },
                     },
+                    description:
+                        "Contains all the queries that can be executed against the Content Gateway API.",
                 }),
             });
         }),

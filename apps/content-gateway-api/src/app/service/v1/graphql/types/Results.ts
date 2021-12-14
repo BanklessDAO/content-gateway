@@ -4,15 +4,14 @@ const pageInfo = new g.GraphQLObjectType({
     name: "PageInfo",
     description: `
     Pagination uses opaque strings (tokens) that contain information about how to access the next page.
-    Use the \`nextPageToken\` field to access the next page.
-    \`hasNextPage\` is true if a next page exists. In this case \`nextPageToken\` contains the token that
-    you can pass to access the next page.
+    If the value of \`hasNextPage\` is \`true\` it means that there is a next page.
+    If you want to access it you'll have to pass \`nextPageToken\` as the \`after\` parameter.
     `,
     fields: {
         hasNextPage: {
             type: new g.GraphQLNonNull(g.GraphQLBoolean),
             description:
-                "Tells whether there are more pages after the current one..",
+                "Tells whether there are more pages after the current one.",
         },
         startCursor: {
             type: g.GraphQLString,
@@ -26,7 +25,7 @@ const pageInfo = new g.GraphQLObjectType({
         nextPageToken: {
             type: g.GraphQLString,
             description:
-                "Use this token in your next request to access the next page.",
+                "Pass this token in your next query as the value for the `after` parameter to access the next page.",
         },
     },
 });
@@ -58,6 +57,7 @@ export const createResultType = (type: g.GraphQLObjectType) =>
                     type: new g.GraphQLNonNull(
                         new g.GraphQLList(g.GraphQLString)
                     ),
+                    description: "If there were errors during the execution of the query you'll be able to see them here."
                 },
             }),
         })

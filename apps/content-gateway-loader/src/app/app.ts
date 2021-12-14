@@ -116,7 +116,7 @@ export const createApp = async (prisma: PrismaClient) => {
     });
 
     // TODO: move these to the repo
-    app.get("/api/rest/jobs", async (_, res) => {
+    app.get("/api/v1/rest/jobs", async (_, res) => {
         const jobs = await jobRepository.findAll()();
         res.send(
             jobs.map((job) => {
@@ -125,7 +125,7 @@ export const createApp = async (prisma: PrismaClient) => {
         );
     });
 
-    app.post("/api/rest/jobs/", (req, res) => {
+    app.post("/api/v1/rest/jobs/", (req, res) => {
         pipe(
             JobDescriptorParam.decode(req.body),
             E.fold(
@@ -159,7 +159,7 @@ export const createApp = async (prisma: PrismaClient) => {
         );
     });
 
-    app.get("/api/rest/jobs/reset", (req, res) => {
+    app.get("/api/v1/rest/jobs/reset", (req, res) => {
         return pipe(
             jobRepository.findAll(),
             TE.fromTask,
@@ -188,7 +188,7 @@ export const createApp = async (prisma: PrismaClient) => {
         )();
     });
 
-    app.get("/api/rest/jobs/:name", async (req, res) => {
+    app.get("/api/v1/rest/jobs/:name", async (req, res) => {
         pipe(
             NameParam.decode(req.params),
             E.fold(
@@ -240,7 +240,7 @@ export const createApp = async (prisma: PrismaClient) => {
         );
     });
 
-    app.get("/api/rest/jobs/:name/reset", async (req, res) => {
+    app.get("/api/v1/rest/jobs/:name/reset", async (req, res) => {
         pipe(
             NameParam.decode(req.params),
             E.fold(

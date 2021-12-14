@@ -5,7 +5,7 @@ import {
     FilterType,
     SchemaRepository,
     SchemaValidationError,
-    SinglePayload,
+    SinglePayload
 } from "@domain/feature-gateway";
 import { GenericProgramError } from "@shared/util-data";
 import { extractLeft, extractRight, programError } from "@shared/util-fp";
@@ -14,7 +14,7 @@ import {
     Data,
     NonEmptyProperty,
     SchemaInfo,
-    schemaInfoToString,
+    schemaInfoToString
 } from "@shared/util-schema";
 import * as O from "fp-ts/lib/Option";
 import { Db, MongoClient } from "mongodb";
@@ -22,7 +22,7 @@ import { v4 as uuid } from "uuid";
 import {
     createMongoDataRepository,
     createMongoSchemaRepository,
-    DocumentData,
+    DocumentData
 } from ".";
 
 const addressInfo = {
@@ -106,7 +106,6 @@ describe("Given a Mongo data storage", () => {
             (await coll.findOne({ id: record.id as string })) ??
             programError("Data not found");
         return {
-            _id: entry._id.toString(),
             id: entry.id,
             record: entry.data,
         };
@@ -179,7 +178,6 @@ describe("Given a Mongo data storage", () => {
 
             expect(result.entries).toEqual([
                 {
-                    _id: data._id.toString(),
                     id: data.id,
                     record: data.record,
                 },
@@ -363,7 +361,6 @@ describe("Given a Mongo data storage", () => {
 
             expect(result.entries).toEqual(
                 addresses.map((a) => ({
-                    _id: a._id,
                     id: a.id,
                     record: a.record,
                 }))
@@ -420,7 +417,6 @@ describe("Given a Mongo data storage", () => {
             );
 
             const expected = [data0, data1].map((d) => ({
-                _id: d._id,
                 id: d.id,
                 record: d.record,
             }));
@@ -464,7 +460,6 @@ describe("Given a Mongo data storage", () => {
 
             expect(result.entries).toEqual([
                 {
-                    _id: data0._id,
                     id: data0.id,
                     record: data0.record,
                 },
@@ -507,7 +502,6 @@ describe("Given a Mongo data storage", () => {
 
             expect(result.entries).toEqual([
                 {
-                    _id: data0._id,
                     id: data0.id,
                     record: data0.record,
                 },
@@ -554,7 +548,6 @@ describe("Given a Mongo data storage", () => {
 
             expect(result.entries).toEqual([
                 {
-                    _id: data0._id,
                     id: data0.id,
                     record: data0.record,
                 },
@@ -606,7 +599,6 @@ describe("Given a Mongo data storage", () => {
 
             expect(result.entries).toEqual([
                 {
-                    _id: data0._id,
                     id: data0.id,
                     record: data0.record,
                 },
@@ -908,9 +900,9 @@ describe("Given a Mongo data storage", () => {
                 })()
             );
 
-            expect(first.entries.map((e) => e._id)).toEqual([
-                second.entries[0]._id,
-                second.entries[1]._id,
+            expect(first.entries.map((e) => e.id)).toEqual([
+                second.entries[0].id,
+                second.entries[1].id,
             ]);
         });
     });

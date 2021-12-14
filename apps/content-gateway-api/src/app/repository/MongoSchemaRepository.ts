@@ -19,7 +19,6 @@ import {
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
-import * as O from "fp-ts/Option";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
@@ -98,7 +97,7 @@ export const createMongoSchemaRepository = async ({
             }),
             TE.chainFirst(() => {
                 // TODO! test if the index was created
-                return wrapDbOperation(async () => {
+                return wrapDbOperation(() => {
                     return db
                         .collection(collectionName)
                         .createIndex({ id: 1 }, { unique: true });
@@ -137,13 +136,10 @@ export const createMongoSchemaRepository = async ({
             schema: Schema
         ): TE.TaskEither<SchemaRegistrationError, void> => {
             return pipe(
-                TE.tryCatch(
-                    async () => {
-                        const o = await findSchema(schema.info)();
-                        return Promise.resolve(O.getOrElse(() => schema)(o));
-                    },
-                    (e: unknown) => new UnknownError(e)
-                ),
+                findSchema(schema.info),
+                TO.getOrElse(() => T.of(schema)),
+                TE.fromTask,
+                TE.mapLeft((e: unknown) => new UnknownError(e)),
                 TE.chainW((oldSchema) => {
                     let result: TE.TaskEither<
                         SchemaRegistrationError,

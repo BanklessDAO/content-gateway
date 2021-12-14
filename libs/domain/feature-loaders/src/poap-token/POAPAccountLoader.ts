@@ -19,51 +19,51 @@ const QUERY = gql`
     }
 `;
 
-const Account = t.strict({
+const AccountCodec = t.strict({
     id: t.string,
 });
 
-const Accounts = t.strict({
-    accounts: t.array(Account),
+const AccountsCodec = t.strict({
+    accounts: t.array(AccountCodec),
 });
 
-type Accounts = t.TypeOf<typeof Accounts>;
+type Accounts = t.TypeOf<typeof AccountsCodec>;
 
 const INFO = {
     namespace: "poap",
-    name: "POAPAccount",
+    name: "Account",
     version: "V1",
 };
 
 @Data({
     info: INFO,
 })
-class POAPAccount {
+class Account {
     @NonEmptyProperty()
     id: string;
 }
 
 export class POAPAccountLoader extends GraphQLDataLoaderBase<
     Accounts,
-    POAPAccount
+    Account
 > {
     public info = INFO;
 
     protected batchSize = BATCH_SIZE;
-    protected type = POAPAccount;
+    protected type = Account;
     protected cadenceConfig = {
         [ScheduleMode.BACKFILL]: { seconds: 5 },
         [ScheduleMode.INCREMENTAL]: { minutes: 5 },
     };
 
     protected graphQLQuery = QUERY;
-    protected codec = Accounts;
+    protected codec = AccountsCodec;
 
     constructor(client: GraphQLClient) {
         super(client);
     }
 
-    protected mapResult(result: Accounts): Array<POAPAccount> {
+    protected mapResult(result: Accounts): Array<Account> {
         return result.accounts.map((account) => ({
             id: account.id,
         }));

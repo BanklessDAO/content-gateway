@@ -9,14 +9,14 @@ import * as T from "fp-ts/Task";
 import { createResultType } from "../service/v1/graphql/types/Results";
 import { pipe } from "fp-ts/lib/function";
 
-const name = "POAPToken";
+const name = "LivePOAPToken";
 
 const GraphQLPOAPToken = new g.GraphQLObjectType({
     name: name,
     fields: {
         event: {
             type: new g.GraphQLObjectType({
-                name: "POAPEvent",
+                name: "LivePOAPEvent",
                 fields: {
                     id: { type: new g.GraphQLNonNull(g.GraphQLID) },
                     fancy_id: { type: new g.GraphQLNonNull(g.GraphQLString) },
@@ -47,7 +47,7 @@ const GraphQLPOAPToken = new g.GraphQLObjectType({
 });
 
 const GraphQLPOAPTokens = new g.GraphQLObjectType({
-    name: "POAPTokens",
+    name: "LivePOAPTokens",
     fields: {
         tokens: {
             type: new g.GraphQLNonNull(new g.GraphQLList(GraphQLPOAPToken)),

@@ -28,7 +28,8 @@ import {
     Filter as MongoFilter,
     MongoClient,
     ObjectId,
-    SortDirection
+    SortDirection,
+    WithId
 } from "mongodb";
 import { DocumentData, wrapDbOperation, wrapDbOperationWithParams } from ".";
 
@@ -156,11 +157,10 @@ export const createMongoDataRepository = ({
     };
 
     const findById = (info: SchemaInfo, id: string): TO.TaskOption<Entry> => {
-        const key = schemaInfoToString(info);
-        const collection = db.collection<DocumentData>(key);
+        const coll = db.collection<DocumentData>(schemaInfoToString(info));
         return pipe(
             TO.tryCatch(() =>
-                collection.findOne({
+                coll.findOne({
                     id,
                 })
             ),
@@ -169,7 +169,6 @@ export const createMongoDataRepository = ({
                     return TO.none;
                 } else {
                     return TO.of({
-                        _id: data._id.toString(),
                         id: data.id,
                         record: data.data,
                     });
@@ -262,21 +261,23 @@ export const createMongoDataRepository = ({
     const calculateSort = (
         orderBy?: OrderBy
     ): Record<string, SortDirection> => {
+        const dir = orderBy?.direction ?? defaultDirection;
+        const fixedPath = `data.${orderBy?.fieldPath}`;
         const sort = orderBy
             ? {
-                  [`data.${orderBy.fieldPath}`]: orderBy.direction,
+                  [fixedPath]: dir,
               }
             : defaultSort;
-        if (!Object.keys(sort).includes("_id")) {
-            sort._id = orderBy?.direction ?? defaultDirection;
-        }
+        sort._id = dir;
         return sort;
     };
 
+    //! TODO: this is suspectible to injection attacks
+    //! we need to add sanitization for all inputs
     const findByQuery = (
         query: Query
     ): TE.TaskEither<QueryError, EntryList> => {
-        const { info, limit, cursor, where, orderBy } = query;
+        const { info, limit, where, orderBy } = query;
         const key = schemaInfoToString(info);
         const coll = db.collection<DocumentData>(key);
         const dir = orderBy?.direction ?? defaultDirection;
@@ -284,21 +285,21 @@ export const createMongoDataRepository = ({
         return pipe(
             TE.Do,
             TE.bind("sort", () => TE.right(calculateSort(orderBy))),
-            TE.bind("cursorObj", ({ sort }) =>
-                cursor
+            TE.bind("cursor", ({ sort }) =>
+                query.cursor
                     ? pipe(
-                          decodeCursor(cursor),
-                          E.chain((cursorObj) => {
-                              if (cursorObj.dir !== dir) {
+                          decodeCursor(query.cursor),
+                          E.chain((cursor) => {
+                              if (cursor.dir !== dir) {
                                   return E.left(
                                       CodecValidationError.fromMessage(
-                                          "Cursor direction does not match orderBy direction"
+                                          `Cursor direction ${cursor.dir} does not match orderBy direction ${dir}.`
                                       )
                                   );
                               }
                               if (
-                                  cursorObj.custom &&
-                                  !sort[`data.${cursorObj.custom.fieldPath}`]
+                                  cursor.custom &&
+                                  !sort[cursor.custom.fieldPath]
                               ) {
                                   return E.left(
                                       CodecValidationError.fromMessage(
@@ -306,45 +307,46 @@ export const createMongoDataRepository = ({
                                       )
                                   );
                               }
-                              return E.right(cursorObj);
+                              return E.right(cursor);
                           }),
                           TE.fromEither
                       )
                     : TE.right(undefined)
             ),
-            //! TODO: this is suspectible to injection attacks
-            //! we need to add sanitization for all inputs
-            TE.bindW("records", ({ cursorObj, sort }) => {
+            TE.bindW("records", ({ cursor, sort }) => {
                 return wrapDbOperation(async () => {
                     const and = [];
                     if (where) {
-                        and.push({
-                            $and: convertFilters(where),
-                        });
+                        const filters = convertFilters(where);
+                        if (Object.keys(filters).length > 0) {
+                            and.push({
+                                $and: convertFilters(where),
+                            });
+                        }
                     }
-                    if (cursorObj) {
+                    if (cursor) {
                         const or = [];
-                        if (cursorObj.custom) {
-                            const { fieldPath, value } = cursorObj.custom;
+                        if (cursor.custom) {
+                            const { fieldPath, value } = cursor.custom;
                             const primitiveValue = coercePrimitive(value);
-                            const fixedPath = fieldPath === "_id" ? "_id" : `data.${fieldPath}`;
                             or.push({
-                                [fixedPath]: {
+                                [fieldPath]: {
                                     [op]: primitiveValue,
                                 },
                             });
+                            //* 👇 Tiebreaker
                             or.push({
-                                [fixedPath]: {
+                                [fieldPath]: {
                                     $eq: primitiveValue,
                                 },
                                 _id: {
-                                    [op]: new ObjectId(cursorObj._id),
+                                    [op]: new ObjectId(cursor._id),
                                 },
                             });
                         } else {
                             or.push({
                                 _id: {
-                                    [op]: new ObjectId(cursorObj._id),
+                                    [op]: new ObjectId(cursor._id),
                                 },
                             });
                         }
@@ -361,26 +363,32 @@ export const createMongoDataRepository = ({
                 })();
             }),
             TE.map(({ records }) => {
-                const entries = records.map((record) => ({
-                    _id: record._id.toString(),
-                    id: record.id,
-                    record: record.data,
-                }));
+                let lastRecord: WithId<DocumentData> | undefined = undefined;
+                const entries = records.map((record) => {
+                    lastRecord = record;
+                    return {
+                        id: record.id,
+                        record: record.data,
+                    };
+                });
                 const result: EntryList = {
                     info,
                     entries,
                 };
-                const lastEntry = entries[entries.length - 1];
-                if (lastEntry) {
+                if (
+                    typeof lastRecord !== "undefined" &&
+                    entries.length === limit
+                ) {
+                    const lr = lastRecord as WithId<DocumentData>;
                     const nextCursor: Cursor = {
-                        _id: lastEntry._id,
+                        _id: lr._id.toString(),
                         dir: dir,
                     };
-                    // TODO: 👇 this won't work with nested fields (eg: field1.field2)
-                    if (orderBy?.fieldPath && orderBy?.fieldPath !== "_id") {
+                    // TODO: 👇 This won't work with nested fields (eg: a.b)
+                    if (orderBy?.fieldPath && orderBy.fieldPath !== "_id") {
                         nextCursor.custom = {
-                            fieldPath: orderBy?.fieldPath,
-                            value: String(lastEntry.record[orderBy.fieldPath]),
+                            fieldPath: `data.${orderBy.fieldPath}`,
+                            value: String(lr.data[orderBy.fieldPath]),
                         };
                     }
                     result.nextPageToken = encodeCursor(nextCursor);

@@ -33,7 +33,7 @@ const QUERY: DocumentNode = gql`
     }
 `;
 
-const Transfer = t.strict({
+const TransferCodec = t.strict({
     id: withMessage(t.string, () => "id must be a string"),
     transaction: withMessage(t.string, () => "transaction must be a string"),
     timestamp: withMessage(t.string, () => "timestamp must be a string"),
@@ -57,22 +57,22 @@ const Transfer = t.strict({
     ),
 });
 
-const Transfers = t.strict({
-    transfers: t.array(Transfer),
+const TransfersCodec = t.strict({
+    transfers: t.array(TransferCodec),
 });
 
-type Transfers = t.TypeOf<typeof Transfers>;
+type Transfers = t.TypeOf<typeof TransfersCodec>;
 
 const INFO = {
     namespace: "poap",
-    name: "POAPTransfer",
+    name: "Transfer",
     version: "V1",
 };
 
 @Data({
     info: INFO,
 })
-class POAPTransfer {
+class Transfer {
     @NonEmptyProperty()
     id: string;
     @NonEmptyProperty()
@@ -89,26 +89,26 @@ class POAPTransfer {
 
 export class POAPTransferLoader extends GraphQLDataLoaderBase<
     Transfers,
-    POAPTransfer
+    Transfer
 > {
     public info = INFO;
 
     protected cursorMode = "cursor" as const;
     protected batchSize = BATCH_SIZE;
-    protected type = POAPTransfer;
+    protected type = Transfer;
     protected cadenceConfig = {
         [ScheduleMode.BACKFILL]: { seconds: 5 },
         [ScheduleMode.INCREMENTAL]: { minutes: 5 },
     };
 
     protected graphQLQuery: DocumentNode = QUERY;
-    protected codec = Transfers;
+    protected codec = TransfersCodec;
 
     constructor(client: GraphQLClient) {
         super(client);
     }
 
-    protected mapResult(result: Transfers): Array<POAPTransfer> {
+    protected mapResult(result: Transfers): Array<Transfer> {
         return result.transfers.map((transfer) => ({
             id: transfer.id,
             transaction: transfer.transaction,

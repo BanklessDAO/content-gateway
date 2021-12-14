@@ -1,6 +1,12 @@
 import { notEmpty } from "@shared/util-fp";
 import { LoadContext, ScheduleMode } from "@shared/util-loaders";
-import { Data, Nested, NonEmptyProperty, OptionalProperty, RequiredArrayRef } from "@shared/util-schema";
+import {
+    Data,
+    Nested,
+    NonEmptyProperty,
+    OptionalProperty,
+    RequiredArrayRef
+} from "@shared/util-schema";
 import * as t from "io-ts";
 import { withMessage } from "io-ts-types";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
@@ -8,7 +14,7 @@ import { BATCH_SIZE } from "../defaults";
 
 const INFO = {
     namespace: "bankless-website",
-    name: "post",
+    name: "Post",
     version: "V1",
 };
 

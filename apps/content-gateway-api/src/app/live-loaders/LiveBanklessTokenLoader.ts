@@ -49,11 +49,11 @@ const query = gql`
 const name = "BanklessToken";
 
 const GraphQLTransfer = new g.GraphQLObjectType({
-    name: "BanklessTransfer",
+    name: "LiveBanklessTransfer",
     fields: {
         from: {
             type: new g.GraphQLObjectType({
-                name: "BanklessTransferFrom",
+                name: "LIveBanklessTransferFrom",
                 fields: {
                     id: { type: new g.GraphQLNonNull(g.GraphQLString) },
                 },
@@ -61,7 +61,7 @@ const GraphQLTransfer = new g.GraphQLObjectType({
         },
         to: {
             type: new g.GraphQLObjectType({
-                name: "BanklessTransferTo",
+                name: "LiveBanklessTransferTo",
                 fields: {
                     id: { type: new g.GraphQLNonNull(g.GraphQLString) },
                 },
@@ -76,7 +76,7 @@ const GraphQLBanklessToken = new g.GraphQLObjectType({
     fields: {
         account: {
             type: new g.GraphQLObjectType({
-                name: "BanklessAccount",
+                name: "LiveBanklessAccount",
                 fields: {
                     id: { type: new g.GraphQLNonNull(g.GraphQLID) },
                     lastTransactionTimestamp: {
@@ -90,7 +90,7 @@ const GraphQLBanklessToken = new g.GraphQLObjectType({
                 new g.GraphQLList(
                     new g.GraphQLNonNull(
                         new g.GraphQLObjectType({
-                            name: "BanklessErc20Balance",
+                            name: "LiveBanklessErc20Balance",
                             fields: {
                                 value: {
                                     type: new g.GraphQLNonNull(g.GraphQLString),
