@@ -196,7 +196,7 @@ const createGraphQLMiddleware = async ({
                             where: Record<string, AnyFilter>;
                         };
                         return findByFilters(
-                            schema,
+                            schema.info,
                             first,
                             after,
                             mapFilters(where)
