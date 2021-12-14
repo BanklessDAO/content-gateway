@@ -1,9 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import {
+    CodecValidationError,
+    mapCodecValidationError,
+} from "@shared/util-data";
+import { base64Decode, base64Encode } from "@shared/util-fp";
 import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import * as A from "fp-ts/Array";
+import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
+import * as t from "io-ts";
 import { DatabaseError, MissingSchemaError, SchemaValidationError } from ".";
 
 export type SinglePayload = {
@@ -25,6 +32,7 @@ export type Entry = {
 export type EntryList = {
     info: SchemaInfo;
     entries: Entry[];
+    nextPageToken?: string;
 };
 
 export const FilterType = {
@@ -54,6 +62,46 @@ export type Filter = {
     value: unknown;
 };
 
+const cursorCodec = t.intersection([
+    t.strict({
+        _id: t.string,
+        dir: t.union([t.literal("asc"), t.literal("desc")]),
+    }),
+    t.exact(
+        t.partial({
+            custom: t.strict({
+                fieldPath: t.string,
+                value: t.string,
+            }),
+        })
+    ),
+]);
+
+export type Cursor = t.TypeOf<typeof cursorCodec>;
+
+export const encodeCursor = (cursor: Cursor): string => {
+    return base64Encode(JSON.stringify(cursor));
+};
+
+export const decodeCursor = (
+    cursor: string
+): E.Either<CodecValidationError, Cursor> => {
+    return pipe(
+        E.tryCatch(
+            () => base64Decode(cursor),
+            () => [
+                {
+                    value: cursor,
+                    context: [],
+                    message: "Invalid cursor",
+                },
+            ]
+        ),
+        E.chain((cursorStr) => cursorCodec.decode(JSON.parse(cursorStr))),
+        mapCodecValidationError("Can't decode cursor")
+    );
+};
+
 export type Query = {
     info: SchemaInfo;
     limit: number;
@@ -67,6 +115,8 @@ export type DataStorageError =
     | SchemaValidationError
     | DatabaseError;
 
+export type QueryError = CodecValidationError | DatabaseError;
+
 /**
  * The [[DataRepository]] is a server-side component of the content gateway.
  * It is responsible for storing the data received from the SDK.
@@ -77,7 +127,7 @@ export type DataRepository = {
         entryList: ListPayload
     ) => TE.TaskEither<DataStorageError, void>;
     findById: (info: SchemaInfo, id: string) => TO.TaskOption<Entry>;
-    findByQuery: (query: Query) => TE.TaskEither<DatabaseError, EntryList>;
+    findByQuery: (query: Query) => TE.TaskEither<QueryError, EntryList>;
 };
 
 export type DataRepositoryStub = {

@@ -54,7 +54,6 @@ export class GenericProgramError extends ProgramErrorBase<string> {
 export class UnknownError extends ProgramErrorBase<"UnknownError"> {
     public unknownCause: unknown;
     constructor(unknownCause: unknown) {
-        console.log(unknownCause);
         super({
             _tag: "UnknownError",
             message: "Some unknown error happened. This is probably a bug.",
@@ -83,6 +82,10 @@ export class CodecValidationError extends ProgramErrorBase<"CodecValidationError
                 ),
             },
         });
+    }
+
+    static fromMessage(message: string): CodecValidationError {
+        return new CodecValidationError(message, []);
     }
 }
 

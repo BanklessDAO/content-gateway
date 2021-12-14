@@ -1,24 +1,35 @@
 import {
+    Cursor,
     DatabaseError,
     DataRepository,
     DataStorageError,
+    decodeCursor,
+    encodeCursor,
     Entry,
     EntryList,
     Filter,
     ListPayload,
     MissingSchemaError,
     OrderBy,
+    OrderDirection,
     Query,
+    QueryError,
     SchemaRepository,
-    SinglePayload,
+    SinglePayload
 } from "@domain/feature-gateway";
+import { CodecValidationError } from "@shared/util-data";
 import { coercePrimitive, createLogger } from "@shared/util-fp";
 import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
 import * as E from "fp-ts/Either";
 import { absurd, pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
-import { Filter as MongoFilter, MongoClient, ObjectId } from "mongodb";
+import {
+    Filter as MongoFilter,
+    MongoClient,
+    ObjectId,
+    SortDirection
+} from "mongodb";
 import { DocumentData, wrapDbOperation, wrapDbOperationWithParams } from ".";
 
 export const createMongoDataRepository = ({
@@ -168,54 +179,72 @@ export const createMongoDataRepository = ({
     };
 
     const convertFilters = (where: Filter[]): MongoFilter<DocumentData> => {
-        const result = {} as MongoFilter<DocumentData>;
+        const result = [] as MongoFilter<DocumentData>;
         for (const filter of where) {
             const path = `data.${filter.fieldPath}`;
             switch (filter.type) {
                 case "equals":
-                    result[path] = {
-                        $eq: filter.value,
-                    };
+                    result.push({
+                        [path]: {
+                            $eq: filter.value,
+                        },
+                    });
                     break;
                 case "not":
-                    result[path] = {
-                        $ne: filter.value,
-                    };
+                    result.push({
+                        [path]: {
+                            $ne: filter.value,
+                        },
+                    });
                     break;
                 case "contains":
-                    result[path] = {
-                        $regex: filter.value,
-                    };
+                    result.push({
+                        [path]: {
+                            $regex: filter.value,
+                        },
+                    });
                     break;
                 case "starts_with":
-                    result[path] = {
-                        $regex: new RegExp(`^${filter.value}.*`),
-                    };
+                    result.push({
+                        [path]: {
+                            $regex: new RegExp(`^${filter.value}.*`),
+                        },
+                    });
                     break;
                 case "ends_with":
-                    result[path] = {
-                        $regex: new RegExp(`${filter.value}$`),
-                    };
+                    result.push({
+                        [path]: {
+                            $regex: new RegExp(`${filter.value}$`),
+                        },
+                    });
                     break;
                 case "lt":
-                    result[path] = {
-                        $lt: filter.value,
-                    };
+                    result.push({
+                        [path]: {
+                            $lt: filter.value,
+                        },
+                    });
                     break;
                 case "gt":
-                    result[path] = {
-                        $gt: filter.value,
-                    };
+                    result.push({
+                        [path]: {
+                            $gt: filter.value,
+                        },
+                    });
                     break;
                 case "lte":
-                    result[path] = {
-                        $lte: filter.value,
-                    };
+                    result.push({
+                        [path]: {
+                            $lte: filter.value,
+                        },
+                    });
                     break;
                 case "gte":
-                    result[path] = {
-                        $gte: filter.value,
-                    };
+                    result.push({
+                        [path]: {
+                            $gte: filter.value,
+                        },
+                    });
                     break;
                 default:
                     absurd(filter.type);
@@ -224,59 +253,139 @@ export const createMongoDataRepository = ({
         return result;
     };
 
+    const defaultDirection: OrderDirection = "asc";
+
+    const defaultSort = {
+        _id: defaultDirection,
+    };
+
+    const calculateSort = (
+        orderBy?: OrderBy
+    ): Record<string, SortDirection> => {
+        const sort = orderBy
+            ? {
+                  [`data.${orderBy.fieldPath}`]: orderBy.direction,
+              }
+            : defaultSort;
+        if (!Object.keys(sort).includes("_id")) {
+            sort._id = orderBy?.direction ?? defaultDirection;
+        }
+        return sort;
+    };
+
     const findByQuery = (
         query: Query
-    ): TE.TaskEither<DatabaseError, EntryList> => {
-        const { info, limit, cursor, where } = query;
+    ): TE.TaskEither<QueryError, EntryList> => {
+        const { info, limit, cursor, where, orderBy } = query;
+        const key = schemaInfoToString(info);
+        const coll = db.collection<DocumentData>(key);
+        const dir = orderBy?.direction ?? defaultDirection;
+        const op = dir === "desc" ? "$lt" : "$gt";
         return pipe(
-            wrapDbOperation(async () => {
-                const key = schemaInfoToString(info);
-                const coll = db.collection<DocumentData>(key);
-                const orderBy: OrderBy = query.orderBy
-                    ? {
-                          fieldPath: `data.${query.orderBy.fieldPath}`,
-                          direction: query.orderBy.direction,
-                      }
-                    : {
-                          fieldPath: "_id",
-                          direction: "asc",
-                      };
-                const sort = {
-                    [orderBy.fieldPath]: orderBy.direction,
-                };
-                const conds = [];
-                if (where) {
-                    conds.push(convertFilters(where));
-                }
-                if (cursor) {
-                    const gt =
-                        orderBy.fieldPath === "_id"
-                            ? new ObjectId(cursor)
-                            : // * this is not nice, but what the hell
-                              coercePrimitive(cursor);
-                    conds.push({
-                        $or: [
-                            {
-                                [orderBy.fieldPath]: {
-                                    $gt: gt,
+            TE.Do,
+            TE.bind("sort", () => TE.right(calculateSort(orderBy))),
+            TE.bind("cursorObj", ({ sort }) =>
+                cursor
+                    ? pipe(
+                          decodeCursor(cursor),
+                          E.chain((cursorObj) => {
+                              if (cursorObj.dir !== dir) {
+                                  return E.left(
+                                      CodecValidationError.fromMessage(
+                                          "Cursor direction does not match orderBy direction"
+                                      )
+                                  );
+                              }
+                              if (
+                                  cursorObj.custom &&
+                                  !sort[`data.${cursorObj.custom.fieldPath}`]
+                              ) {
+                                  return E.left(
+                                      CodecValidationError.fromMessage(
+                                          "Cursor field can't be different from order by field."
+                                      )
+                                  );
+                              }
+                              return E.right(cursorObj);
+                          }),
+                          TE.fromEither
+                      )
+                    : TE.right(undefined)
+            ),
+            //! TODO: this is suspectible to injection attacks
+            //! we need to add sanitization for all inputs
+            TE.bindW("records", ({ cursorObj, sort }) => {
+                return wrapDbOperation(async () => {
+                    const and = [];
+                    if (where) {
+                        and.push({
+                            $and: convertFilters(where),
+                        });
+                    }
+                    if (cursorObj) {
+                        const or = [];
+                        if (cursorObj.custom) {
+                            const { fieldPath, value } = cursorObj.custom;
+                            const primitiveValue = coercePrimitive(value);
+                            const fixedPath = fieldPath === "_id" ? "_id" : `data.${fieldPath}`;
+                            or.push({
+                                [fixedPath]: {
+                                    [op]: primitiveValue,
                                 },
-                            },
-                        ],
-                    });
-                }
-                const filter = conds.length > 0 ? { $and: conds } : {};
-                return coll.find(filter).sort(sort).limit(limit).toArray();
-            })(),
-            TE.map((records) => {
+                            });
+                            or.push({
+                                [fixedPath]: {
+                                    $eq: primitiveValue,
+                                },
+                                _id: {
+                                    [op]: new ObjectId(cursorObj._id),
+                                },
+                            });
+                        } else {
+                            or.push({
+                                _id: {
+                                    [op]: new ObjectId(cursorObj._id),
+                                },
+                            });
+                        }
+                        and.push({
+                            $or: or,
+                        });
+                    }
+                    const filter = and.length > 0 ? { $and: and } : {};
+                    return coll
+                        .find(filter as MongoFilter<DocumentData>)
+                        .sort(sort)
+                        .limit(limit)
+                        .toArray();
+                })();
+            }),
+            TE.map(({ records }) => {
                 const entries = records.map((record) => ({
                     _id: record._id.toString(),
                     id: record.id,
                     record: record.data,
                 }));
-                return {
+                const result: EntryList = {
                     info,
                     entries,
                 };
+                const lastEntry = entries[entries.length - 1];
+                if (lastEntry) {
+                    const nextCursor: Cursor = {
+                        _id: lastEntry._id,
+                        dir: dir,
+                    };
+                    // TODO: 👇 this won't work with nested fields (eg: field1.field2)
+                    if (orderBy?.fieldPath && orderBy?.fieldPath !== "_id") {
+                        nextCursor.custom = {
+                            fieldPath: orderBy?.fieldPath,
+                            value: String(lastEntry.record[orderBy.fieldPath]),
+                        };
+                    }
+                    result.nextPageToken = encodeCursor(nextCursor);
+                }
+                return result;
             })
         );
     };

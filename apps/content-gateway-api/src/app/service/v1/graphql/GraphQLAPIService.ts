@@ -1,4 +1,10 @@
-import { DataRepository, Filter, FilterType } from "@domain/feature-gateway";
+import {
+    DataRepository,
+    Filter,
+    FilterType,
+    OrderBy,
+    Query
+} from "@domain/feature-gateway";
 import { createLogger } from "@shared/util-fp";
 import { toGraphQLType } from "@shared/util-graphql";
 import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
@@ -84,10 +90,11 @@ const createGraphQLMiddleware = async ({
     };
 
     const findByFilters = async (
-        schema: Schema,
+        info: SchemaInfo,
         first: number,
-        after: string,
-        where: Filter[]
+        after?: string,
+        where?: Filter[],
+        orderBy?: OrderBy
     ): Promise<Results> => {
         const notes = [] as string[];
         let limit = first;
@@ -97,39 +104,30 @@ const createGraphQLMiddleware = async ({
                 `The requested amount of items (${first}) is greater than the allowed maximum (${MAX_ITEMS}). Setting after to ${MAX_ITEMS}.`
             );
         }
-        // 👇 We do this to determine whether there is a next page or not.
-        limit++;
+
+        const query: Query = { info, limit };
+        if (after) {
+            query.cursor = after;
+        }
+        if (where) {
+            query.where = where;
+        }
+        if (orderBy) {
+            query.orderBy = orderBy;
+        }
 
         return pipe(
-            dataRepository.findByQuery({
-                info: schema.info,
-                cursor: after ? after : undefined,
-                limit: limit,
-                where: where ?? [],
-            }),
+            dataRepository.findByQuery(query),
             TE.map((entryList) => {
-                // TODO: write tests for this paging stuff
                 const entries = entryList.entries;
-                const hasNextPage = entries.length === limit;
-                const hasEntries = entries.length > 0;
-                let startCursor: string;
-                let endCursor: string;
-                if (hasNextPage) {
-                    // 👇 We only needed this for hasNextPage.
-                    entries.pop();
-                }
-                if (hasEntries) {
-                    startCursor = entries[0]._id.toString();
-                    endCursor = entries[entries.length - 1]._id.toString();
-                } else {
-                    startCursor = after ?? "";
-                    endCursor = startCursor;
-                }
+                const hasNextPage = entryList.nextPageToken !== undefined;
+                const nextPageToken = entryList.nextPageToken;
                 return {
                     pageInfo: {
                         hasNextPage,
-                        startCursor: startCursor,
-                        endCursor: endCursor,
+                        nextPageToken,
+                        //! 👇 deprecated
+                        endCursor: nextPageToken,
                     },
                     errors: [],
                     notes: notes,
@@ -143,8 +141,6 @@ const createGraphQLMiddleware = async ({
                 T.of({
                     pageInfo: {
                         hasNextPage: false,
-                        startCursor: "0",
-                        endCursor: "0",
                     },
                     errors: [e.message],
                     notes: [] as string[],

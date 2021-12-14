@@ -245,23 +245,28 @@ describe("Given a Mongo data storage", () => {
         it("Then it is successfully created when valid", async () => {
             const version = uuid();
             const tempSchema = await prepareRandomSchema(version);
-            const records = [
-                {
-                    id: uuid(),
-                    name: "Some Street 2",
-                    num: 1,
-                },
-                {
-                    id: uuid(),
-                    name: "Some Street 2",
-                    num: 3,
-                },
-            ];
 
-            await target.storeBulk({
+            const record0 = {
+                id: uuid(),
+                name: "Some Street 2",
+                num: 1,
+            };
+
+            const record1 = {
+                id: uuid(),
+                name: "Some Street 2",
+                num: 3,
+            };
+
+            const data0 = await storeRecord({
                 info: tempSchema.info,
-                records: records,
-            })();
+                record: record0,
+            });
+
+            const data1 = await storeRecord({
+                info: tempSchema.info,
+                record: record1,
+            });
 
             const result = extractRight(
                 await target.findByQuery({
@@ -270,7 +275,10 @@ describe("Given a Mongo data storage", () => {
                 })()
             );
 
-            expect(result.entries.map((e) => e.record)).toEqual(records);
+            expect(result.entries.map((e) => e.id)).toEqual([
+                data0.id,
+                data1.id,
+            ]);
         });
 
         it("Then it overwrites old entries", async () => {
@@ -323,21 +331,22 @@ describe("Given a Mongo data storage", () => {
             const tempSchema = await prepareRandomSchema(version);
             const addresses = await prepareRandomAddresses(tempSchema.info, 2);
 
-            const result = extractRight(
+            const first = extractRight(
                 await target.findByQuery({
-                    cursor: addresses[0]._id,
-                    limit: 10,
+                    limit: 1,
                     info: tempSchema.info,
                 })()
             );
 
-            expect(result.entries).toEqual([
-                {
-                    _id: addresses[1]._id.toString(),
-                    id: addresses[1].id,
-                    record: addresses[1].record,
-                },
-            ]);
+            const result = extractRight(
+                await target.findByQuery({
+                    limit: 1,
+                    info: tempSchema.info,
+                    cursor: first.nextPageToken,
+                })()
+            );
+
+            expect(result.entries).toEqual([addresses[1]]);
         });
 
         it("Then when there is data it is returned without cursor", async () => {
@@ -375,29 +384,6 @@ describe("Given a Mongo data storage", () => {
     });
 
     describe("When querying data by filters", () => {
-        it("Then it works without filters", async () => {
-            const tempSchema = await prepareRandomSchema(uuid());
-            const first = await prepareRandomAddresses(tempSchema.info, 2);
-
-            const addresses = await prepareRandomAddresses(tempSchema.info, 2);
-
-            const result = extractRight(
-                await target.findByQuery({
-                    cursor: first[1]._id,
-                    limit: 2,
-                    info: tempSchema.info,
-                })()
-            );
-
-            expect(result.entries).toEqual(
-                addresses.map((a) => ({
-                    _id: a._id,
-                    id: a.id,
-                    record: a.record,
-                }))
-            );
-        });
-
         it("Then it works with the contains filter", async () => {
             const tempSchema = await prepareRandomSchema(uuid());
 
@@ -676,7 +662,7 @@ describe("Given a Mongo data storage", () => {
         it("Then it works with both cursor and filter", async () => {
             const tempSchema = await prepareRandomSchema(uuid());
 
-            const data0 = await storeRecord({
+            await storeRecord({
                 info: tempSchema.info,
                 record: {
                     id: uuid(),
@@ -694,9 +680,23 @@ describe("Given a Mongo data storage", () => {
                 },
             });
 
+            const first = extractRight(
+                await target.findByQuery({
+                    limit: 1,
+                    where: [
+                        {
+                            fieldPath: "name",
+                            type: FilterType.contains,
+                            value: "World",
+                        },
+                    ],
+                    info: tempSchema.info,
+                })()
+            );
+
             const result = extractRight(
                 await target.findByQuery({
-                    cursor: data0._id,
+                    cursor: first.nextPageToken,
                     limit: 2,
                     where: [
                         {
@@ -709,13 +709,7 @@ describe("Given a Mongo data storage", () => {
                 })()
             );
 
-            expect(result.entries).toEqual([
-                {
-                    _id: data1._id,
-                    id: data1.id,
-                    record: data1.record,
-                },
-            ]);
+            expect(result.entries).toEqual([data1]);
         });
 
         it("Then it works with ordering and filtering", async () => {
@@ -840,9 +834,7 @@ describe("Given a Mongo data storage", () => {
             const result = extractRight(
                 await target.findByQuery({
                     limit: 2,
-                    cursor: `${
-                        first.entries[first.entries.length - 1].record.num
-                    }`,
+                    cursor: first.nextPageToken,
                     where: [
                         {
                             fieldPath: "name",
