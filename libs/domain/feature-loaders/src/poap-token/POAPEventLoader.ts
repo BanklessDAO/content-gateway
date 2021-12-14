@@ -16,7 +16,7 @@ const INFO = {
 })
 class Event {
     @NonEmptyProperty()
-    id: string;
+    id: number;
     @RequiredProperty()
     fancyId: string;
     @RequiredProperty()
@@ -110,7 +110,7 @@ export class POAPEventLoader extends HTTPDataLoaderBase<Events, Event> {
             .map((event) => {
                 try {
                     return {
-                        id: `${event.id}`,
+                        id: event.id,
                         fancyId: event.fancy_id,
                         name: event.name,
                         eventUrl: event.event_url,

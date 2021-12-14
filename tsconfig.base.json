@@ -18,8 +18,8 @@
         "allowSyntheticDefaultImports": true,
         "baseUrl": ".",
         "paths": {
-            "@banklessdao/sdk": [
-                "libs/banklessdao/sdk/src/index.ts"
+            "@banklessdao/content-gateway-sdk": [
+                "libs/banklessdao/content-gateway-sdk/src/index.ts"
             ],
             "@domain/feature-gateway": [
                 "libs/domain/feature-gateway/src/index.ts"

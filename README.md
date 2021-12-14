@@ -1,26 +1,29 @@
 # Content Gateway
 
-This is the monorepo for _Content Gateway_. You can follow the links below to learn more.
+This is the monorepo for **Content Gateway**. You can follow the links below to learn more.
 
--   [Content Gateway API](/apps/content-gateway-api): central storage module for both *schema*s and _data_.
--   [Content Gateway Loader](/apps/content-gateway-loader): module responsible for implementing the _pull_ ingeration mechanism (eg: when we load data from external systems)
--   [Content Gateway Client](/libs/banklessdao/sdk): library package responsible for implementing the _push_ integration mechanism (eg: when you send the data to the CG API).
+-   [Content Gateway API][cg-api-project]: central storage module for both *schema*s and _data_.
+-   [Content Gateway Loader][cg-loader-project]: module responsible for implementing the _pull_ ingeration mechanism (eg: when we load data from external systems)
+-   [Content Gateway SDK][cg-sdk-project]: library package responsible for implementing the _push_ integration mechanism (eg: when you send the data to the CG API).
 
-If you want to write custom _pull_ integration logic, head over to the [Content Gateway Loader](/apps/content-gateway-loader) README.
+If you want to write custom _pull_ integration logic, head over to the [Content Gateway Loader][cg-loader-project] `README`.
 
-If you want to consume content from the Content Gateway API
+If you want to consume content from the Content Gateway API, take a look at our [GraphQL API][graphql-api].
 
 If you want to start working on the Content Gateway read on.
 
 ## Getting Started
 
-> If you'd like to learn more on how to start working on the codebase skip to [Development](#development)
+> If you'd like to learn more on how to start working on the codebase skip to the [Development](#development) section.
 
 ## Development
 
 Before you can start working on the codebase you'll need to install:
 
--   Docker (Docker Desktop on Windows)
+- Git
+- Docker (Docker Desktop on Windows)
+- VS Code _(Optional)_
+- Heroku CLI _(Optional)_
 
 ### Environmental Variables
 
@@ -44,19 +47,42 @@ export PG_CGA_PORT=8051
 export PG_CGA_PASSWORD="A3xB13DASwa2134hl"
 export PG_CGA_USER="cga_local"
 export PG_CGA_URL="postgresql://${PG_CGA_USER}:${PG_CGA_PASSWORD}@localhost:${PG_CGA_PORT}/${PG_CGA_USER}"
+
+export NODE_ENV="development"
+# Adds a frontend depending on this value
+export ADD_FRONTEND="true"
+# For the Bankless website
+export GHOST_API_KEY="<GHOST_API_KEY>"
+# Fort he Bankless podcast
+export YOUTUBE_API_KEY="<YOUTUBE_API_KEY>"
+
+# API parameters
+export CGA_PORT="3333"
+export CGA_URL="http://localhost:3333"
+
+# Loader params
+export CGL_PORT="3334"
+export PG_CGL_USER="cgl"
+export PG_CGL_PASSWORD="<FIGURE_SOMETHING_OUT>"
+export PG_CGL_PORT="8050"
+export PG_CGL_URL="postgresql://${PG_CGL_USER}:${PG_CGL_PASSWORD}@localhost:${PG_CGL_PORT}/${PG_CGL_USER}"
+export MONGO_CGA_USER="cga"
+export MONGO_CGA_PASSWORD="<FIGURE_SOMETHING_OUT>"
+export MONGO_CGA_PORT="8051"
+export MONGO_CGA_URL="mongodb://${MONGO_CGA_USER}:${MONGO_CGA_PASSWORD}@localhost:${MONGO_CGA_PORT}/"
 ```
 
 ### Heroku Setup
 
-In case this needs to be redeployed to Heroku, these are the necessary steps:
+If you want to deploy an instance to _Heroku_, these are the necessary steps:
 
 > Make sure that you call `heroku login` before trying to do this. You'll also need the Heroku CLI installed
 
 First, we create the apps on Heroku:
 
 ```bash
-heroku create content-gateway-api --remote cga
-heroku create content-gateway-loader --remote cgl
+heroku create content-gateway-api --remote cga # --team if you use teams
+heroku create content-gateway-loader --remote cgl # --team if you use teams
 ```
 
 Now you need to add the [multi-procfile buildpack](https://elements.heroku.com/buildpacks/heroku/heroku-buildpack-multi-procfile) to them. This is because Heroku assumes that you have one app per repo by default, and this enables to have multiple `Procfile`s (deployments) in a repo
@@ -147,3 +173,8 @@ We're using fp-ts, io-ts in this project. These libraries implement strictly typ
 -   [fp-ts and Beautiful API Calls](https://dev.to/gnomff_65/fp-ts-and-beautiful-api-calls-1f55)
 
 You can also take a look around the author's [website](https://paulgray.net/)
+
+[cg-sdk-project]:/libs/banklessdao/content-gateway-sdk
+[cg-api-project]:/apps/content-gateway-api
+[cg-loader-project]:/apps/content-gateway-loader
+[graphql-api]:https://prod-content-gateway-api.herokuapp.com/api/v1/graphql

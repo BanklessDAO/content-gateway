@@ -1,4 +1,4 @@
-import { ContentGatewayClientV1 } from "@banklessdao/sdk";
+import { ContentGatewayClientV1 } from "@banklessdao/content-gateway-sdk";
 import { ProgramError } from "@shared/util-data";
 import { createLogger, programError } from "@shared/util-fp";
 import { schemaInfoToString } from "@shared/util-schema";

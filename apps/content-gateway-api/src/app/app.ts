@@ -2,7 +2,7 @@
 import {
     ContentGatewayClientV1,
     createContentGatewayClientV1,
-} from "@banklessdao/sdk";
+} from "@banklessdao/content-gateway-sdk";
 import {
     ContentGateway,
     createContentGateway,

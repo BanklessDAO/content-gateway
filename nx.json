@@ -28,8 +28,8 @@
         ]
     },
     "projects": {
-        "banklessdao-sdk": {
-            "tags": ["sdk"]
+        "banklessdao-content-gateway-sdk": {
+            "tags": []
         },
         "content-gateway-api": {
             "tags": [],
@@ -45,7 +45,7 @@
             "tags": []
         },
         "domain-feature-gateway": {
-            "tags": ["lib:feature"]
+            "tags": []
         },
         "domain-feature-loaders": {
             "tags": []

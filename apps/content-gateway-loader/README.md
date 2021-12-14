@@ -258,7 +258,7 @@ import { exampleLoader } from "./ExampleLoader";
 import {
     createStubClient,
     StubClientObjects,
-} from "@banklessdao/sdk";
+} from "@banklessdao/content-gateway-sdk";
 import { createJobSchedulerStub, JobSchedulerStub } from "..";
 
 describe("Given an example loader", () => {
