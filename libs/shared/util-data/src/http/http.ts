@@ -6,13 +6,13 @@ import * as t from "io-ts";
 import {
     CodecValidationError,
     GenericProgramError,
-    programErrorCodec
+    programErrorCodec,
 } from "..";
 import {
     DataTransferError,
     GenericDataTransferError,
     HTTPDataTransferError,
-    UnknownDataTransferError
+    UnknownDataTransferError,
 } from "./errors";
 
 const handleError = (error: unknown): DataTransferError => {
@@ -99,6 +99,28 @@ export const post = <T>({
         TE.tryCatch(
             async () => {
                 const { data } = await axios.post(url, input);
+                return data as unknown;
+            },
+            (error: unknown) => {
+                return handleError(error);
+            }
+        ),
+        decodeResponse(codec)
+    );
+};
+
+/**
+ * Executes a DELETE request and returns the result.
+ */
+export const del = <T>({
+    url,
+    input,
+    codec,
+}: PostParams<T>): TE.TaskEither<DataTransferError, T> => {
+    return pipe(
+        TE.tryCatch(
+            async () => {
+                const { data } = await axios.delete(url, input);
                 return data as unknown;
             },
             (error: unknown) => {

@@ -47,7 +47,7 @@ export const generateContentGatewayAPIV1 = async ({
         )();
     });
 
-    router.post("/schema/remove/", async (req, res) => {
+    router.delete("/schema/", async (req, res) => {
         pipe(
             schemaInfoCodec.decode(req.body),
             E.fold(
@@ -68,7 +68,7 @@ export const generateContentGatewayAPIV1 = async ({
         );
     });
 
-    router.post("/schema/register", async (req, res) => {
+    router.post("/schema/", async (req, res) => {
         await pipe(
             createSchemaFromObject(req.body),
             TE.fromEither,
@@ -78,7 +78,7 @@ export const generateContentGatewayAPIV1 = async ({
         )();
     });
 
-    router.post("/schema/receive", async (req, res) => {
+    router.post("/data/receive", async (req, res) => {
         return pipe(
             jsonPayloadCodec.decode(req.body),
             mapCodecValidationError("Validating json payload failed"),
@@ -89,7 +89,7 @@ export const generateContentGatewayAPIV1 = async ({
         )();
     });
 
-    router.post("/schema/receive-batch", async (req, res) => {
+    router.post("/data/receive-batch", async (req, res) => {
         logger.info("Receiving batch...");
         await pipe(
             jsonBatchPayloadCodec.decode(req.body),

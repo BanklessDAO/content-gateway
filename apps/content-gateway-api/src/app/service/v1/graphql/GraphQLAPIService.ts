@@ -44,7 +44,7 @@ type QueryMapping = {
 /**
  * Creates a new GraphQL API that can be used as an Express middleware.
  */
-export const createGraphQLAPIServiceV1 = async (
+export const createGraphQLAPIV1 = async (
     deps: Deps
 ): Promise<Middleware> => {
     let currentMiddleware = await createGraphQLMiddleware(deps);

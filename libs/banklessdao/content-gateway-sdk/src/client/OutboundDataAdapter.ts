@@ -1,5 +1,6 @@
 import {
     DataTransferError,
+    del,
     JsonBatchPayload,
     JsonPayload,
     post
@@ -13,7 +14,7 @@ import * as t from "io-ts";
  * It is used by the SDK to send data to a Content Gateway API server.
  * In 99% of cases what you'll need is the HTTP adapter which can be created by
  * calling the {@link createHTTPAdapterV1} function.
- * Note that 
+ * Note that
  */
 export type OutboundDataAdapter = {
     register: (
@@ -34,28 +35,28 @@ export const createHTTPAdapterV1 = (url: string): OutboundDataAdapter => {
     return {
         register: (schema: SchemaJson) => {
             return post({
-                url: `${url}/api/v1/rest/schema/register`,
+                url: `${url}/api/v1/rest/schema/`,
                 input: schema,
                 codec: t.UnknownRecord,
             });
         },
         remove: (info: SchemaInfo) => {
-            return post({
-                url: `${url}/api/v1/rest/schema/remove`,
+            return del({
+                url: `${url}/api/v1/rest/schema/`,
                 input: info,
                 codec: t.UnknownRecord,
             });
         },
         send: (payload: JsonPayload) => {
             return post({
-                url: `${url}/api/v1/rest/schema/receive`,
+                url: `${url}/api/v1/rest/data/receive`,
                 input: payload,
                 codec: t.UnknownRecord,
             });
         },
         sendBatch: (payload: JsonBatchPayload) => {
             return post({
-                url: `${url}/api/v1/rest/schema/receive-batch`,
+                url: `${url}/api/v1/rest/data/receive-batch`,
                 input: payload,
                 codec: t.UnknownRecord,
             });

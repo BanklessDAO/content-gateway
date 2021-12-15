@@ -5,7 +5,7 @@ import * as TE from "fp-ts/TaskEither";
 import { Job, JobDescriptor, JobRepository, JobScheduler } from ".";
 
 /**
- * Contains the necessary information for initializing.
+ * Contains the necessary information for initializing a loader.
  */
 export type InitContext = {
     client: ContentGatewayClientV1;

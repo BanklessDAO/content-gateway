@@ -1,23 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     JobSchedule,
-    JobState,
-    ScheduleMode,
-    Prisma,
-    PrismaClient,
+    JobState, Prisma,
+    PrismaClient, ScheduleMode
 } from "@cgl/prisma";
 import { createLogger } from "@shared/util-fp";
 import { DatabaseError, Job, JobRepository } from "@shared/util-loaders";
 import {
     SchemaInfo,
     schemaInfoToString,
-    stringToSchemaInfo,
+    stringToSchemaInfo
 } from "@shared/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
-import { unknown } from "io-ts";
 
 export const createJobRepository = (prisma: PrismaClient): JobRepository => {
     const logger = createLogger("PrismaJobRepository");

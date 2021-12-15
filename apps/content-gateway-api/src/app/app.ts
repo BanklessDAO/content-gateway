@@ -16,7 +16,7 @@ import { MongoClient } from "mongodb";
 import { join } from "path";
 import { Logger } from "tslog";
 import {
-    createGraphQLAPIServiceV1,
+    createGraphQLAPIV1 as createGraphQLAPIV1,
     createInMemoryOutboundDataAdapter,
     ObservableSchemaRepository,
     toObservableSchemaRepository,
@@ -93,7 +93,7 @@ export const createApp = async ({
     };
 
     app.use("/api/v1/rest/", await generateContentGatewayAPIV1(context));
-    app.use("/api/v1/graphql/", await createGraphQLAPIServiceV1(context));
+    app.use("/api/v1/graphql/", await createGraphQLAPIV1(context));
     app.use(
         "/api/v1/graphql-live",
         createGraphQLLiveService({
