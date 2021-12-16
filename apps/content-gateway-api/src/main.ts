@@ -1,4 +1,4 @@
-import { createLogger, programError } from "@shared/util-fp";
+import { createLogger, programError } from "@banklessdao/util-misc";
 import { MongoClient } from "mongodb";
 import { createApp } from "./app/";
 

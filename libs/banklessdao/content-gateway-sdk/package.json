@@ -1,4 +1,37 @@
 {
     "name": "@banklessdao/content-gateway-sdk",
-    "version": "0.0.1"
+    "version": "2021.0.2-BETA",
+    "description": "",
+    "homepage": "https://github.com/BanklessDAO/content-gateway",
+    "keywords": [
+        "content-gateway",
+        "content-gateway-sdk",
+        "banklessdao",
+        "typescript",
+        "node"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/BanklessDAO/content-gateway.git"
+    },
+    "author": {
+        "name": "BanklessDAO"
+    },
+    "contributors": [
+        {
+            "name": "addamsson"
+        },
+        {
+            "name": "0xNshuman"
+        }
+    ],
+    "license": "Apache2.0",
+    "peerDependencies": {
+        "fp-ts": "^2.11.4",
+        "io-ts": "^2.2.16",
+        "io-ts-reporters": "^2.0.0",
+        "io-ts-types": "^0.5.16",
+        "@banklessdao/util-data": "^2021.0.2-BETA",
+        "@banklessdao/util-schema": "^2021.0.2-BETA"
+    }
 }

@@ -53,10 +53,10 @@
         "shared-util-auth": {
             "tags": []
         },
-        "shared-util-data": {
+        "banklessdao-util-data": {
             "tags": []
         },
-        "shared-util-fp": {
+        "banklessdao-util-misc": {
             "tags": []
         },
         "shared-util-graphql": {
@@ -65,7 +65,7 @@
         "shared-util-loaders": {
             "tags": []
         },
-        "shared-util-schema": {
+        "banklessdao-util-schema": {
             "tags": []
         }
     }

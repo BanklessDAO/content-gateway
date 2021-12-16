@@ -1,4 +1,4 @@
-import { get } from "@shared/util-data";
+import { get } from "@banklessdao/util-data";
 import * as t from "io-ts";
 import { withMessage } from "io-ts-types";
 import { LiveLoader } from "./LiveLoader";

@@ -1,10 +1,10 @@
 import {
-    SchemaValidationError,
     Data,
+    Nested,
     NonEmptyProperty,
     RequiredArrayRef,
-    Nested
-} from "@shared/util-schema";
+    SchemaValidationError,
+} from "@banklessdao/util-schema";
 import * as E from "fp-ts/Either";
 import { createContentGatewayClientV1 } from ".";
 import { ContentGatewayClientV1 } from "./ContentGatewayClient";
@@ -77,7 +77,10 @@ describe("Given a gateway client", () => {
 
     beforeEach(() => {
         adapterStub = createOutboundAdapterStub();
-        client = createContentGatewayClientV1({ adapter: adapterStub });
+        client = createContentGatewayClientV1({
+            apiKey: "",
+            adapter: adapterStub,
+        });
     });
 
     it("When registering a valid schema Then it should register properly", async () => {
@@ -126,8 +129,10 @@ describe("Given a gateway client", () => {
     it("When sending a valid payload Then it is sent properly", async () => {
         await client.register({ info: info, type: Post })();
         const result = await client.save({
-            info: info,
-            data: validPost,
+            payload: {
+                info: info,
+                data: validPost,
+            },
         })();
 
         expect(result).toEqual(E.right({}));
@@ -145,8 +150,10 @@ describe("Given a gateway client", () => {
 
     it("When sending an unregistered payload Then an error is returned", async () => {
         const result = await client.save({
-            info: info,
-            data: validPost,
+            payload: {
+                info: info,
+                data: validPost,
+            },
         })();
 
         expect(result).toEqual(
@@ -157,8 +164,10 @@ describe("Given a gateway client", () => {
     it("When sending a payload with missing data Then an error is returned", async () => {
         await client.register({ info: info, type: Post })();
         const result = await client.save({
-            info: info,
-            data: invalidPostWithMissingData,
+            payload: {
+                info: info,
+                data: invalidPostWithMissingData,
+            },
         })();
 
         expect(result).toEqual(
@@ -180,8 +189,10 @@ describe("Given a gateway client", () => {
     it("When sending a payload with extra data Then an error is returned", async () => {
         await client.register({ info: info, type: Post })();
         const result = await client.save({
-            info: info,
-            data: invalidPostWithExtraData,
+            payload: {
+                info: info,
+                data: invalidPostWithExtraData,
+            },
         })();
 
         expect(result).toEqual(

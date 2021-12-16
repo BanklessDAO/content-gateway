@@ -7,15 +7,15 @@ import {
     SchemaValidationError,
     SinglePayload
 } from "@domain/feature-gateway";
-import { GenericProgramError } from "@shared/util-data";
-import { extractLeft, extractRight, programError } from "@shared/util-fp";
+import { GenericProgramError } from "@banklessdao/util-data";
+import { extractLeft, extractRight, programError } from "@banklessdao/util-misc";
 import {
     createSchemaFromClass,
     Data,
     NonEmptyProperty,
     SchemaInfo,
     schemaInfoToString
-} from "@shared/util-schema";
+} from "@banklessdao/util-schema";
 import * as O from "fp-ts/lib/Option";
 import { Db, MongoClient } from "mongodb";
 import { v4 as uuid } from "uuid";

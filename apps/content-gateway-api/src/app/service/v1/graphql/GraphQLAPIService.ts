@@ -5,9 +5,9 @@ import {
     OrderBy,
     Query
 } from "@domain/feature-gateway";
-import { createLogger } from "@shared/util-fp";
+import { createLogger } from "@banklessdao/util-misc";
 import { toGraphQLType } from "@shared/util-graphql";
-import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
+import { Schema, SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
 import { Request, Response } from "express";
 import { graphqlHTTP } from "express-graphql";
 import * as A from "fp-ts/Array";

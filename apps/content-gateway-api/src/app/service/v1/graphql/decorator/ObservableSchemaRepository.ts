@@ -1,6 +1,6 @@
 import { SchemaRepository } from "@domain/feature-gateway";
-import { createLogger } from "@shared/util-fp";
-import { Schema, SchemaInfo } from "@shared/util-schema";
+import { createLogger } from "@banklessdao/util-misc";
+import { Schema, SchemaInfo } from "@banklessdao/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 

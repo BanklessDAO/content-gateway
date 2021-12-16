@@ -1,4 +1,4 @@
-import { createGraphQLClient } from "@shared/util-data";
+import { createGraphQLClient } from "@banklessdao/util-data";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";

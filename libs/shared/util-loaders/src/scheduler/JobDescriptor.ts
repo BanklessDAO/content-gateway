@@ -1,4 +1,4 @@
-import { SchemaInfo } from "@shared/util-schema";
+import { SchemaInfo } from "@banklessdao/util-schema";
 import { ScheduleMode } from "./ScheduleMode";
 
 /**
@@ -17,5 +17,8 @@ export type JobDescriptor = {
      * More info [here](http://mysql.rjweb.org/doc.php/pagination).
      */
     readonly cursor: string;
+    /**
+     * The amount of records to load.
+     */
     readonly limit: number;
 };

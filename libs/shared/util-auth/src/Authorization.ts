@@ -1,4 +1,4 @@
-import { ProgramError } from "@shared/util-data";
+import { ProgramError } from "@banklessdao/util-data";
 import * as A from "fp-ts/Array";
 import { pipe } from "fp-ts/function";
 import * as TE from "fp-ts/TaskEither";

@@ -1,9 +1,9 @@
-import { ProgramErrorBase } from "@shared/util-data";
+import { ProgramErrorBase } from "@banklessdao/util-data";
 import {
     SchemaInfo,
     schemaInfoToString,
     ValidationError
-} from "@shared/util-schema";
+} from "@banklessdao/util-schema";
 
 export class SchemaValidationError extends ProgramErrorBase<"SchemaValidationError"> {
     constructor(errors: ValidationError[]) {

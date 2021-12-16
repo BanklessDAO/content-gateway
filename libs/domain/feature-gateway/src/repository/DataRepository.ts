@@ -2,9 +2,9 @@
 import {
     CodecValidationError,
     mapCodecValidationError
-} from "@shared/util-data";
-import { base64Decode, base64Encode } from "@shared/util-fp";
-import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
+} from "@banklessdao/util-data";
+import { base64Decode, base64Encode } from "@banklessdao/util-misc";
+import { SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";

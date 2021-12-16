@@ -8,7 +8,7 @@ import {
     createContentGateway,
     DataRepository,
 } from "@domain/feature-gateway";
-import { createLogger, programError } from "@shared/util-fp";
+import { createLogger, programError } from "@banklessdao/util-misc";
 import * as express from "express";
 import { graphqlHTTP } from "express-graphql";
 import * as g from "graphql";
@@ -74,6 +74,7 @@ export const createApp = async ({
         dataRepository,
     });
     const client = createContentGatewayClientV1({
+        apiKey: "",
         adapter: createInMemoryOutboundDataAdapter({
             contentGateway,
         }),

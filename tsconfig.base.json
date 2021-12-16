@@ -11,7 +11,7 @@
         "strictPropertyInitialization": false,
         "importHelpers": true,
         "target": "es2015",
-        "module": "esnext",
+        "module": "commonjs",
         "lib": ["es2020", "dom"],
         "skipLibCheck": true,
         "skipDefaultLibCheck": true,
@@ -29,11 +29,11 @@
             ],
             "@domain/loaders": ["libs/domain/loaders/src/index.ts"],
             "@shared/util-auth": ["libs/shared/util-auth/src/index.ts"],
-            "@shared/util-data": ["libs/shared/util-data/src/index.ts"],
-            "@shared/util-fp": ["libs/shared/util-fp/src/index.ts"],
+            "@banklessdao/util-data": ["libs/banklessdao/util-data/src/index.ts"],
+            "@banklessdao/util-misc": ["libs/banklessdao/util-misc/src/index.ts"],
             "@shared/util-graphql": ["libs/shared/util-graphql/src/index.ts"],
             "@shared/util-loaders": ["libs/shared/util-loaders/src/index.ts"],
-            "@shared/util-schema": ["libs/shared/util-schema/src/index.ts"]
+            "@banklessdao/util-schema": ["libs/banklessdao/util-schema/src/index.ts"]
         }
     },
     "exclude": ["node_modules", "tmp"]

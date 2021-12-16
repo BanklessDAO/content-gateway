@@ -64,6 +64,7 @@
         "voca": "^1.4.0"
     },
     "devDependencies": {
+        "@babel/preset-env": "^7.16.5",
         "@emotion/babel-plugin": "11.2.0",
         "@nrwl/cli": "12.9.0",
         "@nrwl/cypress": "12.9.0",

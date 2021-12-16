@@ -13,9 +13,7 @@
                         "outputPath": "dist/libs/banklessdao/content-gateway-sdk",
                         "main": "libs/banklessdao/content-gateway-sdk/src/index.ts",
                         "tsConfig": "libs/banklessdao/content-gateway-sdk/tsconfig.lib.json",
-                        "assets": [
-                            "libs/banklessdao/content-gateway-sdk/*.md"
-                        ]
+                        "assets": ["libs/banklessdao/content-gateway-sdk/*.md"]
                     }
                 },
                 "lint": {
@@ -395,65 +393,65 @@
                 }
             }
         },
-        "shared-util-data": {
-            "root": "libs/shared/util-data",
-            "sourceRoot": "libs/shared/util-data/src",
+        "banklessdao-util-data": {
+            "root": "libs/banklessdao/util-data",
+            "sourceRoot": "libs/banklessdao/util-data/src",
             "projectType": "library",
             "targets": {
                 "build": {
                     "executor": "@nrwl/workspace:tsc",
                     "outputs": ["{options.outputPath}"],
                     "options": {
-                        "outputPath": "dist/libs/shared/util-data",
-                        "main": "libs/shared/util-data/src/index.ts",
-                        "tsConfig": "libs/shared/util-data/tsconfig.lib.json",
-                        "assets": ["libs/shared/util-data/*.md"]
+                        "outputPath": "dist/libs/banklessdao/util-data",
+                        "main": "libs/banklessdao/util-data/src/index.ts",
+                        "tsConfig": "libs/banklessdao/util-data/tsconfig.lib.json",
+                        "assets": ["libs/banklessdao/util-data/*.md"]
                     }
                 },
                 "lint": {
                     "executor": "@nrwl/linter:eslint",
                     "outputs": ["{options.outputFile}"],
                     "options": {
-                        "lintFilePatterns": ["libs/shared/util-data/**/*.ts"]
+                        "lintFilePatterns": ["libs/banklessdao/util-data/**/*.ts"]
                     }
                 },
                 "test": {
                     "executor": "@nrwl/jest:jest",
-                    "outputs": ["coverage/libs/shared/util-data"],
+                    "outputs": ["coverage/libs/banklessdao/util-data"],
                     "options": {
-                        "jestConfig": "libs/shared/util-data/jest.config.js",
+                        "jestConfig": "libs/banklessdao/util-data/jest.config.js",
                         "passWithNoTests": true
                     }
                 }
             }
         },
-        "shared-util-fp": {
-            "root": "libs/shared/util-fp",
-            "sourceRoot": "libs/shared/util-fp/src",
+        "banklessdao-util-misc": {
+            "root": "libs/banklessdao/util-misc",
+            "sourceRoot": "libs/banklessdao/util-misc/src",
             "projectType": "library",
             "targets": {
                 "build": {
                     "executor": "@nrwl/workspace:tsc",
                     "outputs": ["{options.outputPath}"],
                     "options": {
-                        "outputPath": "dist/libs/shared/util-fp",
-                        "main": "libs/shared/util-fp/src/index.ts",
-                        "tsConfig": "libs/shared/util-fp/tsconfig.lib.json",
-                        "assets": ["libs/shared/util-fp/*.md"]
+                        "outputPath": "dist/libs/banklessdao/util-misc",
+                        "main": "libs/banklessdao/util-misc/src/index.ts",
+                        "tsConfig": "libs/banklessdao/util-misc/tsconfig.lib.json",
+                        "assets": ["libs/banklessdao/util-misc/*.md"]
                     }
                 },
                 "lint": {
                     "executor": "@nrwl/linter:eslint",
                     "outputs": ["{options.outputFile}"],
                     "options": {
-                        "lintFilePatterns": ["libs/shared/util-fp/**/*.ts"]
+                        "lintFilePatterns": ["libs/banklessdao/util-misc/**/*.ts"]
                     }
                 },
                 "test": {
                     "executor": "@nrwl/jest:jest",
-                    "outputs": ["coverage/libs/shared/util-fp"],
+                    "outputs": ["coverage/libs/banklessdao/util-misc"],
                     "options": {
-                        "jestConfig": "libs/shared/util-fp/jest.config.js",
+                        "jestConfig": "libs/banklessdao/util-misc/jest.config.js",
                         "passWithNoTests": true
                     }
                 }
@@ -523,33 +521,33 @@
                 }
             }
         },
-        "shared-util-schema": {
-            "root": "libs/shared/util-schema",
-            "sourceRoot": "libs/shared/util-schema/src",
+        "banklessdao-util-schema": {
+            "root": "libs/banklessdao/util-schema",
+            "sourceRoot": "libs/banklessdao/util-schema/src",
             "projectType": "library",
             "targets": {
                 "build": {
                     "executor": "@nrwl/workspace:tsc",
                     "outputs": ["{options.outputPath}"],
                     "options": {
-                        "outputPath": "dist/libs/shared/util-schema",
-                        "main": "libs/shared/util-schema/src/index.ts",
-                        "tsConfig": "libs/shared/util-schema/tsconfig.lib.json",
-                        "assets": ["libs/shared/util-schema/*.md"]
+                        "outputPath": "dist/libs/banklessdao/util-schema",
+                        "main": "libs/banklessdao/util-schema/src/index.ts",
+                        "tsConfig": "libs/banklessdao/util-schema/tsconfig.lib.json",
+                        "assets": ["libs/banklessdao/util-schema/*.md"]
                     }
                 },
                 "lint": {
                     "executor": "@nrwl/linter:eslint",
                     "outputs": ["{options.outputFile}"],
                     "options": {
-                        "lintFilePatterns": ["libs/shared/util-schema/**/*.ts"]
+                        "lintFilePatterns": ["libs/banklessdao/util-schema/**/*.ts"]
                     }
                 },
                 "test": {
                     "executor": "@nrwl/jest:jest",
-                    "outputs": ["coverage/libs/shared/util-schema"],
+                    "outputs": ["coverage/libs/banklessdao/util-schema"],
                     "options": {
-                        "jestConfig": "libs/shared/util-schema/jest.config.js",
+                        "jestConfig": "libs/banklessdao/util-schema/jest.config.js",
                         "passWithNoTests": true
                     }
                 }

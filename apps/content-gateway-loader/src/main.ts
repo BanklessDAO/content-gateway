@@ -1,5 +1,5 @@
 import { PrismaClient } from "@cgl/prisma";
-import { createLogger, programError } from "@shared/util-fp";
+import { createLogger, programError } from "@banklessdao/util-misc";
 import { createApp } from "./app";
 
 const logger = createLogger("main");

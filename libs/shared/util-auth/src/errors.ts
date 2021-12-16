@@ -1,4 +1,4 @@
-import { ProgramErrorBase } from "@shared/util-data";
+import { ProgramErrorBase } from "@banklessdao/util-data";
 
 export class AuthorizationError extends ProgramErrorBase<"AuthorizationError"> {
     constructor(message: string) {

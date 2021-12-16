@@ -1,6 +1,6 @@
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
 import { SchemaRepository } from "@domain/feature-gateway";
-import { extractRight, programError } from "@shared/util-fp";
+import { extractRight, programError } from "@banklessdao/util-misc";
 import {
     ClassType,
     createSchemaFromClass,
@@ -9,7 +9,7 @@ import {
     OptionalProperty,
     Schema,
     schemaInfoToString
-} from "@shared/util-schema";
+} from "@banklessdao/util-schema";
 import * as E from "fp-ts/Either";
 import * as O from "fp-ts/Option";
 import { Db, MongoClient } from "mongodb";

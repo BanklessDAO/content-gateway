@@ -17,9 +17,9 @@ import {
     SchemaRepository,
     SinglePayload
 } from "@domain/feature-gateway";
-import { CodecValidationError } from "@shared/util-data";
-import { coercePrimitive, createLogger } from "@shared/util-fp";
-import { Schema, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
+import { CodecValidationError } from "@banklessdao/util-data";
+import { coercePrimitive, createLogger } from "@banklessdao/util-misc";
+import { Schema, SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
 import * as E from "fp-ts/Either";
 import { absurd, pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";

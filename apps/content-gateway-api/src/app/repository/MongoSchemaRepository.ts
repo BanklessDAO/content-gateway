@@ -7,15 +7,15 @@ import {
     SchemaRepository,
     SchemaStat
 } from "@domain/feature-gateway";
-import { CodecValidationError, UnknownError } from "@shared/util-data";
-import { createLogger } from "@shared/util-fp";
+import { CodecValidationError, UnknownError } from "@banklessdao/util-data";
+import { createLogger } from "@banklessdao/util-misc";
 import {
     createSchemaFromObject,
     Schema,
     SchemaInfo,
     schemaInfoToString,
     stringToSchemaInfo
-} from "@shared/util-schema";
+} from "@banklessdao/util-schema";
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";

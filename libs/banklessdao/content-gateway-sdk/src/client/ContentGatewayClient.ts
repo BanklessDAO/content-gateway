@@ -1,26 +1,38 @@
-import { DataTransferError } from "@shared/util-data";
+import { DataTransferError } from "@banklessdao/util-data";
 import {
+    ClassType,
     createSchemaFromClass,
     Payload,
     Schema,
     SchemaInfo,
     schemaInfoToString,
-    SchemaValidationError,
-    ClassType
-} from "@shared/util-schema";
+    SchemaValidationError
+} from "@banklessdao/util-schema";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/function";
 import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
-import { OutboundDataAdapterStub, SchemaNotFoundError } from ".";
+import {
+    createHTTPAdapterV1,
+    OutboundDataAdapterStub,
+    SchemaNotFoundError
+} from ".";
 import {
     createOutboundAdapterStub,
-    OutboundDataAdapter,
+    OutboundDataAdapter
 } from "./OutboundDataAdapter";
 
 export type RegistrationParams<T> = {
     info: SchemaInfo;
     type: ClassType<T>;
+};
+
+export type SaveParams<T> = {
+    payload: Payload<T>;
+};
+
+export type SaveBatchParams<T> = {
+    payload: Payload<Array<T>>;
 };
 
 type ClientError =
@@ -37,23 +49,6 @@ type ClientError =
 export type ContentGatewayClientV1 = {
     /**
      * Registers a new unique Type with the gateway.
-     * Use `@tsed/schema` decorators when creating the Type.
-     * Example:
-     *
-     * TODO! fix example imports
-     * ```ts
-     * import { Required } from "@tsed/schema";
-     *
-     * @AdditionalProperties(false)
-     * class User {
-     *     @Required(true)
-     *     id: number;
-     *     @Required(true)
-     *     name: string;
-     *     @Required(true)
-     *     email: string;
-     * }
-     * ```
      */
     register: <T>(
         params: RegistrationParams<T>
@@ -64,25 +59,51 @@ export type ContentGatewayClientV1 = {
      * with the Content Gateway API first.
      */
     save: <T>(
-        payload: Payload<T>
+        saveParams: SaveParams<T>
     ) => TE.TaskEither<ClientError, Record<string, unknown>>;
     /**
      * Same as {@link ContentGatewayClientV1#save} but sends multiple entries at once.
      */
     saveBatch: <T>(
-        payload: Payload<Array<T>>
+        saveBatchParams: SaveBatchParams<T>
     ) => TE.TaskEither<ClientError, Record<string, unknown>>;
+};
+
+/**
+ * Creates a new instance of the Content Gateway Client (V1) that will use
+ * the _production_ version of the Content Gateway API that's deployed
+ * by _BanklessDAO_ by default.
+ */
+export const createDefaultClientV1 = ({
+    apiKey,
+    apiURL = "https://prod-content-gateway-api.herokuapp.com",
+}: {
+    apiKey: string;
+    apiURL: string;
+}) => {
+    return createContentGatewayClientV1({
+        apiKey: apiKey,
+        adapter: createHTTPAdapterV1(apiURL),
+    });
 };
 
 /**
  * Creates a new instance of the Content Gateway Client (V1).
  * @param adapter The adapter to use for sending data to the Content Gateway API. If you're
- * unsure what to pass, use {@link createHTTPAdapterV1} with the appropriate gateway API
- * url.
+ * unsure what to pass, use {@link createDefaultClientV1} instead.
+ * 📙 **NOTE** that for now you can pass __any__ `apiKey`. Later this will be a required parameter later.
  */
 export const createContentGatewayClientV1 = ({
+    apiKey,
     adapter,
 }: {
+    /**
+     * Your API key to use when sending requests to the Content Gateway API.
+     */
+    apiKey: string;
+    /**
+     * The adapter to use for sending data to the Content Gateway API.
+     */
     adapter: OutboundDataAdapter;
 }): ContentGatewayClientV1 => {
     const schemas = new Map<string, Schema>();
@@ -110,8 +131,9 @@ export const createContentGatewayClientV1 = ({
             );
         },
         save: <T>(
-            payload: Payload<T>
+            saveParams: SaveParams<T>
         ): TE.TaskEither<ClientError, Record<string, unknown>> => {
+            const { payload } = saveParams;
             const { info, data } = payload;
             const mapKey = schemaInfoToString(info);
             const maybeSchema = O.fromNullable(schemas.get(mapKey));
@@ -132,8 +154,9 @@ export const createContentGatewayClientV1 = ({
             );
         },
         saveBatch: <T>(
-            payload: Payload<Array<T>>
+            saveBatchParams: SaveBatchParams<T>
         ): TE.TaskEither<ClientError, Record<string, unknown>> => {
+            const { payload } = saveBatchParams;
             const { info, data } = payload;
             const mapKey = schemaInfoToString(info);
             const maybeSchema = O.fromNullable(schemas.get(mapKey));
@@ -172,8 +195,9 @@ export type ContentGatewayClientStub = {
  * in-memory storage. Can be used for testing purposes.
  */
 export const createClientStub: () => ContentGatewayClientStub = () => {
+    const apiKey = "key";
     const adapter = createOutboundAdapterStub();
-    const client = createContentGatewayClientV1({ adapter });
+    const client = createContentGatewayClientV1({ apiKey, adapter });
     return {
         adapter,
         ...client,

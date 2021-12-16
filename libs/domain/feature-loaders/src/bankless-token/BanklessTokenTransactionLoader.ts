@@ -1,7 +1,7 @@
-import { createGraphQLClient, GraphQLClient } from "@shared/util-data";
-import { notEmpty } from "@shared/util-fp";
+import { createGraphQLClient, GraphQLClient } from "@banklessdao/util-data";
+import { notEmpty } from "@banklessdao/util-misc";
 import { DEFAULT_CURSOR, ScheduleMode } from "@shared/util-loaders";
-import { Data, NonEmptyProperty } from "@shared/util-schema";
+import { Data, NonEmptyProperty } from "@banklessdao/util-schema";
 import { DocumentNode } from "graphql";
 import gql from "graphql-tag";
 import * as t from "io-ts";

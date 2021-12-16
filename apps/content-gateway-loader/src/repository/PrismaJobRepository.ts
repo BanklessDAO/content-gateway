@@ -4,13 +4,13 @@ import {
     JobState, Prisma,
     PrismaClient, ScheduleMode
 } from "@cgl/prisma";
-import { createLogger } from "@shared/util-fp";
+import { createLogger } from "@banklessdao/util-misc";
 import { DatabaseError, Job, JobRepository } from "@shared/util-loaders";
 import {
     SchemaInfo,
     schemaInfoToString,
     stringToSchemaInfo
-} from "@shared/util-schema";
+} from "@banklessdao/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";

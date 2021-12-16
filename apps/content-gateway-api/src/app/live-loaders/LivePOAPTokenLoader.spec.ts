@@ -1,4 +1,4 @@
-import { extractRight } from "@shared/util-fp";
+import { extractRight } from "@banklessdao/util-misc";
 import { createLivePOAPTokenLoader } from ".";
 
 describe("A Live POAP Token Loader", () => {

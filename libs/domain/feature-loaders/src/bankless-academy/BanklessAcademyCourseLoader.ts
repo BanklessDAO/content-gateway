@@ -1,5 +1,5 @@
-import { notEmpty } from "@shared/util-fp";
-import { LoadContext, ScheduleMode } from "@shared/util-loaders";
+import { notEmpty } from "@banklessdao/util-misc";
+import { ScheduleMode } from "@shared/util-loaders";
 import {
     Data,
     NonEmptyProperty,
@@ -7,9 +7,10 @@ import {
     OptionalProperty,
     RequiredArrayRef,
     RequiredStringArrayOf
-} from "@shared/util-schema";
+} from "@banklessdao/util-schema";
 import * as t from "io-ts";
 import { withMessage } from "io-ts-types";
+import { LoadContext } from "libs/shared/util-loaders/src/context/LoadContext";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
 import { BATCH_SIZE } from "../defaults";
 
@@ -142,6 +143,7 @@ export class BanklessAcademyCourseLoader extends HTTPDataLoaderBase<
 
     protected codec = APICourses;
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     protected getUrlFor({ limit, cursor }: LoadContext) {
         return `https://bankless-academy-cg-lab.vercel.app/api/courses`;
     }
@@ -210,6 +212,7 @@ export class BanklessAcademyCourseLoader extends HTTPDataLoaderBase<
             .filter(notEmpty);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     protected extractCursor(result: APICourses) {
         return `0`;
     }

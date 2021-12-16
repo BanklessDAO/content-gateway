@@ -6,9 +6,9 @@ import {
     ProgramError,
     programErrorCodec,
     schemaInfoCodec,
-} from "@shared/util-data";
-import { createLogger } from "@shared/util-fp";
-import { createSchemaFromObject } from "@shared/util-schema";
+} from "@banklessdao/util-data";
+import { createLogger } from "@banklessdao/util-misc";
+import { createSchemaFromObject } from "@banklessdao/util-schema";
 import * as express from "express";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
@@ -47,6 +47,16 @@ export const generateContentGatewayAPIV1 = async ({
         )();
     });
 
+    router.post("/schema/", async (req, res) => {
+        await pipe(
+            createSchemaFromObject(req.body),
+            TE.fromEither,
+            TE.chainW(contentGateway.register),
+            TE.map(() => ({})),
+            sendResponse(res, "Schema registration")
+        )();
+    });
+
     router.delete("/schema/", async (req, res) => {
         pipe(
             schemaInfoCodec.decode(req.body),
@@ -66,16 +76,6 @@ export const generateContentGatewayAPIV1 = async ({
                 }
             )
         );
-    });
-
-    router.post("/schema/", async (req, res) => {
-        await pipe(
-            createSchemaFromObject(req.body),
-            TE.fromEither,
-            TE.chainW(contentGateway.register),
-            TE.map(() => ({})),
-            sendResponse(res, "Schema registration")
-        )();
     });
 
     router.post("/data/receive", async (req, res) => {

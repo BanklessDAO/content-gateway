@@ -1,8 +1,7 @@
 import { ContentGatewayClientV1 } from "@banklessdao/content-gateway-sdk";
-import { ProgramError } from "@shared/util-data";
-import { createLogger, programError } from "@shared/util-fp";
-import { schemaInfoToString } from "@shared/util-schema";
-import * as E from "fp-ts/Either";
+import { ProgramError } from "@banklessdao/util-data";
+import { createLogger, programError } from "@banklessdao/util-misc";
+import { SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
@@ -121,8 +120,20 @@ class DefaultJobScheduler implements JobScheduler {
         return pipe(
             loader.initialize({
                 client: this.client,
-                jobScheduler: this,
-                jobRepository: this.jobRepository,
+                jobs: {
+                    findAll: () => {
+                        return this.jobRepository.findAll();
+                    },
+                    findJob: (info: SchemaInfo) => {
+                        return this.jobRepository.findJob(info);
+                    },
+                    register: (loader: DataLoader<unknown>) => {
+                        return this.register(loader);
+                    },
+                    schedule: (jobDescriptor: JobDescriptor) => {
+                        return this.schedule(jobDescriptor);
+                    },
+                },
             }),
             TE.mapLeft((e) => new LoaderInitializationError(e))
         );
@@ -235,7 +246,20 @@ class DefaultJobScheduler implements JobScheduler {
                 loader.save({
                     currentJob: runningJob,
                     client: this.client,
-                    jobScheduler: this,
+                    jobs: {
+                        findAll: () => {
+                            return this.jobRepository.findAll();
+                        },
+                        findJob: (info: SchemaInfo) => {
+                            return this.jobRepository.findJob(info);
+                        },
+                        register: (loader: DataLoader<unknown>) => {
+                            return this.register(loader);
+                        },
+                        schedule: (jobDescriptor: JobDescriptor) => {
+                            return this.schedule(jobDescriptor);
+                        },
+                    },
                     loadingResult: loadingResult,
                 })
             ),

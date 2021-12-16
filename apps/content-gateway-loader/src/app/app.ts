@@ -1,28 +1,28 @@
 import {
     createContentGatewayClientV1,
-    createHTTPAdapterV1,
+    createHTTPAdapterV1
 } from "@banklessdao/content-gateway-sdk";
 import { PrismaClient } from "@cgl/prisma";
 import { createLoaderRegistry } from "@domain/feature-loaders";
-import { createLogger, programError } from "@shared/util-fp";
+import { createLogger, programError } from "@banklessdao/util-misc";
 import {
     createJobScheduler,
     DEFAULT_CURSOR,
     DEFAULT_LIMIT,
     Job,
-    ScheduleMode,
+    ScheduleMode
 } from "@shared/util-loaders";
+import { schemaInfoToString } from "@banklessdao/util-schema";
+import * as bodyParser from "body-parser";
 import * as express from "express";
 import * as E from "fp-ts/Either";
-import * as TO from "fp-ts/TaskOption";
-import * as TE from "fp-ts/TaskEither";
 import { pipe } from "fp-ts/lib/function";
+import * as TE from "fp-ts/TaskEither";
+import * as TO from "fp-ts/TaskOption";
 import * as t from "io-ts";
 import { withMessage } from "io-ts-types";
 import { join } from "path";
 import { createJobRepository } from "../repository/PrismaJobRepository";
-import * as bodyParser from "body-parser";
-import { schemaInfoToString } from "@shared/util-schema";
 
 export const createApp = async (prisma: PrismaClient) => {
     const CGA_URL =
@@ -57,6 +57,7 @@ export const createApp = async (prisma: PrismaClient) => {
     const adapter = createHTTPAdapterV1(CGA_URL);
 
     const contentGatewayClient = createContentGatewayClientV1({
+        apiKey: "",
         adapter: adapter,
     });
 
@@ -65,7 +66,13 @@ export const createApp = async (prisma: PrismaClient) => {
         contentGatewayClient,
     });
 
-    await scheduler.start()();
+    await pipe(
+        scheduler.start(),
+        TE.mapLeft((err) => {
+            logger.error("Starting the Job scheduler failed", err);
+            return err;
+        })
+    )();
 
     for (const loader of loaderRegistry.loaders) {
         await scheduler.register(loader)();

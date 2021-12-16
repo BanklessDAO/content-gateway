@@ -1,5 +1,5 @@
 import { DataLoader } from "@shared/util-loaders";
-import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
+import { SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
 import * as O from "fp-ts/lib/Option";
 import { ApiKeys } from ".";
 import { createLoaders } from "./loaders";

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import * as s from "@shared/util-data";
-import { programError } from "@shared/util-fp";
-import { Schema, SchemaInfo } from "@shared/util-schema";
+import * as s from "@banklessdao/util-data";
+import { programError } from "@banklessdao/util-misc";
+import { Schema, SchemaInfo } from "@banklessdao/util-schema";
 import * as g from "graphql";
 import { pascalCase } from "pascal-case";
 import * as pluralize from "pluralize";

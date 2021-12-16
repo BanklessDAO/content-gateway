@@ -1,4 +1,4 @@
-import { ProgramError } from "@shared/util-data";
+import { ProgramError } from "@banklessdao/util-data";
 import { Filter } from "./Filter";
 import { Operation } from "./Operation";
 import { Policy } from "./Policy";

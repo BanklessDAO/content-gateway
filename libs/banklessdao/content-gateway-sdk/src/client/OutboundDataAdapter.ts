@@ -4,8 +4,8 @@ import {
     JsonBatchPayload,
     JsonPayload,
     post
-} from "@shared/util-data";
-import { SchemaInfo, SchemaJson } from "@shared/util-schema";
+} from "@banklessdao/util-data";
+import { SchemaInfo, SchemaJson } from "@banklessdao/util-schema";
 import * as TE from "fp-ts/TaskEither";
 import * as t from "io-ts";
 

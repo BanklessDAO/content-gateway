@@ -1,4 +1,4 @@
-import { extractLeft, extractRight } from "@shared/util-fp";
+import { extractLeft, extractRight } from "@banklessdao/util-misc";
 import { pipe } from "fp-ts/function";
 import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";

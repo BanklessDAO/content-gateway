@@ -5,8 +5,8 @@ import {
     jsonBatchPayloadCodec,
     jsonPayloadCodec,
     mapCodecValidationError
-} from "@shared/util-data";
-import { createSchemaFromObject, SchemaInfo } from "@shared/util-schema";
+} from "@banklessdao/util-data";
+import { createSchemaFromObject, SchemaInfo } from "@banklessdao/util-schema";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 

@@ -1,8 +1,5 @@
-import { GraphQLClient } from "@shared/util-data";
-import {
-    DataLoaderBase,
-    LoadContext,
-} from "@shared/util-loaders";
+import { GraphQLClient } from "@banklessdao/util-data";
+import { DataLoaderBase, LoadContext } from "@shared/util-loaders";
 import { DocumentNode } from "graphql";
 
 export abstract class GraphQLDataLoaderBase<R, T> extends DataLoaderBase<R, T> {

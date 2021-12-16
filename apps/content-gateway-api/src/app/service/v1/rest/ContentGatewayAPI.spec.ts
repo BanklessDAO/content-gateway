@@ -6,7 +6,7 @@ import {
     DataRepositoryStub,
     SchemaRepositoryStub
 } from "@domain/feature-gateway";
-import { extractRight } from "@shared/util-fp";
+import { extractRight } from "@banklessdao/util-misc";
 import { DEFAULT_CURSOR } from "@shared/util-loaders";
 import {
     createSchemaFromClass,
@@ -15,7 +15,7 @@ import {
     NonEmptyProperty,
     RequiredObjectRef,
     Schema
-} from "@shared/util-schema";
+} from "@banklessdao/util-schema";
 import * as express from "express";
 import * as request from "supertest";
 import { v4 as uuid } from "uuid";

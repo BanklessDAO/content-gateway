@@ -1,6 +1,6 @@
-import { notEmpty } from "@shared/util-fp";
+import { notEmpty } from "@banklessdao/util-misc";
 import { LoadContext, ScheduleMode } from "@shared/util-loaders";
-import { Data, NonEmptyProperty, RequiredProperty } from "@shared/util-schema";
+import { Data, NonEmptyProperty, RequiredProperty } from "@banklessdao/util-schema";
 import * as t from "io-ts";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";
 import { BATCH_SIZE } from "../defaults";

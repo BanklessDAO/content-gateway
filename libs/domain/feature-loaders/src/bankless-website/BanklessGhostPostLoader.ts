@@ -1,4 +1,4 @@
-import { notEmpty } from "@shared/util-fp";
+import { notEmpty } from "@banklessdao/util-misc";
 import { LoadContext, ScheduleMode } from "@shared/util-loaders";
 import {
     Data,
@@ -6,7 +6,7 @@ import {
     NonEmptyProperty,
     OptionalProperty,
     RequiredArrayRef
-} from "@shared/util-schema";
+} from "@banklessdao/util-schema";
 import * as t from "io-ts";
 import { withMessage } from "io-ts-types";
 import { HTTPDataLoaderBase } from "../base/HTTPDataLoaderBase";

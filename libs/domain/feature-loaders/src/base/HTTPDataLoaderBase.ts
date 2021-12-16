@@ -1,4 +1,4 @@
-import { get } from "@shared/util-data";
+import { get } from "@banklessdao/util-data";
 import { DataLoaderBase, LoadContext } from "@shared/util-loaders";
 
 export abstract class HTTPDataLoaderBase<R, T> extends DataLoaderBase<R, T> {

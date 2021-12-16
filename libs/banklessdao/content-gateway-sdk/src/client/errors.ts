@@ -1,5 +1,5 @@
-import { ProgramErrorBase } from "@shared/util-data";
-import { SchemaInfo, schemaInfoToString } from "@shared/util-schema";
+import { ProgramErrorBase } from "@banklessdao/util-data";
+import { SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
 
 export class SchemaNotFoundError extends ProgramErrorBase<"SchemaNotFoundError"> {
     public info: SchemaInfo;

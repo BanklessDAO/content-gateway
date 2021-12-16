@@ -1,5 +1,5 @@
-import { ProgramError, ProgramErrorBase } from "@shared/util-data";
-import { schemaInfoToString } from "@shared/util-schema";
+import { ProgramError, ProgramErrorBase } from "@banklessdao/util-data";
+import { schemaInfoToString } from "@banklessdao/util-schema";
 import { Job } from ".";
 
 export class NoLoaderForJobError extends ProgramErrorBase<"NoLoaderForJobError"> {

@@ -1,9 +1,9 @@
-import { createGraphQLClient, GraphQLClient } from "@shared/util-data";
+import { createGraphQLClient, GraphQLClient } from "@banklessdao/util-data";
 import { ScheduleMode } from "@shared/util-loaders";
 import {
     Data,
     NonEmptyProperty
-} from "@shared/util-schema";
+} from "@banklessdao/util-schema";
 import gql from "graphql-tag";
 import * as t from "io-ts";
 import { GraphQLDataLoaderBase } from "../base/GraphQLDataLoaderBase";

@@ -1,6 +1,6 @@
-import { ProgramError, UnknownError } from "@shared/util-data";
-import { createLogger } from "@shared/util-fp";
-import { ClassType, SchemaInfo, schemaInfoToString } from "@shared/util-schema";
+import { ProgramError, UnknownError } from "@banklessdao/util-data";
+import { createLogger } from "@banklessdao/util-misc";
+import { ClassType, SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
 import { pipe } from "fp-ts/function";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
@@ -119,7 +119,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
             }),
             TE.bindW("jobSchedule", ({ ctx }) => {
                 return pipe(
-                    ctx.jobRepository.findJob(this.info),
+                    ctx.jobs.findJob(this.info),
                     TO.map((maybeJob) => {
                         return (
                             maybeJob ?? {
@@ -136,9 +136,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
                     )
                 );
             }),
-            TE.chainW(({ ctx, jobSchedule }) =>
-                ctx.jobScheduler.schedule(jobSchedule)
-            ),
+            TE.chainW(({ ctx, jobSchedule }) => ctx.jobs.schedule(jobSchedule)),
             TE.map((result) => {
                 this.logger.info("Scheduled job", result);
             }),
@@ -191,7 +189,9 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
             scheduleMode,
         };
         return pipe(
-            client.saveBatch({ info: this.info, data: data }),
+            client.saveBatch({
+                payload: { info: this.info, data: data },
+            }),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {
                 this.logger.error(

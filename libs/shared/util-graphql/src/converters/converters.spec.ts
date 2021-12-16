@@ -1,4 +1,4 @@
-import { extractRight } from "@shared/util-fp";
+import { extractRight } from "@banklessdao/util-misc";
 import {
   createSchemaFromClass,
   Data,
@@ -6,7 +6,7 @@ import {
   RequiredArrayRef,
   RequiredObjectRef,
   RequiredStringArrayOf
-} from "@shared/util-schema";
+} from "@banklessdao/util-schema";
 import * as g from "graphql";
 import { toGraphQLType } from "./converters";
 
