@@ -6,12 +6,14 @@ import {
     SchemaValidationError,
 } from "@banklessdao/util-schema";
 import * as E from "fp-ts/Either";
-import { createContentGatewayClientV1 } from ".";
+import { createContentGatewayClientV1, createDefaultClientV1 } from ".";
 import { ContentGatewayClientV1 } from "./ContentGatewayClient";
 import {
     createOutboundAdapterStub,
     OutboundDataAdapterStub,
 } from "./OutboundDataAdapter";
+import axios from "axios";
+axios.defaults.adapter = require("axios/lib/adapters/http");
 
 const info = {
     namespace: "test",
@@ -82,6 +84,20 @@ describe("Given a gateway client", () => {
             adapter: adapterStub,
         });
     });
+
+    it("test",  async () => {
+        const c = createDefaultClientV1({
+            apiKey: "",
+            apiURL: "https://prod-content-gateway-api.herokuapp.com",
+        });
+
+        const result= await c.register({
+            info: info,
+            type: Post,
+        })();
+
+        console.log(result);    
+    })
 
     it("When registering a valid schema Then it should register properly", async () => {
         const result = await client.register({

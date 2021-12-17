@@ -14,6 +14,8 @@ export class HTTPDataTransferError extends ProgramErrorBase<"HTTPDataTransferErr
             details: {
                 status: error.response?.status,
                 statusText: error.response?.statusText,
+                url: error.config.url,
+                method: error.config.method,
             },
         });
     }

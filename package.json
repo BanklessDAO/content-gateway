@@ -1,7 +1,6 @@
 {
     "name": "content-gateway",
     "version": "0.0.1",
-    "license": "MIT",
     "scripts": {
         "start": "node dist/apps/$PROJECT_NAME/main.js",
         "build": "nx run-many --target build --all --parallel",
@@ -66,7 +65,7 @@
     "devDependencies": {
         "@babel/preset-env": "^7.16.5",
         "@emotion/babel-plugin": "11.2.0",
-        "@nrwl/cli": "12.9.0",
+        "@nrwl/cli": "^12.9.0",
         "@nrwl/cypress": "12.9.0",
         "@nrwl/eslint-plugin-nx": "12.9.0",
         "@nrwl/express": "^12.9.0",
