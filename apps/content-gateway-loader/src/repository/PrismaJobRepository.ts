@@ -1,16 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-    JobSchedule,
-    JobState, Prisma,
-    PrismaClient, ScheduleMode
-} from "@cgl/prisma";
 import { createLogger } from "@banklessdao/util-misc";
-import { DatabaseError, Job, JobRepository } from "@shared/util-loaders";
 import {
     SchemaInfo,
     schemaInfoToString,
     stringToSchemaInfo
 } from "@banklessdao/util-schema";
+import {
+    JobSchedule,
+    JobState,
+    Prisma,
+    PrismaClient,
+    ScheduleMode
+} from "@cgl/prisma";
+import { DatabaseError, Job, JobRepository } from "@shared/util-loaders";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
@@ -93,13 +95,21 @@ export const createJobRepository = (prisma: PrismaClient): JobRepository => {
             return pipe(
                 TO.tryCatch(async () => {
                     const key = schemaInfoToString(info);
-                    return prisma.jobSchedule.findUnique({
-                        where: {
-                            name: key,
-                        },
-                    });
+                    let result;
+                    try {
+                        logger.info("Trying to get unique job...");
+                        result = await prisma.jobSchedule.findUnique({
+                            where: {
+                                name: key,
+                            },
+                        });
+                    } catch (e) {
+                        logger.error("=== Error:", e);
+                    }
+                    return result;
                 }),
                 TO.map((data) => {
+                    logger.info("Data is: ", data);
                     return data ? jobScheduleToJob(data) : null;
                 })
             );

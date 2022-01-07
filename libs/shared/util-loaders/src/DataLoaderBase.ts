@@ -132,7 +132,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
                         );
                     }),
                     TE.fromTaskOption(
-                        () => new UnknownError("This shouldnd't have happened.")
+                        () => new UnknownError("This shouldn't have happened.")
                     )
                 );
             }),
