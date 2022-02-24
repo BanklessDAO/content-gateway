@@ -9,4 +9,3 @@ import { Context } from "./Context";
 export type Filter<O> = (
     context: Context<O>
 ) => TE.TaskEither<ProgramError, Context<O>>;
-

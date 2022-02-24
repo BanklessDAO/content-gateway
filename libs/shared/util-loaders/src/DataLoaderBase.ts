@@ -1,10 +1,14 @@
 import { ProgramError, UnknownError } from "@banklessdao/util-data";
 import { createLogger } from "@banklessdao/util-misc";
-import { ClassType, SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
+import {
+    ClassType,
+    SchemaInfo,
+    schemaInfoToString
+} from "@banklessdao/util-schema";
 import { pipe } from "fp-ts/function";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
-import * as t from "io-ts";
+
 import { DateTime, DurationLike } from "luxon";
 import { Logger } from "tslog";
 import {
@@ -13,7 +17,7 @@ import {
     InitContext,
     JobDescriptor,
     LoadContext,
-    SaveContext,
+    SaveContext
 } from ".";
 import { ScheduleMode } from "./scheduler/ScheduleMode";
 
@@ -32,7 +36,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
     // protected
     protected logger: Logger = createLogger(this.constructor.name);
 
-    protected abstract codec: t.Type<R>;
+
     protected abstract type: ClassType<M>;
     protected abstract batchSize: number;
     protected abstract cadenceConfig: CadenceConfig;
@@ -64,7 +68,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
      * Template method that is called before the default implementation
      * of initialize. Use it to customize initialization.
      */
-    protected preInizialize(
+    protected preInitialize(
         context: InitContext
     ): TE.TaskEither<ProgramError, InitContext> {
         return TE.right(context);
@@ -93,7 +97,9 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
         const { rawResult, mappedResult, loadContext } = params;
         return mappedResult.length > 0
             ? this.extractCursor(rawResult)
-            : loadContext.cursor ?? DEFAULT_CURSOR;
+            : loadContext.cursor
+            ? String(loadContext.cursor)
+            : DEFAULT_CURSOR;
     }
 
     // * implementation of the {@link DataLoader} interface. You're not supposed
@@ -105,7 +111,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
         );
         return pipe(
             TE.Do,
-            TE.bind("ctx", () => this.preInizialize(context)),
+            TE.bind("ctx", () => this.preInitialize(context)),
             TE.mapLeft((error) => {
                 this.logger.error("preInitialize failed", error);
                 return error;
@@ -189,9 +195,7 @@ export abstract class DataLoaderBase<R, M> implements DataLoader<M> {
             scheduleMode,
         };
         return pipe(
-            client.saveBatch({
-                payload: { info: this.info, data: data },
-            }),
+            client.save({ info: this.info, data }),
             TE.chain(() => TE.right(nextJob)),
             TE.mapLeft((error) => {
                 this.logger.error(

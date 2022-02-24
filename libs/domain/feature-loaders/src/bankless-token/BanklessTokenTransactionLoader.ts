@@ -15,7 +15,7 @@ const QUERY: DocumentNode = gql`
         transactions(
             first: $limit
             orderBy: timestamp
-            where: { timestamp_gt: $cursor }
+            where: { timestamp_gte: $cursor }
         ) {
             id
             timestamp

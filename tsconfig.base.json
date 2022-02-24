@@ -1,40 +1,60 @@
 {
-    "compileOnSave": false,
-    "compilerOptions": {
-        "rootDir": ".",
-        "sourceMap": true,
-        "declaration": false,
-        "moduleResolution": "node",
-        "emitDecoratorMetadata": true,
-        "experimentalDecorators": true,
-        "strict": true,
-        "strictPropertyInitialization": false,
-        "importHelpers": true,
-        "target": "es2015",
-        "module": "commonjs",
-        "lib": ["es2020", "dom"],
-        "skipLibCheck": true,
-        "skipDefaultLibCheck": true,
-        "allowSyntheticDefaultImports": true,
-        "baseUrl": ".",
-        "paths": {
-            "@banklessdao/content-gateway-sdk": [
-                "libs/banklessdao/content-gateway-sdk/src/index.ts"
-            ],
-            "@domain/feature-gateway": [
-                "libs/domain/feature-gateway/src/index.ts"
-            ],
-            "@domain/feature-loaders": [
-                "libs/domain/feature-loaders/src/index.ts"
-            ],
-            "@domain/loaders": ["libs/domain/loaders/src/index.ts"],
-            "@shared/util-auth": ["libs/shared/util-auth/src/index.ts"],
-            "@banklessdao/util-data": ["libs/banklessdao/util-data/src/index.ts"],
-            "@banklessdao/util-misc": ["libs/banklessdao/util-misc/src/index.ts"],
-            "@shared/util-graphql": ["libs/shared/util-graphql/src/index.ts"],
-            "@shared/util-loaders": ["libs/shared/util-loaders/src/index.ts"],
-            "@banklessdao/util-schema": ["libs/banklessdao/util-schema/src/index.ts"]
-        }
-    },
-    "exclude": ["node_modules", "tmp"]
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "importHelpers": true,
+    "target": "es2015",
+    "module": "commonjs",
+    "lib": [
+      "es2020",
+      "dom"
+    ],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@banklessdao/content-gateway-sdk": [
+        "libs/banklessdao/content-gateway-sdk/src/index.ts"
+      ],
+      "@domain/feature-gateway": [
+        "libs/domain/feature-gateway/src/index.ts"
+      ],
+      "@domain/feature-loaders": [
+        "libs/domain/feature-loaders/src/index.ts"
+      ],
+      "@domain/loaders": [
+        "libs/domain/loaders/src/index.ts"
+      ],
+      "@shared/util-auth": [
+        "libs/shared/util-auth/src/index.ts"
+      ],
+      "@banklessdao/util-data": [
+        "libs/banklessdao/util-data/src/index.ts"
+      ],
+      "@banklessdao/util-misc": [
+        "libs/banklessdao/util-misc/src/index.ts"
+      ],
+      "@shared/util-graphql": [
+        "libs/shared/util-graphql/src/index.ts"
+      ],
+      "@shared/util-loaders": [
+        "libs/shared/util-loaders/src/index.ts"
+      ],
+      "@banklessdao/util-schema": [
+        "libs/banklessdao/util-schema/src/index.ts"
+      ]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    "tmp"
+  ]
 }

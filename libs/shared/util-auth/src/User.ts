@@ -2,8 +2,8 @@
  * Contains information that can be used to identify a user,
  * and also the [[roles]] (only the names) the user has.
  */
-export interface User<ID extends number | string> {
-    id: ID;
+export interface User<I> {
+    id: I;
     name: string;
     roles: string[];
 }

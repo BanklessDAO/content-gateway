@@ -1,87 +1,106 @@
-import { Payload, Schema, SchemaInfo } from "@banklessdao/util-schema";
-import { pipe } from "fp-ts/lib/function";
-import * as TE from "fp-ts/TaskEither";
-import * as T from "fp-ts/Task";
-import { BatchDataReceivingError } from ".";
-import { DataRepository, SchemaRegistrationError, SchemaRemovalError, SchemaRepository, SchemaStat } from "..";
-import { DataReceivingError } from "./errors";
+import { SchemaInfo } from "@banklessdao/util-schema";
+import { Authorization, authorize, ContextTaskEither } from "@shared/util-auth";
+import { flow } from "fp-ts/lib/function";
+import {
+    APIKey,
+    ContentGatewayUser,
+    CreateAPIKeyParams,
+    CreateUserParams,
+    DataRepository,
+    DeleteAPIKeyParams,
+    DeleteUserParams,
+    makeCreateAPIKey,
+    makeCreateUser,
+    makeDeleteAPIKey,
+    makeDeleteUser,
+    makeFindSchemaFor,
+    makeLoadSchemaStats,
+    makeRegisterSchema,
+    makeRemoveSchema,
+    makeSaveData,
+    RegisterSchemaParams,
+    SchemaRepository,
+    SchemaStat,
+    UserRepository
+} from "..";
 
-/**
- * Represents the public API of the Content Gateway.
- */
+export type SaveDataRawParams = {
+    info: SchemaInfo;
+    records: Array<Record<string, unknown>>;
+};
+
 export type ContentGateway = {
-    loadStats: () => T.Task<Array<SchemaStat>>;
-    /**
-     * Removes a schema and **deletes all data** associated with it.
-     */
-    remove: (info: SchemaInfo) => TE.TaskEither<SchemaRemovalError, void>;
-    /**
-     * Registers a new schema shapshot with the Content Gateway.
-     */
-    register: (schema: Schema) => TE.TaskEither<SchemaRegistrationError, void>;
-    /**
-     * Ingests a new payload into the Content Gateway. The payload is validated
-     * and it must correspond to a registered schema. If either the schema doesn't
-     * exist or the payload is invalid according to the schema an error will be
-     * returned.
-     */
-    receive: <T>(
-        payload: Payload<T>
-    ) => TE.TaskEither<DataReceivingError, void>;
-    /**
-     * Same as {@link receive} but for a batch of items.
-     */
-    receiveBatch: <T>(
-        payload: Payload<Array<T>>
-    ) => TE.TaskEither<BatchDataReceivingError, void>;
+    saveData: (
+        context: ContextTaskEither<SaveDataRawParams>
+    ) => ContextTaskEither<void>;
+    registerSchema: (
+        context: ContextTaskEither<RegisterSchemaParams>
+    ) => ContextTaskEither<void>;
+    removeSchema: (
+        context: ContextTaskEither<SchemaInfo>
+    ) => ContextTaskEither<void>;
+    createAPIKey: (
+        context: ContextTaskEither<CreateAPIKeyParams>
+    ) => ContextTaskEither<APIKey>;
+    createUser: (
+        context: ContextTaskEither<CreateUserParams>
+    ) => ContextTaskEither<ContentGatewayUser>;
+    deleteAPIKey: (
+        context: ContextTaskEither<DeleteAPIKeyParams>
+    ) => ContextTaskEither<void>;
+    deleteUser: (
+        userId: ContextTaskEither<DeleteUserParams>
+    ) => ContextTaskEither<void>;
+    loadSchemaStats: (
+        context: ContextTaskEither<void>
+    ) => ContextTaskEither<Array<SchemaStat>>;
 };
 
-export type Deps = {
-    schemaRepository: SchemaRepository;
+type Deps = {
     dataRepository: DataRepository;
+    userRepository: UserRepository;
+    schemaRepository: SchemaRepository;
+    authorization: Authorization;
 };
 
-/**
- * Creates a new {@link ContentGateway} instance.
- */
-export const createContentGateway = ({
-    schemaRepository,
-    dataRepository,
-}: Deps): ContentGateway => {
-    return {
-        loadStats: () => schemaRepository.loadStats(),
-        register: (schema: Schema) => {
-            return schemaRepository.register(schema);
-        },
-        remove: (info: SchemaInfo) => {
-            return schemaRepository.remove(info);
-        },
-        receive: <T>(payload: Payload<T>) => {
-            const { info, data } = payload;
-            return pipe(
-                dataRepository.store({
-                    info: info,
-                    record: data as Record<string, unknown>,
-                }),
-                TE.mapLeft((err) => {
-                    return new DataReceivingError(err);
-                }),
-                TE.map(() => undefined)
-            );
-        },
-        receiveBatch: <T>(payload: Payload<Array<T>>) => {
-            const { info, data } = payload;
+export const createContentGateway = (deps: Deps): ContentGateway => {
+    const { dataRepository, userRepository, schemaRepository, authorization } =
+        deps;
 
-            return pipe(
-                dataRepository.storeBulk({
-                    info: info,
-                    records: data as Record<string, unknown>[],
-                }),
-                TE.mapLeft((err) => {
-                    return new BatchDataReceivingError(err);
-                }),
-                TE.map(() => undefined)
-            );
-        },
+    const createUser = makeCreateUser(userRepository);
+    const deleteUser = makeDeleteUser(userRepository);
+    const createAPIKey = makeCreateAPIKey(userRepository);
+    const deleteAPIKey = makeDeleteAPIKey(userRepository);
+    const findSchemaForSaveData =
+        makeFindSchemaFor<SaveDataRawParams>(schemaRepository);
+    const findSchemaForRemoveSchema =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        makeFindSchemaFor<any>(schemaRepository);
+    const registerSchema = makeRegisterSchema(schemaRepository);
+    const removeSchema = makeRemoveSchema(schemaRepository);
+    const loadSchemaStats = makeLoadSchemaStats(schemaRepository);
+    const saveData = makeSaveData(dataRepository);
+
+    const authFindSchemaForSaveData = authorize(
+        findSchemaForSaveData,
+        authorization
+    );
+    const authFindSchemaForRemoveSchema = authorize(
+        findSchemaForRemoveSchema,
+        authorization
+    );
+
+    const authSaveData = authorize(saveData, authorization);
+    const authRemoveSchema = authorize(removeSchema, authorization);
+
+    return {
+        createUser: authorize(createUser, authorization),
+        deleteUser: authorize(deleteUser, authorization),
+        createAPIKey: authorize(createAPIKey, authorization),
+        deleteAPIKey: authorize(deleteAPIKey, authorization),
+        registerSchema: authorize(registerSchema, authorization),
+        loadSchemaStats: authorize(loadSchemaStats, authorization),
+        removeSchema: flow(authFindSchemaForRemoveSchema, authRemoveSchema),
+        saveData: flow(authFindSchemaForSaveData, authSaveData),
     };
 };

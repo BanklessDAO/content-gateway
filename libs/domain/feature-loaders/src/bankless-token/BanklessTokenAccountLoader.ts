@@ -16,7 +16,7 @@ const QUERY: DocumentNode = gql`
         accounts(
             first: $limit
             orderBy: lastTransactionTimestamp
-            where: { lastTransactionTimestamp_gt: $cursor }
+            where: { lastTransactionTimestamp_gte: $cursor }
         ) {
             id
             ERC20balances {

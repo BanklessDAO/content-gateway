@@ -4,7 +4,6 @@ import * as TE from "fp-ts/TaskEither";
 import { Policy } from "..";
 import { Authorization } from "../Authorization";
 import { Context } from "../Context";
-import { Entity } from "../Entity";
 import { AnyPermission, Permission } from "../Permission";
 import { MissingPermissionError } from "./errors";
 import { completeTodo, deleteTodo, findAllTodos, findTodo } from "./operations";
@@ -16,16 +15,14 @@ const allowAllPolicy =
     (context: Context<I>) =>
         TE.right(context);
 
-const allowForSelfPolicy =
-    <I extends Entity<number>>(): Policy<I> =>
-    (context: Context<I>) => {
-        const { user, data } = context;
-        if (user.id === data.owner.id) {
-            return TE.right(context);
-        } else {
-            return TE.left(new MissingPermissionError());
-        }
-    };
+const allowForSelfPolicy = (): Policy<Todo> => (context: Context<Todo>) => {
+    const { currentUser: user, data } = context;
+    if (user.id === data.owner.id) {
+        return TE.right(context);
+    } else {
+        return TE.left(new MissingPermissionError());
+    }
+};
 
 const filterOnlyPublished = () => (context: Context<Todo[]>) => {
     const { data } = context;
@@ -62,45 +59,45 @@ const filterCompletedVisibilityForAnon = () => (context: Context<Todo[]>) => {
 
 const allowFindPublishedTodosForAnon: Permission<void, Todo[]> = {
     name: "Allow find all todos for anybody",
-    operation: findAllTodos,
+    operationName: findAllTodos.name,
     policies: [allowAllPolicy()],
     filters: [filterOnlyPublished(), filterCompletedVisibilityForAnon()],
 };
 
 const allowFindPublishedTodosForUser: Permission<void, Todo[]> = {
     name: "Allow find all todos for user",
-    operation: findAllTodos,
+    operationName: findAllTodos.name,
     policies: [allowAllPolicy()],
     filters: [filterOnlyPublished()],
 };
 
 const allowFindTodosForAdmin: Permission<void, Todo[]> = {
     name: "Allow find all todos for user",
-    operation: findAllTodos,
+    operationName: findAllTodos.name,
     policies: [allowAllPolicy()],
 };
 
 const allowFindTodoForAnybody: Permission<number, Todo> = {
     name: "Allow find todo for anybody",
-    operation: findTodo,
+    operationName: findTodo.name,
     policies: [allowAllPolicy()],
 };
 
 const allowCompleteTodoForSelf: Permission<Todo, Todo> = {
     name: "Allow complete todo for self",
-    operation: completeTodo,
+    operationName: completeTodo.name,
     policies: [allowForSelfPolicy()],
 };
 
 const allowDeleteTodoForSelf: Permission<Todo, void> = {
     name: "Allow delete todo for self",
-    operation: deleteTodo,
+    operationName: deleteTodo.name,
     policies: [allowForSelfPolicy()],
 };
 
 const allowDeleteTodoForAll: Permission<Todo, void> = {
     name: "Allow delete todo for all",
-    operation: deleteTodo,
+    operationName: deleteTodo.name,
     policies: [allowAllPolicy()],
 };
 

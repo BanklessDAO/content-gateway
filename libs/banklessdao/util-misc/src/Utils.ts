@@ -1,3 +1,5 @@
+import { assert } from "console";
+
 /**
  * Type guard for a value `T` that will only allow non-empty (non-null and non-undefined) values.
  */
@@ -37,3 +39,13 @@ export const coercePrimitive = (value: string): string | number | boolean => {
 
     return value;
 };
+
+/**
+ * A function for retrieving a necessary environment variable 
+ * @param vName the name of the environment variable
+ * @returns the environment variable
+ */
+export const verifiedEnvVar = (vName:string):string => {
+    assert(process.env[vName] !== undefined, `Define the environment variable: ${vName}`)
+    return process.env[vName] as string
+}

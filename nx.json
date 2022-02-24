@@ -1,72 +1,68 @@
 {
-    "npmScope": "content-gateway",
-    "affected": {
-        "defaultBase": "master"
+  "npmScope": "content-gateway",
+  "affected": {
+    "defaultBase": "master"
+  },
+  "implicitDependencies": {
+    "package.json": {
+      "dependencies": "*",
+      "devDependencies": "*"
     },
-    "implicitDependencies": {
-        "package.json": {
-            "dependencies": "*",
-            "devDependencies": "*"
-        },
-        ".eslintrc.json": "*"
-    },
-    "tasksRunnerOptions": {
-        "default": {
-            "runner": "@nrwl/nx-cloud",
-            "options": {
-                "cacheableOperations": ["build", "lint", "test", "e2e"],
-                "accessToken": "YzI2NDRlZTMtZGI5OC00OWMwLWIyMGUtNWJiN2Q0NTg0ZjJifHJlYWQtd3JpdGU="
-            }
-        }
-    },
-    "targetDependencies": {
-        "build": [
-            {
-                "target": "build",
-                "projects": "dependencies"
-            }
-        ]
-    },
-    "projects": {
-        "banklessdao-content-gateway-sdk": {
-            "tags": []
-        },
-        "content-gateway-api": {
-            "tags": [],
-            "implicitDependencies": []
-        },
-        "content-gateway-api-frontend": {
-            "tags": []
-        },
-        "content-gateway-loader": {
-            "tags": []
-        },
-        "content-gateway-loader-frontend": {
-            "tags": []
-        },
-        "domain-feature-gateway": {
-            "tags": []
-        },
-        "domain-feature-loaders": {
-            "tags": []
-        },
-        "shared-util-auth": {
-            "tags": []
-        },
-        "banklessdao-util-data": {
-            "tags": []
-        },
-        "banklessdao-util-misc": {
-            "tags": []
-        },
-        "shared-util-graphql": {
-            "tags": []
-        },
-        "shared-util-loaders": {
-            "tags": []
-        },
-        "banklessdao-util-schema": {
-            "tags": []
-        }
+    ".eslintrc.json": "*"
+  },
+  "tasksRunnerOptions": {
+    "default": {
+      "runner": "@nrwl/nx-cloud",
+      "options": {
+        "cacheableOperations": [
+          "build",
+          "lint",
+          "test",
+          "e2e"
+        ],
+        "accessToken": "YzI2NDRlZTMtZGI5OC00OWMwLWIyMGUtNWJiN2Q0NTg0ZjJifHJlYWQtd3JpdGU="
+      }
     }
+  },
+  "targetDependencies": {
+    "build": [
+      {
+        "target": "build",
+        "projects": "dependencies"
+      }
+    ]
+  },
+  "projects": {
+    "banklessdao-content-gateway-sdk": {
+      "tags": []
+    },
+    "content-gateway-api": {
+      "tags": [],
+      "implicitDependencies": []
+    },
+    "domain-feature-gateway": {
+      "tags": []
+    },
+    "domain-feature-loaders": {
+      "tags": []
+    },
+    "shared-util-auth": {
+      "tags": []
+    },
+    "banklessdao-util-data": {
+      "tags": []
+    },
+    "banklessdao-util-misc": {
+      "tags": []
+    },
+    "shared-util-graphql": {
+      "tags": []
+    },
+    "shared-util-loaders": {
+      "tags": []
+    },
+    "banklessdao-util-schema": {
+      "tags": []
+    }
+  }
 }

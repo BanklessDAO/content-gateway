@@ -14,7 +14,7 @@ const QUERY: DocumentNode = gql`
         tokens(
             first: $limit
             orderBy: created
-            where: { created_gt: $cursor }
+            where: { created_gte: $cursor }
         ) {
             id
             created

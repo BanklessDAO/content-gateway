@@ -6,13 +6,13 @@ import * as t from "io-ts";
 import {
     CodecValidationError,
     GenericProgramError,
-    programErrorCodec,
+    programErrorCodec
 } from "..";
 import {
     DataTransferError,
     GenericDataTransferError,
     HTTPDataTransferError,
-    UnknownDataTransferError,
+    UnknownDataTransferError
 } from "./errors";
 
 const handleError = (error: unknown): DataTransferError => {
@@ -58,13 +58,28 @@ const decodeResponse = <T>(codec: t.Type<T>) => {
 export type GetParams<T> = {
     url: string;
     codec: t.Type<T>;
+    config?: RequestConfig;
 };
 
 export type PostParams<T> = {
     url: string;
-    input: Record<string, unknown>;
     codec: t.Type<T>;
+    input: Record<string, unknown>;
+    config?: RequestConfig;
 };
+
+export type DelParams<T> = {
+    url: string;
+    codec: t.Type<T>;
+    input: Record<string, unknown>;
+    config?: RequestConfig;
+};
+
+export interface RequestConfig {
+    url?: string;
+    headers?: Record<string, string>;
+    config?: RequestConfig;
+}
 
 /**
  * Executes a GET request and returns the result.
@@ -72,11 +87,12 @@ export type PostParams<T> = {
 export const get = <T>({
     url,
     codec,
+    config,
 }: GetParams<T>): TE.TaskEither<DataTransferError, T> => {
     return pipe(
         TE.tryCatch(
             async () => {
-                const { data } = await axios.get(url);
+                const { data } = await axios.get(url, config);
                 return data as unknown;
             },
             (error: unknown) => {
@@ -94,11 +110,12 @@ export const post = <T>({
     url,
     input,
     codec,
+    config,
 }: PostParams<T>): TE.TaskEither<DataTransferError, T> => {
     return pipe(
         TE.tryCatch(
             async () => {
-                const { data } = await axios.post(url, input);
+                const { data } = await axios.post(url, input, config);
                 return data as unknown;
             },
             (error: unknown) => {
@@ -116,11 +133,15 @@ export const del = <T>({
     url,
     input,
     codec,
-}: PostParams<T>): TE.TaskEither<DataTransferError, T> => {
+    config,
+}: DelParams<T>): TE.TaskEither<DataTransferError, T> => {
     return pipe(
         TE.tryCatch(
             async () => {
-                const { data } = await axios.delete(url, input);
+                const { data } = await axios.delete(url, {
+                    ...config,
+                    data: input,
+                });
                 return data as unknown;
             },
             (error: unknown) => {

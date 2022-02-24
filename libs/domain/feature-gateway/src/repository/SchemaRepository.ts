@@ -1,13 +1,23 @@
-import { UnknownError } from "@banklessdao/util-data";
-import { Schema, SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
+import { CodecValidationError, UnknownError } from "@banklessdao/util-data";
+import {
+    Schema,
+    SchemaInfo,
+    schemaInfoToString
+} from "@banklessdao/util-schema";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
-import * as TO from "fp-ts/TaskOption";
-import { DatabaseError, RegisteredSchemaIncompatibleError } from ".";
+import {
+    ContentGatewayUser,
+    DatabaseError,
+    RegisteredSchemaIncompatibleError,
+    SchemaNotFoundError
+} from ".";
+import { SchemaEntity } from "./SchemaEntity";
 
 export type SchemaRegistrationError =
     | UnknownError
     | DatabaseError
+    | CodecValidationError
     | RegisteredSchemaIncompatibleError;
 
 export type SchemaRemovalError = UnknownError | DatabaseError;
@@ -23,14 +33,22 @@ export type SchemaStat = {
  * It is responsible for storing the schemas sent from the SDK.
  */
 export type SchemaRepository = {
-    register: (schema: Schema) => TE.TaskEither<SchemaRegistrationError, void>;
-    remove: (info: SchemaInfo) => TE.TaskEither<SchemaRemovalError, void>;
-    find: (key: SchemaInfo) => TO.TaskOption<Schema>;
-    findAll: () => T.Task<Array<Schema>>;
+    find: (
+        key: SchemaInfo
+    ) => TE.TaskEither<
+        SchemaNotFoundError | CodecValidationError,
+        SchemaEntity
+    >;
+    findAll: () => T.Task<Array<SchemaEntity>>;
+    register: (
+        schema: Schema,
+        owner: ContentGatewayUser
+    ) => TE.TaskEither<SchemaRegistrationError, void>;
+    remove: (schema: SchemaEntity) => TE.TaskEither<SchemaRemovalError, void>;
     loadStats(): T.Task<Array<SchemaStat>>;
 };
 
-export type SchemaRepositoryStub = {
+export type SchemaRepositoryMock = {
     storage: Map<string, Schema>;
 } & SchemaRepository;
 
@@ -39,28 +57,40 @@ export type SchemaRepositoryStub = {
  * use the supplied [[map]] as the storage. This is useful for testing.
  */
 export const createSchemaRepositoryStub = (
-    map: Map<string, Schema> = new Map()
-): SchemaRepositoryStub => {
+    map: Map<string, SchemaEntity> = new Map()
+): SchemaRepositoryMock => {
     return {
         storage: map,
         register: (
-            schema: Schema
+            schema: Schema,
+            owner: ContentGatewayUser
         ): TE.TaskEither<SchemaRegistrationError, void> => {
             const keyStr = schemaInfoToString(schema.info);
-            map.set(keyStr, schema);
+            const se = {
+                ...schema,
+                owner,
+            };
+            map.set(keyStr, se);
             return TE.right(undefined);
         },
-        remove: (info: SchemaInfo): TE.TaskEither<SchemaRemovalError, void> => {
-            const keyStr = schemaInfoToString(info);
+        remove: (
+            entity: SchemaEntity
+        ): TE.TaskEither<SchemaRemovalError, void> => {
+            const keyStr = schemaInfoToString(entity.info);
             map.delete(keyStr);
             return TE.right(undefined);
         },
-        find: (key: SchemaInfo): TO.TaskOption<Schema> => {
+        find: (
+            key: SchemaInfo
+        ): TE.TaskEither<
+            SchemaNotFoundError | CodecValidationError,
+            SchemaEntity
+        > => {
             const keyStr = schemaInfoToString(key);
             if (map.has(keyStr)) {
-                return TO.some(map.get(keyStr) as Schema);
+                return TE.right(map.get(keyStr) as SchemaEntity);
             } else {
-                return TO.none;
+                return TE.left(new SchemaNotFoundError(key));
             }
         },
         findAll: () => T.of(Array.from(map.values())),

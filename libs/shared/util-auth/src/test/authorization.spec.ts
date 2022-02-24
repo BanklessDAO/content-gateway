@@ -4,30 +4,30 @@ import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
 import { AuthorizationError } from "..";
 import { authorize } from "../Authorization";
-import {Context} from "../Context";
+import { Context } from "../Context";
 import { authorization } from "./authorization";
 import { anonUser, todos, userJane, userJohn } from "./fixtures";
 import { deleteTodo, findAllTodos, findTodo } from "./operations";
 
 describe("Given some authorized operations", () => {
-const authorizedFind = authorize(findTodo, authorization);
-const authorizedDelete = authorize(deleteTodo, authorization);
+    const authorizedFind = authorize(findTodo, authorization);
+    const authorizedDelete = authorize(deleteTodo, authorization);
     const authorizedFindAll = authorize(findAllTodos, authorization);
 
     const anonContext: Context<number> = {
-        user: anonUser,
+        currentUser: anonUser,
         data: 1,
     };
 
     const janesContext: Context<number> = {
-        user: userJane,
+        currentUser: userJane,
         data: 2,
     };
 
     it("When finding all todos for anon Then it returns only published without completed", async () => {
         const result = extractRight(
             await authorizedFindAll(
-                TE.right({ user: anonUser, data: undefined })
+                TE.right({ currentUser: anonUser, data: undefined })
             )()
         ).data.map((todo) => ({
             id: todo.id,
@@ -43,7 +43,7 @@ const authorizedDelete = authorize(deleteTodo, authorization);
     it("When finding all todos for a registered user Then it returns only published", async () => {
         const result = extractRight(
             await authorizedFindAll(
-                TE.right({ user: userJohn, data: undefined })
+                TE.right({ currentUser: userJohn, data: undefined })
             )()
         ).data.map((todo) => ({
             id: todo.id,

@@ -1,7 +1,7 @@
 import { get } from "@banklessdao/util-data";
-import { DataLoaderBase, LoadContext } from "@shared/util-loaders";
+import { CodecDataLoaderBase, LoadContext } from "@shared/util-loaders";
 
-export abstract class HTTPDataLoaderBase<R, T> extends DataLoaderBase<R, T> {
+export abstract class HTTPDataLoaderBase<R, T> extends CodecDataLoaderBase<R, T> {
     protected abstract getUrlFor(context: LoadContext): string;
 
     protected loadRaw(context: LoadContext) {

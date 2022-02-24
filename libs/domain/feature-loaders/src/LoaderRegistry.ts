@@ -1,7 +1,7 @@
 import { DataLoader } from "@shared/util-loaders";
 import { SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
 import * as O from "fp-ts/lib/Option";
-import { ApiKeys } from ".";
+import { LoadersConfig } from ".";
 import { createLoaders } from "./loaders";
 
 export type LoaderRegistry = {
@@ -10,7 +10,7 @@ export type LoaderRegistry = {
 };
 
 export const createLoaderRegistry = (
-    apiKeys: ApiKeys,
+    apiKeys: LoadersConfig,
     loaders: readonly DataLoader<unknown>[] = createLoaders(apiKeys)
 ): LoaderRegistry => {
     const lookup = loaders.reduce((map, obj) => {

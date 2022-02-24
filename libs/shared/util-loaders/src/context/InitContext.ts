@@ -1,4 +1,4 @@
-import { ContentGatewayClientV1 } from "@banklessdao/content-gateway-sdk";
+import { ContentGatewayClient } from "@banklessdao/content-gateway-sdk";
 import { Jobs } from "./Jobs";
 
 /**
@@ -8,7 +8,7 @@ export type InitContext = {
     /**
      * Can be used to interact with the Content Gateway API.
      */
-    client: ContentGatewayClientV1;
+    client: ContentGatewayClient;
     /**
      * You can use this object to store and retrieve Jobs, and to
      * register new loaders.

@@ -1,4 +1,8 @@
-import { SchemaRepository } from "@domain/feature-gateway";
+import {
+    ContentGatewayUser,
+    SchemaEntity,
+    SchemaRepository,
+} from "@domain/feature-gateway";
 import { createLogger } from "@banklessdao/util-misc";
 import { Schema, SchemaInfo } from "@banklessdao/util-schema";
 import { pipe } from "fp-ts/lib/function";
@@ -31,11 +35,14 @@ export const toObservableSchemaRepository = (
 
     return {
         ...schemaRepository,
-        register: (schema: Schema) => {
-            return pipe(schemaRepository.register(schema), notifyListeners());
+        register: (schema: Schema, owner: ContentGatewayUser) => {
+            return pipe(
+                schemaRepository.register(schema, owner),
+                notifyListeners()
+            );
         },
-        remove: (info: SchemaInfo) => {
-            return pipe(schemaRepository.remove(info), notifyListeners());
+        remove: (schema: SchemaEntity) => {
+            return pipe(schemaRepository.remove(schema), notifyListeners());
         },
         onChange: (listener: () => void) => {
             listeners.push(listener);

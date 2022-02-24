@@ -1,6 +1,12 @@
+import { CodecValidationError } from "@banklessdao/util-data";
+import { coercePrimitive, createLogger } from "@banklessdao/util-misc";
+import {
+    Schema,
+    SchemaInfo,
+    schemaInfoToString
+} from "@banklessdao/util-schema";
 import {
     Cursor,
-    DatabaseError,
     DataRepository,
     DataStorageError,
     decodeCursor,
@@ -9,73 +15,36 @@ import {
     EntryList,
     Filter,
     ListPayload,
-    MissingSchemaError,
     OrderBy,
     OrderDirection,
     Query,
     QueryError,
-    SchemaRepository,
-    SinglePayload
+    SchemaRepository
 } from "@domain/feature-gateway";
-import { CodecValidationError } from "@banklessdao/util-data";
-import { coercePrimitive, createLogger } from "@banklessdao/util-misc";
-import { Schema, SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
 import * as E from "fp-ts/Either";
 import { absurd, pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import * as TO from "fp-ts/TaskOption";
 import {
+    Db,
     Filter as MongoFilter,
-    MongoClient,
     ObjectId,
     SortDirection,
     WithId
 } from "mongodb";
+import * as objectPath from "object-path";
 import { DocumentData, wrapDbOperation, wrapDbOperationWithParams } from ".";
 
-export const createMongoDataRepository = ({
-    dbName,
-    mongoClient,
-    schemaRepository,
-}: {
-    dbName: string;
-    mongoClient: MongoClient;
+type Deps = {
+    db: Db;
     schemaRepository: SchemaRepository;
-}): DataRepository => {
-    const db = mongoClient.db(dbName);
-    const logger = createLogger("MongoDataRepository");
+};
 
-    const upsertData = (
-        data: SinglePayload
-    ): TE.TaskEither<DatabaseError, void> => {
-        const { info, record } = data;
-        const key = schemaInfoToString(info);
-        const collection = db.collection<DocumentData>(key);
-        const id = record.id as string;
-        return pipe(
-            wrapDbOperation(() =>
-                collection.updateOne(
-                    { id },
-                    {
-                        $set: {
-                            data: record,
-                            updatedAt: new Date(),
-                        },
-                        $setOnInsert: {
-                            id: id,
-                            createdAt: new Date(),
-                        },
-                    },
-                    {
-                        upsert: true,
-                    }
-                )
-            )(),
-            TE.map(() => {
-                return undefined;
-            })
-        );
-    };
+export const createMongoDataRepository = ({
+    db,
+    schemaRepository,
+}: Deps): DataRepository => {
+    const logger = createLogger("MongoDataRepository");
 
     const validateRecords =
         (records: Record<string, unknown>[]) => (schema: Schema) => {
@@ -90,19 +59,6 @@ export const createMongoDataRepository = ({
         };
 
     const store = (
-        payload: SinglePayload
-    ): TE.TaskEither<DataStorageError, void> => {
-        const { info, record } = payload;
-        return pipe(
-            schemaRepository.find(info),
-            TE.fromTaskOption(() => new MissingSchemaError(info)),
-            TE.chainW(validateRecords([record])),
-            TE.chainW(() => upsertData(payload)),
-            TE.map(() => undefined)
-        );
-    };
-
-    const storeBulk = (
         listPayload: ListPayload
     ): TE.TaskEither<DataStorageError, void> => {
         const { info, records } = listPayload;
@@ -113,7 +69,6 @@ export const createMongoDataRepository = ({
         const collection = db.collection<DocumentData>(key);
         return pipe(
             schemaRepository.find(info),
-            TE.fromTaskOption(() => new MissingSchemaError(info)),
             TE.chainW(validateRecords(records)),
             TE.map((recordList) => {
                 return recordList.map((record) => {
@@ -141,16 +96,7 @@ export const createMongoDataRepository = ({
                     return collection.bulkWrite(updates);
                 })
             ),
-            TE.map((result) => {
-                logger.info("Bulk upsert results:", {
-                    insertedCount: result.insertedCount,
-                    matchedCount: result.matchedCount,
-                    modifiedCount: result.modifiedCount,
-                    upsertedCount: result.upsertedCount,
-                    ok: result.ok,
-                    hasWriteErrors: result.hasWriteErrors(),
-                    writeErrorCount: result.getWriteErrorCount(),
-                });
+            TE.map(() => {
                 return undefined;
             })
         );
@@ -178,7 +124,7 @@ export const createMongoDataRepository = ({
     };
 
     const convertFilters = (where: Filter[]): MongoFilter<DocumentData> => {
-        const result = [] as MongoFilter<DocumentData>;
+        const result: MongoFilter<DocumentData> = [];
         for (const filter of where) {
             const path = `data.${filter.fieldPath}`;
             switch (filter.type) {
@@ -379,16 +325,20 @@ export const createMongoDataRepository = ({
                     typeof lastRecord !== "undefined" &&
                     entries.length === limit
                 ) {
-                    const lr = lastRecord as WithId<DocumentData>;
+                    const fixedLastRecord = lastRecord as WithId<DocumentData>;
                     const nextCursor: Cursor = {
-                        _id: lr._id.toString(),
+                        _id: fixedLastRecord._id.toString(),
                         dir: dir,
                     };
-                    // TODO: 👇 This won't work with nested fields (eg: a.b)
                     if (orderBy?.fieldPath && orderBy.fieldPath !== "_id") {
                         nextCursor.custom = {
                             fieldPath: `data.${orderBy.fieldPath}`,
-                            value: String(lr.data[orderBy.fieldPath]),
+                            value: String(
+                                objectPath.get(
+                                    fixedLastRecord.data,
+                                    orderBy.fieldPath
+                                )
+                            ),
                         };
                     }
                     result.nextPageToken = encodeCursor(nextCursor);
@@ -400,7 +350,6 @@ export const createMongoDataRepository = ({
 
     return {
         store,
-        storeBulk,
         findById,
         findByQuery,
     };

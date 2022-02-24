@@ -5,14 +5,15 @@ import {
     RequiredArrayRef,
     SchemaValidationError,
 } from "@banklessdao/util-schema";
+import axios from "axios";
 import * as E from "fp-ts/Either";
-import { createContentGatewayClientV1, createDefaultClientV1 } from ".";
-import { ContentGatewayClientV1 } from "./ContentGatewayClient";
+import { createContentGatewayClient, createDefaultClient } from ".";
+import { ContentGatewayClient } from "./ContentGatewayClient";
 import {
     createOutboundAdapterStub,
     OutboundDataAdapterStub,
 } from "./OutboundDataAdapter";
-import axios from "axios";
+import { schemaInfoToString } from "..";
 axios.defaults.adapter = require("axios/lib/adapters/http");
 
 const info = {
@@ -75,29 +76,14 @@ const invalidPostWithMissingData = {
 
 describe("Given a gateway client", () => {
     let adapterStub: OutboundDataAdapterStub;
-    let client: ContentGatewayClientV1;
+    let client: ContentGatewayClient;
 
     beforeEach(() => {
         adapterStub = createOutboundAdapterStub();
-        client = createContentGatewayClientV1({
-            apiKey: "",
+        client = createContentGatewayClient({
             adapter: adapterStub,
         });
     });
-
-    it("test",  async () => {
-        const c = createDefaultClientV1({
-            apiKey: "",
-            apiURL: "https://prod-content-gateway-api.herokuapp.com",
-        });
-
-        const result= await c.register({
-            info: info,
-            type: Post,
-        })();
-
-        console.log(result);    
-    })
 
     it("When registering a valid schema Then it should register properly", async () => {
         const result = await client.register({
@@ -145,45 +131,41 @@ describe("Given a gateway client", () => {
     it("When sending a valid payload Then it is sent properly", async () => {
         await client.register({ info: info, type: Post })();
         const result = await client.save({
-            payload: {
-                info: info,
-                data: validPost,
-            },
+            info: info,
+            data: [validPost],
         })();
 
         expect(result).toEqual(E.right({}));
         expect(adapterStub.payloads).toEqual([
             {
                 info: { namespace: "test", name: "Post", version: "V1" },
-                data: {
-                    id: "1",
-                    content: "Hello World",
-                    comments: [{ text: "Hello" }, { text: "World" }],
-                },
+                data: [
+                    {
+                        id: "1",
+                        content: "Hello World",
+                        comments: [{ text: "Hello" }, { text: "World" }],
+                    },
+                ],
             },
         ]);
     });
 
     it("When sending an unregistered payload Then an error is returned", async () => {
         const result = await client.save({
-            payload: {
-                info: info,
-                data: validPost,
-            },
+            info: info,
+            data: [validPost],
         })();
 
         expect(result).toEqual(
-            E.left(new Error("No schema found for key test.Post.V1"))
+            E.left(new Error(`Schema ${schemaInfoToString(info)} not found`))
         );
     });
 
     it("When sending a payload with missing data Then an error is returned", async () => {
         await client.register({ info: info, type: Post })();
         const result = await client.save({
-            payload: {
-                info: info,
-                data: invalidPostWithMissingData,
-            },
+            info: info,
+            data: [invalidPostWithMissingData],
         })();
 
         expect(result).toEqual(
@@ -205,10 +187,8 @@ describe("Given a gateway client", () => {
     it("When sending a payload with extra data Then an error is returned", async () => {
         await client.register({ info: info, type: Post })();
         const result = await client.save({
-            payload: {
-                info: info,
-                data: invalidPostWithExtraData,
-            },
+            info: info,
+            data: [invalidPostWithExtraData],
         })();
 
         expect(result).toEqual(

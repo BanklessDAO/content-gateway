@@ -1,10 +1,9 @@
-import { ProgramError } from "@banklessdao/util-data";
 import { Filter } from "./Filter";
 import { Operation } from "./Operation";
 import { Policy } from "./Policy";
 
 /**
- * A [[Permission]] determines the constraints of executing an [[operation]].
+ * A [[Permission]] determines the constraints of executing an [[Operation]].
  *
  * @param name The name of the permission. This is useful when debugging.
  * @param policies are evaluated in order, and the [[operation]] is only allowed
@@ -14,7 +13,7 @@ import { Policy } from "./Policy";
  */
 export interface Permission<I, O> {
     name: string;
-    operation: Operation<I, O>;
+    operationName: string;
     policies: Policy<I>[];
     filters?: Filter<O>[];
 }
@@ -27,11 +26,9 @@ export type AnyPermission = Permission<any, any>;
  * [[Permission]]s for a given [[operation]].
  */
 export const getPermissionFilterFor =
-    <E extends ProgramError, I, O>(operation: Operation<I, O>) =>
+    <I, O>(operation: Operation<I, O>) =>
     (permissions: AnyPermission[]): Permission<I, O>[] => {
         return permissions.filter(
-            (permission) => permission.operation === operation
+            (permission) => permission.operationName === operation.name
         );
     };
-
-    

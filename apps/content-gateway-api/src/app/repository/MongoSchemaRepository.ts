@@ -1,14 +1,5 @@
 // eslint-disable-next-line @nrwl/nx/enforce-module-boundaries
-import {
-    DatabaseError,
-    RegisteredSchemaIncompatibleError,
-    SchemaRegistrationError,
-    SchemaRemovalError,
-    SchemaRepository,
-    SchemaStat
-} from "@domain/feature-gateway";
 import { CodecValidationError, UnknownError } from "@banklessdao/util-data";
-import { createLogger } from "@banklessdao/util-misc";
 import {
     createSchemaFromObject,
     Schema,
@@ -16,52 +7,199 @@ import {
     schemaInfoToString,
     stringToSchemaInfo
 } from "@banklessdao/util-schema";
+import {
+    ContentGatewayUser,
+    DatabaseError,
+    RegisteredSchemaIncompatibleError,
+    SchemaEntity,
+    SchemaNotFoundError,
+    SchemaRegistrationError,
+    SchemaRemovalError,
+    SchemaRepository,
+    SchemaStat
+} from "@domain/feature-gateway";
 import * as A from "fp-ts/Array";
 import * as E from "fp-ts/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as TE from "fp-ts/TaskEither";
-import * as TO from "fp-ts/TaskOption";
-import { MongoClient } from "mongodb";
-import { MongoSchema, wrapDbOperation } from ".";
+import { Db } from "mongodb";
+import { MongoSchema, mongoUserToCGUser, wrapDbOperation } from ".";
 
-export const SCHEMAS_COLLECTION_NAME = "schemas";
+type Deps = {
+    db: Db;
+    schemasCollectionName: string;
+    usersCollectionName: string;
+};
 
 export const createMongoSchemaRepository = async ({
-    dbName,
-    mongoClient,
-}: {
-    dbName: string;
-    mongoClient: MongoClient;
-}): Promise<SchemaRepository> => {
-    const logger = createLogger("MongoSchemaRepository");
-    const db = mongoClient.db(dbName);
-    const schemas = db.collection<MongoSchema>(SCHEMAS_COLLECTION_NAME);
+    db,
+    schemasCollectionName,
+    usersCollectionName,
+}: Deps): Promise<SchemaRepository> => {
+    const schemas = db.collection<MongoSchema>(schemasCollectionName);
 
     // TODO! test if the index was created
     await schemas.createIndex({ key: 1 }, { unique: true });
+    await schemas.createIndex({ userId: 1 });
     await schemas.createIndex({ createdAt: 1 });
     await schemas.createIndex({ updatedAt: 1 });
 
-    const findSchema = (info: SchemaInfo) => {
+    const find = (
+        info: SchemaInfo
+    ): TE.TaskEither<
+        SchemaNotFoundError | CodecValidationError,
+        SchemaEntity
+    > => {
         return pipe(
-            TO.tryCatch(() => {
-                return schemas.findOne({ key: schemaInfoToString(info) });
+            TE.tryCatch(
+                async () => {
+                    return schemas
+                        .aggregate<MongoSchema>([
+                            {
+                                $match: { key: schemaInfoToString(info) },
+                            },
+                            {
+                                $limit: 1,
+                            },
+                            {
+                                $project: {
+                                    key: true,
+                                    jsonSchema: true,
+                                    createdAt: true,
+                                    updatedAt: true,
+                                    deletedAt: true,
+                                },
+                            },
+                            {
+                                $lookup: {
+                                    from: usersCollectionName,
+                                    localField: "ownerId",
+                                    foreignField: "userId",
+                                    as: "users",
+                                },
+                            },
+                            {
+                                $project: {
+                                    key: true,
+                                    jsonSchema: true,
+                                    createdAt: true,
+                                    updatedAt: true,
+                                    deletedAt: true,
+                                    owner: { $first: "$users" },
+                                },
+                            },
+                        ])
+                        .toArray();
+                },
+                (e) => {
+                    return new SchemaNotFoundError(info);
+                }
+            ),
+            TE.chain((arr) => {
+                if (arr.length === 0) {
+                    return TE.left(new SchemaNotFoundError(info));
+                } else {
+                    // ! TODO: what should we do if the owner is no longer present?
+                    return TE.right(arr[0]);
+                }
             }),
-            TO.chain((entity) => TO.fromNullable(entity)),
-            TO.chain((schemaEntity) => {
-                return TO.fromEither(
+            TE.chainW((mongoSchema) => {
+                return pipe(
                     createSchemaFromObject({
                         info: info,
-                        jsonSchema: schemaEntity.jsonSchema,
-                    })
+                        jsonSchema: mongoSchema.jsonSchema,
+                    }),
+                    TE.fromEither,
+                    TE.map((schema) => ({
+                        ...schema,
+                        owner: mongoUserToCGUser(mongoSchema.owner),
+                    }))
                 );
             })
         );
     };
 
+    const register = (
+        schema: Schema,
+        owner: ContentGatewayUser
+    ): TE.TaskEither<SchemaRegistrationError, void> => {
+        return pipe(
+            find(schema.info),
+            TE.getOrElse(() => {
+                return T.of({
+                    ...schema,
+                    owner,
+                });
+            }),
+            TE.fromTask,
+            TE.mapLeft((e: unknown) => new UnknownError(e)),
+            TE.chainW((oldSchema) => {
+                let result: TE.TaskEither<SchemaRegistrationError, MongoSchema>;
+                if (schema.isBackwardCompatibleWith(oldSchema)) {
+                    result = upsertSchema({
+                        ...schema,
+                        owner,
+                    });
+                } else {
+                    result = TE.left(
+                        new RegisteredSchemaIncompatibleError(schema.info)
+                    );
+                }
+                return result;
+            }),
+            TE.map(() => {
+                return undefined;
+            })
+        );
+    };
+
+    const remove = (
+        schema: SchemaEntity
+    ): TE.TaskEither<SchemaRemovalError, void> => {
+        const schemaKey = schemaInfoToString(schema.info);
+        return pipe(
+            wrapDbOperation(() => {
+                return schemas.deleteOne({
+                    key: schemaKey,
+                });
+            })(),
+            TE.chain(() =>
+                wrapDbOperation(() => {
+                    return db.dropCollection(schemaKey);
+                })()
+            ),
+            TE.map(() => undefined)
+        );
+    };
+
+    const loadStats = (): T.Task<Array<SchemaStat>> => {
+        return pipe(
+            findAll(),
+            T.chain((allSchemas) => {
+                return async () => {
+                    const stats = [] as SchemaStat[];
+                    for (const schema of allSchemas) {
+                        const info = schema.info;
+                        const name = schemaInfoToString(info);
+                        const coll = db.collection(name);
+                        const rowCount = await coll.countDocuments();
+                        const lastDocument = await coll.findOne(
+                            {},
+                            { sort: { updatedAt: "desc" } }
+                        );
+                        const lastUpdated =
+                            lastDocument?.updatedAt ?? new Date(0);
+                        stats.push({ info, rowCount, lastUpdated });
+                    }
+                    return stats;
+                };
+            })
+        );
+    };
+
     const upsertSchema = (
-        schema: Schema
+        schema: SchemaEntity
     ): TE.TaskEither<DatabaseError, MongoSchema> => {
         const collectionName = schemaInfoToString(schema.info);
         return pipe(
@@ -78,6 +216,7 @@ export const createMongoSchemaRepository = async ({
                         $setOnInsert: {
                             key: collectionName,
                             createdAt: new Date(),
+                            ownerId: schema.owner.id,
                         },
                     },
                     {
@@ -108,18 +247,55 @@ export const createMongoSchemaRepository = async ({
 
     const mongoSchemaToSchema: (
         schema: MongoSchema
-    ) => E.Either<CodecValidationError, Schema> = (schema) =>
-        createSchemaFromObject({
-            info: stringToSchemaInfo(schema.key),
-            jsonSchema: schema.jsonSchema,
-        });
+    ) => E.Either<CodecValidationError, SchemaEntity> = (schema) => {
+        return pipe(
+            createSchemaFromObject({
+                info: stringToSchemaInfo(schema.key),
+                jsonSchema: schema.jsonSchema,
+            }),
+            E.map((s) => {
+                return {
+                    ...s,
+                    owner: mongoUserToCGUser(schema.owner),
+                };
+            })
+        );
+    };
 
-    const findAll = (): T.Task<Array<Schema>> => {
+    const findAll = (): T.Task<Array<SchemaEntity>> => {
         return pipe(
             async () => {
-                // * this can fail on paper, but if there is no database connection
-                // * 👇 then we have bigger problems
-                return schemas.find().toArray();
+                return schemas
+                    .aggregate<MongoSchema>([
+                        {
+                            $project: {
+                                key: true,
+                                jsonSchema: true,
+                                createdAt: true,
+                                updatedAt: true,
+                                deletedAt: true,
+                            },
+                        },
+                        {
+                            $lookup: {
+                                from: usersCollectionName,
+                                localField: "ownerId",
+                                foreignField: "userId",
+                                as: "users",
+                            },
+                        },
+                        {
+                            $project: {
+                                key: true,
+                                jsonSchema: true,
+                                createdAt: true,
+                                updatedAt: true,
+                                deletedAt: true,
+                                owner: { $first: "$users" },
+                            },
+                        },
+                    ])
+                    .toArray();
             },
             T.map((entities) => {
                 return pipe(
@@ -132,66 +308,10 @@ export const createMongoSchemaRepository = async ({
     };
 
     return {
-        register: (
-            schema: Schema
-        ): TE.TaskEither<SchemaRegistrationError, void> => {
-            return pipe(
-                findSchema(schema.info),
-                TO.getOrElse(() => T.of(schema)),
-                TE.fromTask,
-                TE.mapLeft((e: unknown) => new UnknownError(e)),
-                TE.chainW((oldSchema) => {
-                    let result: TE.TaskEither<
-                        SchemaRegistrationError,
-                        MongoSchema
-                    >;
-                    if (schema.isBackwardCompatibleWith(oldSchema)) {
-                        result = upsertSchema(schema);
-                    } else {
-                        result = TE.left(
-                            new RegisteredSchemaIncompatibleError(schema.info)
-                        );
-                    }
-                    return result;
-                }),
-                TE.map(() => undefined)
-            );
-        },
-        remove: (info: SchemaInfo): TE.TaskEither<SchemaRemovalError, void> => {
-            return pipe(
-                wrapDbOperation(() => {
-                    return schemas.deleteOne({
-                        key: schemaInfoToString(info),
-                    });
-                })(),
-                TE.map(() => undefined)
-            );
-        },
-        find: findSchema,
-        findAll: findAll,
-        loadStats: (): T.Task<Array<SchemaStat>> => {
-            return pipe(
-                findAll(),
-                T.chain((allSchemas) => {
-                    return async () => {
-                        const stats = [] as SchemaStat[];
-                        for (const schema of allSchemas) {
-                            const info = schema.info;
-                            const name = schemaInfoToString(info);
-                            const coll = db.collection(name);
-                            const rowCount = await coll.countDocuments();
-                            const lastDocument = await coll.findOne(
-                                {},
-                                { sort: { updatedAt: "desc" } }
-                            );
-                            const lastUpdated =
-                                lastDocument?.updatedAt ?? new Date(0);
-                            stats.push({ info, rowCount, lastUpdated });
-                        }
-                        return stats;
-                    };
-                })
-            );
-        },
+        register,
+        remove,
+        find,
+        findAll,
+        loadStats,
     };
 };

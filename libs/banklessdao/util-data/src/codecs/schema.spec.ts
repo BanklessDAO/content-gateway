@@ -459,7 +459,7 @@ describe("Given a type guard", () => {
             );
             const firstError = result[0];
             expect(firstError.message).toEqual(
-                `{"type":"array"} property is not supported. Did you forget to add an annotation somewhere?`
+                `Schema type is missing`
             );
         });
     });

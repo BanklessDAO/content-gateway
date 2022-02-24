@@ -1,4 +1,5 @@
 import * as E from "fp-ts/Either";
+import * as TE from "fp-ts/TaskEither";
 import * as t from "io-ts";
 
 export interface ProgramError {
@@ -78,7 +79,7 @@ export class CodecValidationError extends ProgramErrorBase<"CodecValidationError
             message: message,
             details: {
                 errorReport: e.map(
-                    (item) => `${item.value} was invalid: ${item.message}`
+                    (item) => item.message ?? "Value was invalid"
                 ),
             },
         });

@@ -11,4 +11,3 @@ import { Context } from "./Context";
 export type Policy<I> = (
     context: Context<I>
 ) => TE.TaskEither<ProgramError, Context<I>>;
-

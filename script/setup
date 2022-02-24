@@ -1,5 +1,3 @@
 #!/bin/bash
 
 npm install
-script/prisma-generate cgl
-script/prisma-migrate-dev cgl

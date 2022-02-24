@@ -2,7 +2,6 @@ import {
     DataTransferError,
     del,
     JsonBatchPayload,
-    JsonPayload,
     post
 } from "@banklessdao/util-data";
 import { SchemaInfo, SchemaJson } from "@banklessdao/util-schema";
@@ -14,7 +13,6 @@ import * as t from "io-ts";
  * It is used by the SDK to send data to a Content Gateway API server.
  * In 99% of cases what you'll need is the HTTP adapter which can be created by
  * calling the {@link createHTTPAdapterV1} function.
- * Note that
  */
 export type OutboundDataAdapter = {
     register: (
@@ -24,41 +22,54 @@ export type OutboundDataAdapter = {
         info: SchemaInfo
     ) => TE.TaskEither<DataTransferError, Record<string, unknown>>;
     send: (
-        payload: JsonPayload
-    ) => TE.TaskEither<DataTransferError, Record<string, unknown>>;
-    sendBatch: (
         payload: JsonBatchPayload
     ) => TE.TaskEither<DataTransferError, Record<string, unknown>>;
 };
 
-export const createHTTPAdapterV1 = (url: string): OutboundDataAdapter => {
+type Params = {
+    apiUrl: string;
+    apiKey: string;
+};
+
+export const createHTTPAdapterV1 = ({
+    apiUrl,
+    apiKey,
+}: Params): OutboundDataAdapter => {
     return {
         register: (schema: SchemaJson) => {
             return post({
-                url: `${url}/api/v1/rest/schema/`,
+                url: `${apiUrl}/api/v1/rest/schema/`,
                 input: schema,
                 codec: t.UnknownRecord,
+                config: {
+                    headers: {
+                        "X-Api-Key": apiKey,
+                    },
+                },
             });
         },
         remove: (info: SchemaInfo) => {
             return del({
-                url: `${url}/api/v1/rest/schema/`,
+                url: `${apiUrl}/api/v1/rest/schema/`,
                 input: info,
                 codec: t.UnknownRecord,
+                config: {
+                    headers: {
+                        "X-Api-Key": apiKey,
+                    },
+                },
             });
         },
-        send: (payload: JsonPayload) => {
+        send: (payload: JsonBatchPayload) => {
             return post({
-                url: `${url}/api/v1/rest/data/receive`,
+                url: `${apiUrl}/api/v1/rest/data/receive`,
                 input: payload,
                 codec: t.UnknownRecord,
-            });
-        },
-        sendBatch: (payload: JsonBatchPayload) => {
-            return post({
-                url: `${url}/api/v1/rest/data/receive-batch`,
-                input: payload,
-                codec: t.UnknownRecord,
+                config: {
+                    headers: {
+                        "X-Api-Key": apiKey,
+                    },
+                },
             });
         },
     };
@@ -66,7 +77,7 @@ export const createHTTPAdapterV1 = (url: string): OutboundDataAdapter => {
 
 export type OutboundDataAdapterStub = {
     schemas: Array<SchemaJson>;
-    payloads: Array<JsonPayload | JsonBatchPayload>;
+    payloads: Array<JsonBatchPayload>;
 } & OutboundDataAdapter;
 
 /**
@@ -75,7 +86,7 @@ export type OutboundDataAdapterStub = {
  */
 export const createOutboundAdapterStub = (): OutboundDataAdapterStub => {
     const schemas = [] as Array<SchemaJson>;
-    const payloads = [] as Array<JsonPayload | JsonBatchPayload>;
+    const payloads = [] as Array<JsonBatchPayload>;
     return {
         schemas,
         payloads,
@@ -87,10 +98,6 @@ export const createOutboundAdapterStub = (): OutboundDataAdapterStub => {
             return TE.right({});
         },
         send: (payload) => {
-            payloads.push(payload);
-            return TE.right({});
-        },
-        sendBatch: (payload) => {
             payloads.push(payload);
             return TE.right({});
         },

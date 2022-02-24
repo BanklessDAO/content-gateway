@@ -17,8 +17,4 @@ if [ -z "$1" ]; then
     print_usage "Project name is missing!"
 fi
 
-if [ "$1" == "content-gateway-loader" ]; then
-    script/prisma-generate $1
-fi
-
 nx build $1 --prod

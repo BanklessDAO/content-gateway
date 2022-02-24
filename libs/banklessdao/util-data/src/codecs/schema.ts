@@ -84,9 +84,9 @@ export const supportedPropertyCodec = withMessage(
 
 export type SupportedProperty = t.TypeOf<typeof supportedPropertyCodec>;
 
-export const supportedPropertyRecordCodec = t.record(
-    t.string,
-    supportedPropertyCodec
+export const supportedPropertyRecordCodec = withMessage(
+    t.record(t.string, supportedPropertyCodec),
+    () => "supported properties must be a record"
 );
 
 export type SupportedPropertyRecord = t.TypeOf<
@@ -94,13 +94,13 @@ export type SupportedPropertyRecord = t.TypeOf<
 >;
 
 export const jsonSchemaTypeCodec = t.intersection([
-    t.strict({
-        type: withMessage(
-            t.literal("object"),
-            () => "A json schema type must have type of object"
-        ),
-        properties: supportedPropertyRecordCodec,
-    }),
+    withMessage(
+        t.strict({
+            type: t.literal("object"),
+            properties: supportedPropertyRecordCodec,
+        }),
+        () => "Schema type is missing"
+    ),
     t.exact(
         t.partial({
             required: withMessage(

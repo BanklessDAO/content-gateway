@@ -73,7 +73,7 @@ export type Schema = {
 /**
  * Creates a [[Schema]] object from the given [[type]]
  * and the given schema [[info]].
- * Note that this is a curried function and requireds a [[serializer]]
+ * Note that this is a curried function and requires a [[serializer]]
  * in order to work.
  */
 export const createSchemaFromClass: <T>(

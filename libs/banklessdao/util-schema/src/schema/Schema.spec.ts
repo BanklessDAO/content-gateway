@@ -242,10 +242,6 @@ describe("Given a Schema", () => {
             );
         });
 
-        it("When creating a GraphQL type, the proper type is produced", () => {
-            expect(null).toEqual(null);
-        });
-
         it("When has backward compatible changes to other Then it is compatible", () => {
             const oldSchema = extractRight(createSchemaFromClass(User));
             const newSchema = extractRight(

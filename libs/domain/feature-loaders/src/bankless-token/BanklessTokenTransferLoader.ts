@@ -16,7 +16,7 @@ const QUERY: DocumentNode = gql`
         erc20Transfers(
             first: $limit
             orderBy: timestamp
-            where: { timestamp_gt: $cursor }
+            where: { timestamp_gte: $cursor }
         ) {
             id
             transaction {

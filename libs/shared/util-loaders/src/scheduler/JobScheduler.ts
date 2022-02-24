@@ -1,4 +1,4 @@
-import { ContentGatewayClientV1 } from "@banklessdao/content-gateway-sdk";
+import { ContentGatewayClient } from "@banklessdao/content-gateway-sdk";
 import { ProgramError } from "@banklessdao/util-data";
 import { createLogger, programError } from "@banklessdao/util-misc";
 import { SchemaInfo, schemaInfoToString } from "@banklessdao/util-schema";
@@ -17,7 +17,7 @@ import {
     RegistrationError,
     SchedulerNotRunningError,
     SchedulerStartupError,
-    SchedulingError,
+    SchedulingError
 } from "./errors";
 import { Job } from "./Job";
 import { JobRepository } from "./JobRepository";
@@ -55,8 +55,9 @@ export type JobScheduler = {
 };
 
 export type Deps = {
+    toad: ToadScheduler;
     jobRepository: JobRepository;
-    contentGatewayClient: ContentGatewayClientV1;
+    contentGatewayClient: ContentGatewayClient;
 };
 
 export const createJobScheduler = (deps: Deps): JobScheduler =>
@@ -65,14 +66,15 @@ export const createJobScheduler = (deps: Deps): JobScheduler =>
 class DefaultJobScheduler implements JobScheduler {
     private loaders = new Map<string, DataLoader<unknown>>();
     private running = false;
-    private client: ContentGatewayClientV1;
+    private client: ContentGatewayClient;
     private logger = createLogger("JobScheduler");
-    private scheduler = new ToadScheduler();
+    private toad: ToadScheduler;
     private jobRepository: JobRepository;
 
     constructor(deps: Deps) {
         this.jobRepository = deps.jobRepository;
         this.client = deps.contentGatewayClient;
+        this.toad = deps.toad;
     }
 
     start(): TE.TaskEither<SchedulerStartupError, void> {
@@ -92,7 +94,7 @@ class DefaultJobScheduler implements JobScheduler {
                         this.logger.info("Job execution failed", err);
                     }
                 );
-                this.scheduler.addSimpleIntervalJob(
+                this.toad.addSimpleIntervalJob(
                     new SimpleIntervalJob({ seconds: 5 }, task)
                 );
             },
@@ -187,7 +189,7 @@ class DefaultJobScheduler implements JobScheduler {
         }
         this.logger.info("Stopping job scheduler.");
         this.running = false;
-        this.scheduler.stop();
+        this.toad.stop();
     }
 
     remove(name: string): TE.TaskEither<RemoveError, void> {

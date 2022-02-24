@@ -41,7 +41,7 @@ export interface DataLoader<T> {
     initialize: (deps: InitContext) => TE.TaskEither<ProgramError, void>;
     /**
      * Loads data from the data source asynchronously, and transforms the
-     * data into the type `T`. This is the type that should be reigstered
+     * data into the type `T`. This is the type that should be registered
      * with the Content Gateway.
      */
     load: (deps: LoadContext) => TE.TaskEither<ProgramError, LoadingResult<T>>;

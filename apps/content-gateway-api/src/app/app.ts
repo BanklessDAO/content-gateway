@@ -1,99 +1,190 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-    ContentGatewayClientV1,
-    createContentGatewayClientV1,
-} from "@banklessdao/content-gateway-sdk";
+import { createLogger } from "@banklessdao/util-misc";
 import {
     ContentGateway,
+    ContentGatewayUser,
     createContentGateway,
     DataRepository,
+    UserRepository,
 } from "@domain/feature-gateway";
-import { createLogger, programError } from "@banklessdao/util-misc";
+import { createLoaderRegistry } from "@domain/feature-loaders";
+import { JobRepository, JobScheduler } from "@shared/util-loaders";
+import * as bodyParser from "body-parser";
 import * as express from "express";
 import { graphqlHTTP } from "express-graphql";
+import { pipe } from "fp-ts/lib/function";
+import * as TE from "fp-ts/TaskEither";
 import * as g from "graphql";
-import { MongoClient } from "mongodb";
-import { join } from "path";
-import { Logger } from "tslog";
+import { Collection, Db, ObjectId } from "mongodb";
+import { ToadScheduler } from "toad-scheduler";
 import {
-    createGraphQLAPIV1 as createGraphQLAPIV1,
-    createInMemoryOutboundDataAdapter,
+    authorization,
+    createGraphQLAPIV1,
+    createMongoUserRepository,
     ObservableSchemaRepository,
     toObservableSchemaRepository,
 } from ".";
 import { createMongoDataRepository, createMongoSchemaRepository } from "./";
 import { liveLoaders } from "./live-loaders";
 import { LiveLoader } from "./live-loaders/LiveLoader";
-import { generateContentGatewayAPIV1 } from "./service";
+import { AtlasApiInfo } from "./maintenance/jobs/index-handling/IndexCreationJob";
+import { createJobs, JobConfig } from "./maintenance/jobs/jobs";
+import { MongoUser } from "./repository/mongo/MongoUser";
+import { createMongoMaintainer } from "./repository/MongoMaintainer";
+import { createContentGatewayAPIV1 } from "./service";
+import { addLoaderAPIV1 } from "./service/v1/loader/LoaderAPI";
 
 export type ApplicationContext = {
-    logger: Logger;
-    env: string;
-    isDev: boolean;
-    isProd: boolean;
     app: express.Application;
-    mongoClient: MongoClient;
     schemaRepository: ObservableSchemaRepository;
+    userRepository: UserRepository;
     dataRepository: DataRepository;
     contentGateway: ContentGateway;
-    client: ContentGatewayClientV1;
 };
 
-export const createApp = async ({
-    dbName,
-    mongoClient,
-}: {
-    dbName: string;
-    mongoClient: MongoClient;
-}) => {
-    const env = process.env.NODE_ENV ?? programError("NODE_ENV not set");
-    const isDev = env === "development";
-    const isProd = env === "production";
-    const resetDb = process.env.RESET_DB === "true";
-    const addFrontend = process.env.ADD_FRONTEND === "true";
+type APIParams = {
+    nodeEnv: string;
+    db: Db;
+    jobRepository: JobRepository;
+    jobScheduler: JobScheduler;
+    jobsCollectionName: string;
+    schemasCollectionName: string;
+    usersCollectionName: string;
+    rootUser: ContentGatewayUser;
+};
 
-    const logger = createLogger("ContentGatewayAPIApp");
+const logger = createLogger("ContentGateway");
 
-    if (resetDb) {
-        await mongoClient.db(dbName).dropDatabase();
-    }
-    logger.info(`Running in ${env} mode`);
-
+export const createAPIs = async (params: APIParams) => {
+    logger.info(`Running in ${params.nodeEnv} mode`);
+    const {
+        db,
+        jobsCollectionName,
+        jobRepository,
+        jobScheduler,
+        rootUser,
+        schemasCollectionName,
+        usersCollectionName,
+    } = params;
     const app = express();
+    app.use(bodyParser.json({ limit: "50mb" }));
+
+    await addCgApiV1({
+        db,
+        app,
+        rootUser,
+        schemasCollectionName,
+        usersCollectionName,
+    });
+
+    await addLoaderAPIV1({
+        db,
+        app,
+        jobsCollectionName,
+        jobRepository,
+        jobScheduler,
+    });
+
+    return app;
+};
+
+type CoreLoaderAppParams = {
+    app: express.Application;
+    jobScheduler: JobScheduler;
+    apiUrl: string;
+    apiKey: string;
+    // optional
+    ghostAPIKey?: string;
+    youtubeAPIKey?: string;
+    snapshotSpaces?: string[];
+    discordBotToken?: string;
+    discordChannel?: string;
+};
+
+export const addCoreLoaders = async (appParams: CoreLoaderAppParams) => {
+    const {
+        ghostAPIKey,
+        youtubeAPIKey,
+        snapshotSpaces,
+        discordBotToken,
+        discordChannel,
+        jobScheduler,
+    } = appParams;
+
+    const loaderRegistry = createLoaderRegistry({
+        ghostApiKey: ghostAPIKey,
+        youtubeApiKey: youtubeAPIKey,
+        snapshotSpaces,
+        discordBotToken,
+        discordChannel,
+    });
+
+    await pipe(
+        jobScheduler.start(),
+        TE.mapLeft((err) => {
+            logger.error("Starting the Job scheduler failed", err);
+            return err;
+        })
+    )();
+
+    for (const loader of loaderRegistry.loaders) {
+        await jobScheduler.register(loader)();
+    }
+};
+
+type CgApiParams = {
+    db: Db;
+    app: express.Application;
+    usersCollectionName: string;
+    schemasCollectionName: string;
+    rootUser: ContentGatewayUser;
+};
+
+const addCgApiV1 = async ({
+    db,
+    usersCollectionName,
+    schemasCollectionName,
+    app,
+    rootUser,
+}: CgApiParams) => {
+    const users = db.collection<MongoUser>(usersCollectionName);
+
     const schemaRepository = toObservableSchemaRepository(
-        await createMongoSchemaRepository({ dbName, mongoClient })
+        await createMongoSchemaRepository({
+            db,
+            schemasCollectionName,
+            usersCollectionName,
+        })
     );
+
     const dataRepository = createMongoDataRepository({
-        dbName,
-        mongoClient,
+        db,
         schemaRepository,
+    });
+
+    const userRepository = await createMongoUserRepository({
+        db,
+        usersCollectionName,
     });
 
     const contentGateway = createContentGateway({
-        schemaRepository,
         dataRepository,
-    });
-    const client = createContentGatewayClientV1({
-        apiKey: "",
-        adapter: createInMemoryOutboundDataAdapter({
-            contentGateway,
-        }),
+        userRepository,
+        schemaRepository,
+        authorization,
     });
 
     const context: ApplicationContext = {
-        logger,
-        env,
-        isDev,
-        isProd,
         app,
-        mongoClient,
         schemaRepository,
         dataRepository,
+        userRepository,
         contentGateway,
-        client,
     };
 
-    app.use("/api/v1/rest/", await generateContentGatewayAPIV1(context));
+    await ensureRootUserExists(rootUser, users);
+
+    app.use("/api/v1/rest/", await createContentGatewayAPIV1(context));
     app.use("/api/v1/graphql/", await createGraphQLAPIV1(context));
     app.use(
         "/api/v1/graphql-live",
@@ -101,16 +192,50 @@ export const createApp = async ({
             liveLoaders: liveLoaders,
         })
     );
+};
 
-    const clientBuildPath = join(__dirname, "../content-gateway-api-frontend");
-    if (addFrontend || isProd) {
-        app.use(express.static(clientBuildPath));
-        app.get("*", (_, response) => {
-            response.sendFile(join(clientBuildPath, "index.html"));
+type MaintenanceJobsParams = {
+    atlasApiInfo?: AtlasApiInfo;
+    db: Db;
+    toad: ToadScheduler;
+};
+
+export const addMaintenanceJobs = ({
+    atlasApiInfo,
+    db,
+    toad,
+}: MaintenanceJobsParams) => {
+    if (atlasApiInfo) {
+        logger.info(
+            "Atlas information was present, creating index maintenance job"
+        );
+        const maintenanceJobConfig: JobConfig = {
+            atlasApiInfo: atlasApiInfo,
+        };
+        const maintenanceJobs = createJobs(maintenanceJobConfig, db);
+        createMongoMaintainer(maintenanceJobs, toad);
+    } else {
+        logger.info(
+            "Atlas information was not present, skipping index maintenance job"
+        );
+    }
+};
+
+const ensureRootUserExists = async (
+    rootUser: ContentGatewayUser,
+    users: Collection<MongoUser>
+) => {
+    const existingUser = await users.findOne({
+        _id: new ObjectId(rootUser.id),
+    });
+    if (!existingUser) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id, ...toInsert } = rootUser;
+        await users.insertOne({
+            ...toInsert,
+            _id: new ObjectId(rootUser.id),
         });
     }
-
-    return app;
 };
 
 export const createGraphQLLiveService = (deps: {
