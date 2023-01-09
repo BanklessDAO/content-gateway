@@ -40,7 +40,7 @@
         "io-ts-reporters": "^2.0.0",
         "io-ts-types": "^0.5.16",
         "json-schema-diff-validator": "^0.4.1",
-        "luxon": "^2.0.2",
+        "luxon": "^2.5.2",
         "mongodb": "^4.2.1",
         "monocle-ts": "^2.3.11",
         "newtype-ts": "^0.3.4",
