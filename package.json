@@ -23,7 +23,7 @@
         "axios-mock-adapter": "^1.20.0",
         "bcrypt": "^5.0.1",
         "body-parser": "^1.19.0",
-        "class-validator": "^0.13.1",
+        "class-validator": "^0.14.0",
         "core-js": "^3.6.5",
         "cross-fetch": "^3.1.4",
         "digest-fetch": "^1.2.1",
